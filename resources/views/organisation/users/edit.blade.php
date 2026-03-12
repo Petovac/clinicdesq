@@ -115,10 +115,10 @@
         <div class="form-group">
             <label>Role</label>
             <select name="role" id="roleSelect" required>
-                @foreach($roles as $role => $level)
-                    <option value="{{ $role }}"
-                        @selected($user->role === $role)>
-                        {{ ucfirst(str_replace('_',' ', $role)) }}
+                @foreach($roles as $role)
+                    <option value="{{ $role->name }}"
+                        @selected($user->role === $role->name)>
+                        {{ ucfirst(str_replace('_', ' ', $role->name)) }}
                     </option>
                 @endforeach
             </select>
