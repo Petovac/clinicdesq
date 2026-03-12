@@ -1,0 +1,18 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class PetParent extends Model
+{
+    protected $fillable = [
+        'name',
+        'phone',
+    ];
+
+    public function pets()
+    {
+        return $this->hasMany(Pet::class);
+    }
+}
