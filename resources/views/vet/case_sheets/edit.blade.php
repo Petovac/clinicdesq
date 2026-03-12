@@ -456,102 +456,92 @@ input[readonly]:hover{
 
         <hr>
 
+        {{-- =====================================================
+             INJECTABLE DRUGS — dose calculator + add
+        ====================================================== --}}
+        <h4>💉 Administer Drug (Injectable)</h4>
+
         <div class="drug-grid-2">
+            <div>
+                <label>Generic Drug</label>
+                <select id="drug-generic-select">
+                    <option value="">Select drug…</option>
+                    @foreach($drugGenerics as $drug)
+                        <option value="{{ $drug->id }}">{{ $drug->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label>Strength (clinic stock only)</label>
+                <select id="drug-strength-select">
+                    <option value="">— select generic first —</option>
+                </select>
+            </div>
+        </div>
 
-    <div>
-    <label>Select Drug (Generic)</label>
+        <div class="drug-grid-3">
+            <div>
+                <label>KB Dose Range</label>
+                <input type="text" id="drug-dose" readonly placeholder="—">
+            </div>
+            <div>
+                <label>Frequency</label>
+                <input type="text" id="drug-frequency" readonly placeholder="—">
+            </div>
+            <div>
+                <label>Route</label>
+                <input type="text" id="drug-route" readonly placeholder="—">
+            </div>
+        </div>
 
-    <select id="drug-generic-select">
-    <option value="">Select drug</option>
+        <div class="drug-grid-3">
+            <div>
+                <label>Dose (mg/kg)</label>
+                <input type="number" step="0.001" id="dose-input" placeholder="0.000">
+            </div>
+            <div>
+                <label>Calculated mg</label>
+                <input type="number" step="0.001" id="calculated-mg" readonly>
+            </div>
+            <div>
+                <label>Volume (ml)</label>
+                <input type="number" step="0.001" id="calculated-ml" readonly>
+            </div>
+        </div>
 
-    @foreach($drugGenerics as $drug)
-    <option value="{{ $drug->id }}">
-    {{ $drug->name }}
-    </option>
-    @endforeach
+        <div id="dose-warning" style="display:none;margin-top:10px;padding:8px 10px;border-radius:6px;font-size:13px;"></div>
 
-    </select>
-    </div>
+        <button type="button" onclick="addDrugTreatment()" style="margin-top:10px;">
+            + Add Drug Treatment
+        </button>
 
+        {{-- =====================================================
+             PROCEDURES — select from price list
+        ====================================================== --}}
+        <h4 style="margin-top:24px;">🩺 Procedure</h4>
 
-    <div>
-    <label>Select Strength</label>
+        <div style="display:flex;gap:10px;align-items:flex-end;">
+            <div style="flex:1;">
+                <select id="procedure-select">
+                    <option value="">Select procedure…</option>
+                    @foreach($priceListItems->where('item_type','procedure') as $item)
+                        <option value="{{ $item->id }}">{{ $item->name }} — ₹{{ number_format($item->price,2) }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <button type="button" onclick="addProcedure()">+ Add</button>
+        </div>
 
-    <select id="drug-strength-select">
-    <option value="">Select strength</option>
-    </select>
-    </div>
-
-    </div>
-
-
-    <div class="drug-grid-3">
-
-    <div>
-    <label>Recommended Dose</label>
-    <input type="text" id="drug-dose" readonly>
-    </div>
-
-    <div>
-    <label>Frequency</label>
-    <input type="text" id="drug-frequency" readonly>
-    </div>
-
-    <div>
-    <label>Route</label>
-    <input type="text" id="drug-route" readonly>
-    </div>
-
-    </div>
-
-
-    <div class="drug-grid-3">
-
-    <div>
-    <label>Dose (mg/kg)</label>
-    <input type="number" step="0.001" id="dose-input">
-    </div>
-
-    <div>
-    <label>System Calculated mg</label>
-    <input type="number" step="0.001" id="calculated-mg">
-    </div>
-
-    <div>
-    <label>Calculated Volume (ml)</label>
-    <input type="number" step="0.001" id="calculated-ml">
-    </div>
-
-    </div>
-
-    <div id="dose-warning" style="
-    display:none;
-    margin-top:10px;
-    padding:8px 10px;
-    border-radius:6px;
-    font-size:13px;
-    "></div>
-
-
-    <h4>Treatments Performed</h4>
-
-    <select id="treatment-select">
-    <option value="">Select treatment</option>
-
-    @foreach($priceListItems as $item)
-    <option value="{{ $item->id }}">
-    {{ $item->name }}
-    </option>
-    @endforeach
-
-    </select>
-
-        <button type="button" onclick="addTreatment()">Add</button>
-
-        <ul id="treatment-list">
+        {{-- Treatments list --}}
+        <ul id="treatment-list" style="margin-top:14px;">
             @foreach($appointment->treatments as $treatment)
                 <li>
-                    {{ $treatment->priceItem->name }}
+                    @if($treatment->drug_generic_id)
+                        💉 {{ optional($treatment->drugGeneric)->name ?? '—' }}
+                        @if($treatment->dose_volume_ml) — {{ $treatment->dose_volume_ml }} ml @endif
+                    @else
+                        🩺 {{ optional($treatment->priceItem)->name ?? '—' }}
+                    @endif
                 </li>
             @endforeach
         </ul>
@@ -804,70 +794,59 @@ function getClinicalInsights() {
     });
 }
 
-document.getElementById('treatment-select').addEventListener('change', function(){
+// Track selected inventory item and generic for drug treatment
+let selectedInventoryItemId = null;
+let selectedGenericId       = null;
+let selectedIsMultiUse      = false;
 
-const genericId = this.options[this.selectedIndex].dataset.generic;
-
-if(!genericId){
-    document.getElementById('dose-calculator').style.display='none';
-    return;
-}
-
-fetch(`/vet/drug-dosage/${genericId}`)
-.then(res=>res.json())
-.then(data=>{
-
-    if(!data.dosages || data.dosages.length===0){
-        document.getElementById('dose-calculator').style.display='none';
+function addDrugTreatment() {
+    if (!selectedInventoryItemId) {
+        alert('Please select a drug and strength from the clinic stock.');
         return;
     }
 
-    const dosage = data.dosages[0];
+    const doseMl = parseFloat(document.getElementById('calculated-ml').value);
+    const doseMg = parseFloat(document.getElementById('calculated-mg').value);
 
-    const weight = {{ $appointment->weight ?? 0 }};
+    if (!doseMl || doseMl <= 0) {
+        alert('Please enter a dose to calculate the volume.');
+        return;
+    }
 
-    const dose = dosage.dose_min * weight;
+    const route = document.getElementById('drug-route').value;
 
-    document.getElementById('dose-info').innerHTML =
-        `Recommended: ${dosage.dose_min} - ${dosage.dose_max} ${dosage.dose_unit}`;
-
-    document.getElementById('calculated-dose').value =
-        dose.toFixed(2) + " mg";
-
-    document.getElementById('dose-calculator').style.display='block';
-
-});
-
-});
-
-function addTreatment(){
-
-const id = document.getElementById('treatment-select').value;
-
-if(!id){
-    alert("Select treatment");
-    return;
+    fetch(`/vet/appointments/{{ $appointment->id }}/treatment/add`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            drug_generic_id:   selectedGenericId,
+            inventory_item_id: selectedInventoryItemId,
+            dose_mg:           doseMg,
+            dose_volume_ml:    doseMl,
+            route:             route,
+        })
+    })
+    .then(res => res.json())
+    .then(() => location.reload());
 }
 
-fetch(`/vet/appointments/{{ $appointment->id }}/treatment/add`,{
+function addProcedure() {
+    const id = document.getElementById('procedure-select').value;
+    if (!id) { alert('Select a procedure.'); return; }
 
-    method:'POST',
-
-    headers:{
-        'Content-Type':'application/json',
-        'X-CSRF-TOKEN':'{{ csrf_token() }}'
-    },
-
-    body: JSON.stringify({
-        price_list_item_id: id
+    fetch(`/vet/appointments/{{ $appointment->id }}/treatment/add`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ price_list_item_id: id })
     })
-
-})
-.then(res=>res.json())
-.then(()=>{
-    location.reload();
-});
-
+    .then(res => res.json())
+    .then(() => location.reload());
 }
 
 </script>
@@ -875,34 +854,44 @@ fetch(`/vet/appointments/{{ $appointment->id }}/treatment/add`,{
 
 <script>
 document.getElementById('drug-generic-select').addEventListener('change', function(){
-
-const genericId = this.value;
-
-if(!genericId) return;
-
-fetch(`/vet/drug-strengths/${genericId}`)
-.then(res => res.json())
-.then(data => {
+    const genericId = this.value;
+    selectedGenericId       = genericId || null;
+    selectedInventoryItemId = null;
 
     const strengthSelect = document.getElementById('drug-strength-select');
+    strengthSelect.innerHTML = '<option value="">— loading… —</option>';
 
-    strengthSelect.innerHTML = '<option value="">Select strength</option>';
+    if (!genericId) {
+        strengthSelect.innerHTML = '<option value="">— select generic first —</option>';
+        return;
+    }
 
-    data.forEach(function(item){
+    fetch(`/vet/drug-strengths/${genericId}`)
+    .then(res => res.json())
+    .then(data => {
+        strengthSelect.innerHTML = '<option value="">Select strength…</option>';
 
-        const option = document.createElement('option');
+        if (data.length === 0) {
+            strengthSelect.innerHTML = '<option value="">No stock in this clinic</option>';
+            return;
+        }
 
-        option.value = item.strength_value;
-
-        option.text =
-            item.strength_value + ' ' + item.strength_unit + ' (' + item.form + ')';
-
-        strengthSelect.appendChild(option);
-
+        data.forEach(function(item) {
+            const option = document.createElement('option');
+            option.value = item.inventory_item_id;
+            option.dataset.isMultiUse = item.is_multi_use ? '1' : '0';
+            option.text = item.strength_value + ' ' + item.strength_unit
+                + ' (' + (item.form || 'injection') + ')'
+                + (item.name ? ' — ' + item.name : '');
+            strengthSelect.appendChild(option);
+        });
     });
-
 });
 
+document.getElementById('drug-strength-select').addEventListener('change', function(){
+    selectedInventoryItemId = this.value || null;
+    selectedIsMultiUse = this.options[this.selectedIndex]?.dataset.isMultiUse === '1';
+    calculateDose();
 });
 
 const weight = {{ $appointment->weight ?? 0 }};

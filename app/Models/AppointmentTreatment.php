@@ -7,23 +7,16 @@ use Illuminate\Database\Eloquent\Model;
 class AppointmentTreatment extends Model
 {
     protected $fillable = [
-
         'appointment_id',
-
         'price_list_item_id',
-
         'drug_generic_id',
         'drug_brand_id',
-
+        'inventory_item_id',
         'dose_mg',
         'dose_volume_ml',
-
         'route',
-
-        'billing_quantity'
-
+        'billing_quantity',
     ];
-
 
     /*
     |--------------------------------------------------------------------------
@@ -38,7 +31,7 @@ class AppointmentTreatment extends Model
 
     public function priceItem()
     {
-        return $this->belongsTo(PriceListItem::class,'price_list_item_id');
+        return $this->belongsTo(PriceListItem::class, 'price_list_item_id');
     }
 
     public function drugGeneric()
@@ -51,4 +44,8 @@ class AppointmentTreatment extends Model
         return $this->belongsTo(DrugBrand::class);
     }
 
+    public function inventoryItem()
+    {
+        return $this->belongsTo(InventoryItem::class);
+    }
 }

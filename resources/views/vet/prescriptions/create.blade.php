@@ -450,8 +450,20 @@
                 <h4>Add Medicine</h4>
 
                 <div class="medicine-row">
-                <input id="medicine" placeholder="Search generic drug..." autocomplete="off">
-                <div id="drug-results"></div>
+                <div style="position:relative;">
+                <input id="medicine" placeholder="Type drug name…" autocomplete="off" style="width:100%;">
+                <input type="hidden" id="medicine_drug_generic_id">
+                <input type="hidden" id="medicine_inventory_item_id">
+                <input type="hidden" id="medicine_strength_value">
+                <input type="hidden" id="medicine_strength_unit">
+                <input type="hidden" id="medicine_form">
+                <div id="drug-results" style="
+                    position:absolute;top:100%;left:0;right:0;
+                    background:#fff;border:1px solid #d1d5db;border-radius:8px;
+                    box-shadow:0 8px 20px rgba(0,0,0,.1);z-index:100;
+                    max-height:240px;overflow-y:auto;display:none;
+                "></div>
+                </div>
                     <input id="dosage" placeholder="Dosage">
                     <input id="frequency" placeholder="Frequency">
                     <input id="duration" placeholder="Duration">
@@ -586,32 +598,53 @@ function addMedicine() {
         return;
     }
 
-    const dosage = document.getElementById('dosage').value;
-    const frequency = document.getElementById('frequency').value;
-    const duration = document.getElementById('duration').value;
+    const dosage       = document.getElementById('dosage').value;
+    const frequency    = document.getElementById('frequency').value;
+    const duration     = document.getElementById('duration').value;
     const instructions = document.getElementById('instructions').value;
+
+    // KB / inventory FK data
+    const drug_generic_id   = document.getElementById('medicine_drug_generic_id').value;
+    const inventory_item_id = document.getElementById('medicine_inventory_item_id').value;
+    const strength_value    = document.getElementById('medicine_strength_value').value;
+    const strength_unit     = document.getElementById('medicine_strength_unit').value;
+    const form              = document.getElementById('medicine_form').value;
 
     document.getElementById('no-meds')?.remove();
 
+    const inStockBadge = inventory_item_id
+        ? '<span style="font-size:11px;background:#d1fae5;color:#065f46;padding:2px 6px;border-radius:999px;margin-left:6px;">In stock</span>'
+        : '';
+
     const li = document.createElement('li');
     li.innerHTML = `
-        <strong>${medicine}</strong>
+        <span><strong>${medicine}</strong>${inStockBadge}
         — ${dosage}, ${frequency}, ${duration}
-        ${instructions ? '(' + instructions + ')' : ''}
+        ${instructions ? '(' + instructions + ')' : ''}</span>
         <button type="button" onclick="removeMedicine(this)">❌</button>
 
-        <input type="hidden" name="medicines[${medicineIndex}][medicine]" value="${medicine}">
-        <input type="hidden" name="medicines[${medicineIndex}][dosage]" value="${dosage}">
-        <input type="hidden" name="medicines[${medicineIndex}][frequency]" value="${frequency}">
-        <input type="hidden" name="medicines[${medicineIndex}][duration]" value="${duration}">
-        <input type="hidden" name="medicines[${medicineIndex}][instructions]" value="${instructions}">
+        <input type="hidden" name="medicines[${medicineIndex}][medicine]"           value="${medicine}">
+        <input type="hidden" name="medicines[${medicineIndex}][dosage]"             value="${dosage}">
+        <input type="hidden" name="medicines[${medicineIndex}][frequency]"          value="${frequency}">
+        <input type="hidden" name="medicines[${medicineIndex}][duration]"           value="${duration}">
+        <input type="hidden" name="medicines[${medicineIndex}][instructions]"       value="${instructions}">
+        <input type="hidden" name="medicines[${medicineIndex}][drug_generic_id]"    value="${drug_generic_id}">
+        <input type="hidden" name="medicines[${medicineIndex}][inventory_item_id]"  value="${inventory_item_id}">
+        <input type="hidden" name="medicines[${medicineIndex}][strength_value]"     value="${strength_value}">
+        <input type="hidden" name="medicines[${medicineIndex}][strength_unit]"      value="${strength_unit}">
+        <input type="hidden" name="medicines[${medicineIndex}][form]"               value="${form}">
     `;
 
     document.getElementById('medicine-list').appendChild(li);
     medicineIndex++;
 
-    ['medicine','dosage','frequency','duration','instructions']
-        .forEach(id => document.getElementById(id).value = '');
+    ['medicine','dosage','frequency','duration','instructions'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    ['medicine_drug_generic_id','medicine_inventory_item_id','medicine_strength_value','medicine_strength_unit','medicine_form'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    document.getElementById('drug-results').style.display = 'none';
 }
 
 function removeMedicine(btn) {
@@ -680,40 +713,62 @@ async function generatePrescriptionAI() {
     }
 }
 
+let drugSearchTimer = null;
+
 document.getElementById('medicine').addEventListener('keyup', function() {
+    const query = this.value.trim();
+    const box   = document.getElementById('drug-results');
 
-let query = this.value;
+    if (query.length < 2) { box.style.display = 'none'; return; }
 
-if(query.length < 2) return;
+    clearTimeout(drugSearchTimer);
+    drugSearchTimer = setTimeout(() => {
+        fetch(`/vet/appointments/{{ $appointment->id }}/drug-search?q=${encodeURIComponent(query)}`)
+        .then(res => res.json())
+        .then(data => {
+            box.innerHTML = '';
 
-fetch(`/vet/appointments/{{ $appointment->id }}/drug-search?q=${query}`)
-.then(res => res.json())
-.then(data => {
+            if (!data.length) {
+                // Allow free text — show hint
+                box.innerHTML = `<div style="padding:10px 14px;font-size:13px;color:#6b7280;">
+                    No KB match — press "Add Medicine" to add as free text</div>`;
+                box.style.display = 'block';
+                return;
+            }
 
-    const box = document.getElementById('drug-results');
-    box.innerHTML = '';
+            data.forEach(drug => {
+                const inStock = drug.in_inventory;
+                const dot     = inStock
+                    ? '<span style="color:#16a34a;font-size:11px;margin-left:6px;">● In stock</span>'
+                    : '<span style="color:#9ca3af;font-size:11px;margin-left:6px;">○ Not in clinic stock</span>';
 
-    data.forEach(drug => {
+                const row = document.createElement('div');
+                row.style.cssText = 'padding:10px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #f3f4f6;';
+                row.innerHTML = `<strong>${drug.display_name}</strong>${dot}`;
+                row.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    selectDrug(drug);
+                });
+                box.appendChild(row);
+            });
 
-        const color = drug.clinic_status === 'available'
-            ? 'green'
-            : '#9ca3af';
-
-        box.innerHTML += `
-            <div style="padding:6px;color:${color};cursor:pointer"
-                 onclick="selectDrug('${drug.brand_name} ${drug.strength}')">
-                ${drug.brand_name} ${drug.strength} (${drug.form})
-            </div>
-        `;
-    });
-
+            box.style.display = 'block';
+        });
+    }, 280);
 });
 
+document.getElementById('medicine').addEventListener('blur', function() {
+    setTimeout(() => { document.getElementById('drug-results').style.display = 'none'; }, 200);
 });
 
-function selectDrug(name){
-document.getElementById('medicine').value = name;
-document.getElementById('drug-results').innerHTML = '';
+function selectDrug(drug) {
+    document.getElementById('medicine').value                    = drug.display_name;
+    document.getElementById('medicine_drug_generic_id').value   = drug.drug_generic_id || '';
+    document.getElementById('medicine_inventory_item_id').value = drug.inventory_item_id || '';
+    document.getElementById('medicine_strength_value').value    = drug.strength_value || '';
+    document.getElementById('medicine_strength_unit').value     = drug.strength_unit || '';
+    document.getElementById('medicine_form').value              = drug.form || '';
+    document.getElementById('drug-results').style.display       = 'none';
 }
 
 </script>

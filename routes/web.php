@@ -367,9 +367,24 @@ Route::middleware([
     //     ->name('dashboard');
 
     Route::get(
-    '/appointments/{appointment}/billing',
-    [BillingController::class,'create']
+        '/appointments/{appointment}/billing',
+        [BillingController::class, 'create']
     )->name('billing.create');
+
+    Route::post(
+        '/bills/{bill}/confirm',
+        [BillingController::class, 'confirm']
+    )->name('billing.confirm');
+
+    Route::post(
+        '/bills/{bill}/items',
+        [BillingController::class, 'addItem']
+    )->name('billing.item.add');
+
+    Route::patch(
+        '/bill-items/{item}',
+        [BillingController::class, 'updateItem']
+    )->name('billing.item.update');
 
     Route::get('/permission-test', function () {
         return 'Permission middleware works';
@@ -526,6 +541,11 @@ Route::middleware('auth:vet')->group(function () {
         )->middleware('auth:vet');
 
         Route::get(
+            '/vet/drug-price-item/{inventoryItem}',
+            [AppointmentController::class,'drugPriceItem']
+        )->middleware('auth:vet')->name('vet.drug.price-item');
+
+        Route::get(
             '/vet/drug-search',
             [InventoryController::class,'searchGenerics']
         )->middleware('auth:vet');
@@ -615,7 +635,7 @@ Route::middleware('auth:vet')->group(function () {
 
     Route::get(
         '/vet/appointments/{appointment}/drug-search',
-        [AppointmentController::class, 'drugSearch']
+        [AppointmentController::class, 'prescriptionDrugSearch']
     )->name('vet.prescription.drug.search');
 
     Route::get('/vet/appointments/{appointment}/prescription/edit',

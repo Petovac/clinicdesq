@@ -44,4 +44,14 @@ class PriceListItem extends Model
     {
         return $this->hasMany(\App\Models\AppointmentTreatment::class);
     }
+
+    /** Inventory items consumed when this procedure is performed */
+    public function procedureInventoryItems()
+    {
+        return $this->hasMany(ProcedureInventoryItem::class);
+    }
+
+    public function isProcedure(): bool  { return $this->item_type === 'procedure'; }
+    public function isVisitFee(): bool   { return $this->item_type === 'visit_fee'; }
+    public function isDrug(): bool       { return $this->item_type === 'drug'; }
 }
