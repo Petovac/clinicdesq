@@ -57,16 +57,17 @@ class LabOrderController extends Controller
         $orgId = $clinic->organisation_id;
         $q = $request->get('q', '');
 
-        // In-house tests: org catalog where lab tech marked available at this clinic
+        // In-house tests: org catalog (show all active, indicate availability)
         $inHouse = LabTestCatalog::where('organisation_id', $orgId)
             ->where('is_active', true)
             ->where('name', 'like', "%{$q}%")
-            ->whereHas('availability', function ($query) use ($clinicId) {
-                $query->where('clinic_id', $clinicId)->where('is_available', true);
-            })
             ->limit(20)
             ->get()
-            ->map(function ($test) {
+            ->map(function ($test) use ($clinicId) {
+                // Check if lab tech marked it available at this clinic
+                $avail = $test->availability()->where('clinic_id', $clinicId)->first();
+                $isAvailable = $avail ? $avail->is_available : true; // default available if no record
+
                 return [
                     'id' => $test->id,
                     'type' => 'in_house',
@@ -78,21 +79,19 @@ class LabOrderController extends Controller
                     'estimated_time' => $test->estimated_time,
                     'price' => (float) $test->price,
                     'lab_name' => 'In-house',
+                    'available' => $isAvailable,
                 ];
             });
 
-        // External lab tests: from city-matched tied-up labs
+        // External lab tests: from tied-up labs (prefer org-imported pricing, city-matched)
         $externalTests = ExternalLabTest::where('is_active', true)
             ->where('test_name', 'like', "%{$q}%")
-            ->where(function ($query) use ($orgId) {
-                $query->where('organisation_id', $orgId)->orWhereNull('organisation_id');
-            })
+            ->where('organisation_id', $orgId) // only org-imported tests
             ->whereHas('lab', function ($query) use ($orgId, $clinic) {
                 $query->where('is_active', true)
                     ->whereHas('organisations', function ($q) use ($orgId) {
                         $q->where('organisation_id', $orgId)->where('organisation_lab.is_active', true);
                     });
-                // City matching
                 if ($clinic->city) {
                     $query->where('city', $clinic->city);
                 }
