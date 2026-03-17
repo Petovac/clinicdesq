@@ -987,7 +987,7 @@ document.getElementById('lab-test-search').addEventListener('input', function() 
     const dropdown = document.getElementById('lab-test-dropdown');
     if (q.length < 2) { dropdown.style.display = 'none'; return; }
 
-    fetch(`{{ route('vet.lab-orders.search-tests') }}?q=${encodeURIComponent(q)}`)
+    fetch(`{{ route('vet.lab-orders.available-tests') }}?q=${encodeURIComponent(q)}`)
         .then(r => r.json())
         .then(tests => {
             if (!tests.length) {
