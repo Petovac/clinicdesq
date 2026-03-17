@@ -126,14 +126,21 @@ textarea {
             <textarea name="address"></textarea>
         </div>
 
+        @php $locStates = config('locations.states', []); $locCities = config('locations.cities', []); @endphp
         <div class="form-group">
-            <label>City</label>
-            <input type="text" name="city">
+            <label>State</label>
+            <select name="state" id="cc-state" style="width:100%;padding:10px 12px;border-radius:6px;border:1px solid #d1d5db;font-size:14px;">
+                <option value="">Select State</option>
+                @foreach($locStates as $s)<option value="{{ $s }}" {{ old('state') === $s ? 'selected' : '' }}>{{ $s }}</option>@endforeach
+            </select>
         </div>
 
         <div class="form-group">
-            <label>State</label>
-            <input type="text" name="state">
+            <label>City</label>
+            <select name="city" id="cc-city" style="width:100%;padding:10px 12px;border-radius:6px;border:1px solid #d1d5db;font-size:14px;">
+                <option value="">Select City</option>
+            </select>
+            <script>(function(){var cm=@json($locCities),ss=document.getElementById('cc-state'),cs=document.getElementById('cc-city');ss.addEventListener('change',function(){cs.innerHTML='<option value="">Select City</option>';(cm[this.value]||[]).forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;cs.appendChild(o);});});})();</script>
         </div>
 
         <div class="form-group">

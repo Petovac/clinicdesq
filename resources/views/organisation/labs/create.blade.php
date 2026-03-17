@@ -134,16 +134,22 @@
             @error('address') <div class="error-text">{{ $message }}</div> @enderror
         </div>
 
+        @php $locStates = config('locations.states', []); $locCities = config('locations.cities', []); @endphp
         <div class="form-row">
             <div class="form-group">
-                <label>City</label>
-                <input type="text" name="city" value="{{ old('city') }}">
-                @error('city') <div class="error-text">{{ $message }}</div> @enderror
+                <label>State</label>
+                <select name="state" id="lc-state" style="width:100%;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;">
+                    <option value="">Select State</option>
+                    @foreach($locStates as $s)<option value="{{ $s }}" {{ old('state') === $s ? 'selected' : '' }}>{{ $s }}</option>@endforeach
+                </select>
             </div>
             <div class="form-group">
-                <label>State</label>
-                <input type="text" name="state" value="{{ old('state') }}">
-                @error('state') <div class="error-text">{{ $message }}</div> @enderror
+                <label>City</label>
+                <select name="city" id="lc-city" style="width:100%;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;">
+                    <option value="">Select City</option>
+                    @if(old('state') && isset($locCities[old('state')]))@foreach($locCities[old('state')] as $c)<option value="{{ $c }}" {{ old('city') === $c ? 'selected' : '' }}>{{ $c }}</option>@endforeach @endif
+                </select>
+                <script>(function(){var cm=@json($locCities),ss=document.getElementById('lc-state'),cs=document.getElementById('lc-city');ss.addEventListener('change',function(){cs.innerHTML='<option value="">Select City</option>';(cm[this.value]||[]).forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;cs.appendChild(o);});});})();</script>
             </div>
             <div class="form-group">
                 <label>Pincode</label>

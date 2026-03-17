@@ -84,12 +84,27 @@
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>City *</label>
-                        <input type="text" name="city" value="{{ old('city') }}" placeholder="e.g. Bangalore" required>
+                        <label>State *</label>
+                        @php $locStates = config('locations.states', []); $locCities = config('locations.cities', []); @endphp
+                        <select name="state" id="reg-state" required style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;">
+                            <option value="">Select State</option>
+                            @foreach($locStates as $s)<option value="{{ $s }}" {{ old('state') === $s ? 'selected' : '' }}>{{ $s }}</option>@endforeach
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label>State</label>
-                        <input type="text" name="state" value="{{ old('state') }}" placeholder="e.g. Karnataka">
+                        <label>City *</label>
+                        <select name="city" id="reg-city" required style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;">
+                            <option value="">Select City</option>
+                            @if(old('state') && isset($locCities[old('state')]))
+                                @foreach($locCities[old('state')] as $c)<option value="{{ $c }}" {{ old('city') === $c ? 'selected' : '' }}>{{ $c }}</option>@endforeach
+                            @endif
+                        </select>
+                        <script>
+                        (function(){
+                            var cm=@json($locCities),ss=document.getElementById('reg-state'),cs=document.getElementById('reg-city');
+                            ss.addEventListener('change',function(){cs.innerHTML='<option value="">Select City</option>';(cm[this.value]||[]).forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;cs.appendChild(o);});});
+                        })();
+                        </script>
                     </div>
                     <div class="form-group">
                         <label>Pincode</label>

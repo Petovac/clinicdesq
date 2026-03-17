@@ -128,15 +128,17 @@
             <textarea name="address" rows="3"></textarea>
         </div>
 
+        @php $locStates = config('locations.states', []); $locCities = config('locations.cities', []); @endphp
         <div class="admin-grid">
             <div class="admin-form-group">
-                <label>City</label>
-                <input type="text" name="city">
+                <label>State</label>
+                <select name="state" id="ac-state"><option value="">Select State</option>@foreach($locStates as $s)<option value="{{ $s }}">{{ $s }}</option>@endforeach</select>
             </div>
 
             <div class="admin-form-group">
-                <label>State</label>
-                <input type="text" name="state">
+                <label>City</label>
+                <select name="city" id="ac-city"><option value="">Select City</option></select>
+                <script>(function(){var cm=@json($locCities),ss=document.getElementById('ac-state'),cs=document.getElementById('ac-city');ss.addEventListener('change',function(){cs.innerHTML='<option value="">Select City</option>';(cm[this.value]||[]).forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;cs.appendChild(o);});});})();</script>
             </div>
 
             <div class="admin-form-group">

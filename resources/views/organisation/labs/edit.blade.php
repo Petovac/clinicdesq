@@ -39,9 +39,21 @@
                 <div class="form-group"><label>Email</label><input type="email" name="email" value="{{ old('email', $lab->email) }}"></div>
             </div>
             <div class="form-group"><label>Address</label><textarea name="address">{{ old('address', $lab->address) }}</textarea></div>
+            @php $locStates = config('locations.states', []); $locCities = config('locations.cities', []); $eState = old('state', $lab->state); $eCity = old('city', $lab->city); @endphp
             <div class="form-row">
-                <div class="form-group"><label>City</label><input type="text" name="city" value="{{ old('city', $lab->city) }}"></div>
-                <div class="form-group"><label>State</label><input type="text" name="state" value="{{ old('state', $lab->state) }}"></div>
+                <div class="form-group"><label>State</label>
+                    <select name="state" id="le-state" style="width:100%;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;">
+                        <option value="">Select State</option>
+                        @foreach($locStates as $s)<option value="{{ $s }}" {{ $eState === $s ? 'selected' : '' }}>{{ $s }}</option>@endforeach
+                    </select>
+                </div>
+                <div class="form-group"><label>City</label>
+                    <select name="city" id="le-city" style="width:100%;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;">
+                        <option value="">Select City</option>
+                        @if($eState && isset($locCities[$eState]))@foreach($locCities[$eState] as $c)<option value="{{ $c }}" {{ $eCity === $c ? 'selected' : '' }}>{{ $c }}</option>@endforeach @endif
+                    </select>
+                    <script>(function(){var cm=@json($locCities),ss=document.getElementById('le-state'),cs=document.getElementById('le-city'),sv=@json($eCity);ss.addEventListener('change',function(){cs.innerHTML='<option value="">Select City</option>';(cm[this.value]||[]).forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;if(c===sv)o.selected=true;cs.appendChild(o);});});})();</script>
+                </div>
                 <div class="form-group"><label>Pincode</label><input type="text" name="pincode" value="{{ old('pincode', $lab->pincode) }}"></div>
             </div>
             <div class="form-actions">

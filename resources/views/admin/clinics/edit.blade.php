@@ -150,15 +150,17 @@
             <textarea name="address" rows="3">{{ old('address', $clinic->address) }}</textarea>
         </div>
 
+        @php $locStates = config('locations.states', []); $locCities = config('locations.cities', []); $eState = old('state', $clinic->state); $eCity = old('city', $clinic->city); @endphp
         <div class="admin-grid">
             <div class="admin-form-group">
-                <label>City</label>
-                <input type="text" name="city" value="{{ old('city', $clinic->city) }}">
+                <label>State</label>
+                <select name="state" id="ae-state"><option value="">Select State</option>@foreach($locStates as $s)<option value="{{ $s }}" {{ $eState === $s ? 'selected' : '' }}>{{ $s }}</option>@endforeach</select>
             </div>
 
             <div class="admin-form-group">
-                <label>State</label>
-                <input type="text" name="state" value="{{ old('state', $clinic->state) }}">
+                <label>City</label>
+                <select name="city" id="ae-city"><option value="">Select City</option>@if($eState && isset($locCities[$eState]))@foreach($locCities[$eState] as $c)<option value="{{ $c }}" {{ $eCity === $c ? 'selected' : '' }}>{{ $c }}</option>@endforeach @endif</select>
+                <script>(function(){var cm=@json($locCities),ss=document.getElementById('ae-state'),cs=document.getElementById('ae-city'),sv=@json($eCity);ss.addEventListener('change',function(){cs.innerHTML='<option value="">Select City</option>';(cm[this.value]||[]).forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;if(c===sv)o.selected=true;cs.appendChild(o);});});})();</script>
             </div>
 
             <div class="admin-form-group">
