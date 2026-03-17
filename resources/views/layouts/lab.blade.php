@@ -114,6 +114,12 @@
                class="{{ request()->routeIs('lab.orders.*') ? 'active' : '' }}">
                 Orders
             </a>
+            @if(auth('lab')->user()->isExternalLab())
+            <a href="{{ route('lab.catalog.index') }}"
+               class="{{ request()->routeIs('lab.catalog.*') ? 'active' : '' }}">
+                Test Catalog
+            </a>
+            @endif
             <span class="lab-name">{{ auth('lab')->user()->lab->name ?? '' }}</span>
             <form method="POST" action="{{ route('lab.logout') }}">
                 @csrf

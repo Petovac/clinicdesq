@@ -66,6 +66,7 @@ use App\Http\Controllers\Vet\IpdController as VetIpdController;
 use App\Http\Controllers\Lab\LabAuthController;
 use App\Http\Controllers\Lab\LabDashboardController;
 use App\Http\Controllers\Lab\LabOrderController as LabPortalOrderController;
+use App\Http\Controllers\Lab\LabCatalogController;
 use App\Http\Controllers\Vet\LabOrderController as VetLabOrderController;
 use App\Http\Controllers\Clinic\LabOrderController as ClinicLabOrderController;
 use App\Http\Controllers\Organisation\LabManagementController;
@@ -1039,6 +1040,12 @@ Route::middleware('auth:lab')->prefix('lab')->name('lab.')->group(function () {
     Route::post('/orders/{order}/start', [LabPortalOrderController::class, 'startProcessing'])->name('orders.start');
     Route::post('/orders/{order}/tests/{test}/result', [LabPortalOrderController::class, 'uploadResult'])->name('orders.upload-result');
     Route::post('/orders/{order}/complete', [LabPortalOrderController::class, 'markComplete'])->name('orders.complete');
+
+    // Lab Test Catalog (external labs manage their own tests)
+    Route::get('/catalog', [LabCatalogController::class, 'index'])->name('catalog.index');
+    Route::post('/catalog', [LabCatalogController::class, 'store'])->name('catalog.store');
+    Route::put('/catalog/{test}', [LabCatalogController::class, 'update'])->name('catalog.update');
+    Route::delete('/catalog/{test}', [LabCatalogController::class, 'destroy'])->name('catalog.destroy');
 });
 
 /* =========================
