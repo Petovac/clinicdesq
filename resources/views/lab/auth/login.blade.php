@@ -71,6 +71,10 @@
                 <button type="submit" class="btn-login">Sign In</button>
             </form>
 
+            <div style="margin-top:20px;text-align:center;font-size:13px;color:#64748b;">
+                Don't have an account? <a href="{{ route('lab.register') }}" style="color:#7c3aed;font-weight:600;text-decoration:none;">Register your lab</a>
+            </div>
+
             <div class="divider">
                 <a href="/">Back to ClinicDesq</a>
             </div>

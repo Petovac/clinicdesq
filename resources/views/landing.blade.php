@@ -312,6 +312,10 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                         Pet Parent Portal
                     </a>
+                    <a href="/lab/login">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6v2H9z"/><path d="M12 5v6"/><path d="M8 11h8l1 10H7z"/><circle cx="10" cy="16" r="1"/><circle cx="14" cy="16" r="1"/></svg>
+                        Lab Portal
+                    </a>
                 </div>
             </div>
             <div class="signup-dropdown" style="position:relative;display:inline-block;">
