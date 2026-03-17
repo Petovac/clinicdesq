@@ -382,11 +382,13 @@ Route::middleware(['auth'])
 
             // External Labs
             Route::get('/labs', [LabManagementController::class, 'labsIndex'])->name('labs.index');
-            Route::get('/labs/create', [LabManagementController::class, 'labsCreate'])->name('labs.create');
-            Route::post('/labs', [LabManagementController::class, 'labsStore'])->name('labs.store');
+            Route::get('/labs/search', [LabManagementController::class, 'labsSearch'])->name('labs.search');
+            Route::post('/labs/onboard', [LabManagementController::class, 'labsOnboard'])->name('labs.onboard');
             Route::get('/labs/{lab}/edit', [LabManagementController::class, 'labsEdit'])->name('labs.edit');
             Route::put('/labs/{lab}', [LabManagementController::class, 'labsUpdate'])->name('labs.update');
             Route::post('/labs/{lab}/tests', [LabManagementController::class, 'labTestStore'])->name('labs.test.store');
+            Route::post('/labs/{lab}/import-tests', [LabManagementController::class, 'labsImportTests'])->name('labs.import-tests');
+            Route::delete('/labs/{lab}/detach', [LabManagementController::class, 'labsDetach'])->name('labs.detach');
 
             // Lab Technicians
             Route::get('/lab-techs', [LabManagementController::class, 'labTechIndex'])->name('lab-techs.index');

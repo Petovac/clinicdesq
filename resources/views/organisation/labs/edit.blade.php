@@ -52,7 +52,21 @@
 
     {{-- Right: Test offerings --}}
     <div>
-        <div class="card">
+        {{-- Import Tests Button --}}
+        <div class="card" style="background:#f0f9ff;border-color:#bae6fd;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                    <div style="font-size:14px;font-weight:700;color:#0c4a6e;">Import Lab's Test Catalog</div>
+                    <div style="font-size:12px;color:#0369a1;margin-top:2px;">Pull in all tests this lab offers and set your org pricing</div>
+                </div>
+                <form method="POST" action="{{ route('organisation.labs.import-tests', $lab) }}">
+                    @csrf
+                    <button type="submit" style="background:#0284c7;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;border:none;cursor:pointer;">Import Tests</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
             <h3 style="font-size:14px;font-weight:700;margin-bottom:14px;">Test Offerings ({{ $lab->testOfferings->count() }})</h3>
             @foreach($lab->testOfferings as $test)
                 <div style="padding:8px 0;{{ !$loop->last ? 'border-bottom:1px solid #f3f4f6;' : '' }};font-size:13px;">

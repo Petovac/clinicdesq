@@ -119,32 +119,111 @@ class LabManagementController extends Controller
         return view('organisation.labs.index', compact('tiedUpLabs'));
     }
 
-    public function labsCreate()
+    /**
+     * Search registered labs (AJAX).
+     */
+    public function labsSearch(Request $request)
     {
-        return view('organisation.labs.create');
+        $orgId = auth()->user()->organisation_id;
+        $q = $request->get('q', '');
+
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $labs = ExternalLab::where('is_active', true)
+            ->where(function ($query) use ($q) {
+                $query->where('name', 'like', "%{$q}%")
+                      ->orWhere('city', 'like', "%{$q}%");
+            })
+            // Exclude already tied-up labs
+            ->whereDoesntHave('organisations', function ($query) use ($orgId) {
+                $query->where('organisation_id', $orgId);
+            })
+            ->limit(15)
+            ->get(['id', 'name', 'city', 'state', 'phone', 'email']);
+
+        return response()->json($labs);
     }
 
-    public function labsStore(Request $request)
+    /**
+     * Onboard (link) an existing lab to this org.
+     */
+    public function labsOnboard(Request $request)
     {
         $orgId = auth()->user()->organisation_id;
 
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'address' => 'nullable|string',
-            'city' => 'nullable|string|max:100',
-            'state' => 'nullable|string|max:100',
-            'pincode' => 'nullable|string|max:10',
+        $request->validate([
+            'lab_id' => 'required|integer|exists:external_labs,id',
         ]);
 
-        $lab = ExternalLab::create($data);
+        $lab = ExternalLab::findOrFail($request->lab_id);
 
-        // Create org tie-up
+        // Check not already tied up
+        if ($lab->organisations()->where('organisation_id', $orgId)->exists()) {
+            return back()->with('error', 'This lab is already onboarded.');
+        }
+
         $lab->organisations()->attach($orgId, ['is_active' => true]);
 
+        return redirect()->route('organisation.labs.edit', $lab)
+            ->with('success', "Lab '{$lab->name}' onboarded! You can now import their tests and set your pricing.");
+    }
+
+    /**
+     * Import test offerings from an external lab (copy lab's tests as ExternalLabTest with org pricing).
+     */
+    public function labsImportTests(ExternalLab $lab)
+    {
+        $orgId = auth()->user()->organisation_id;
+        abort_unless($lab->organisations()->where('organisation_id', $orgId)->exists(), 403);
+
+        // Get lab's tests that don't have org-specific pricing yet
+        $existingTestNames = ExternalLabTest::where('external_lab_id', $lab->id)
+            ->where('organisation_id', $orgId)
+            ->pluck('test_name')
+            ->toArray();
+
+        $labTests = ExternalLabTest::where('external_lab_id', $lab->id)
+            ->whereNull('organisation_id')
+            ->whereNotIn('test_name', $existingTestNames)
+            ->get();
+
+        $imported = 0;
+        foreach ($labTests as $test) {
+            ExternalLabTest::create([
+                'external_lab_id' => $lab->id,
+                'organisation_id' => $orgId,
+                'test_name' => $test->test_name,
+                'test_code' => $test->test_code,
+                'category' => $test->category,
+                'sample_type' => $test->sample_type,
+                'parameters' => $test->parameters,
+                'estimated_time' => $test->estimated_time,
+                'b2b_price' => $test->b2b_price,
+                'org_selling_price' => $test->b2b_price, // default: same as B2B, org can adjust
+            ]);
+            $imported++;
+        }
+
+        return back()->with('success', "Imported {$imported} tests from {$lab->name}.");
+    }
+
+    /**
+     * Remove tie-up with an external lab.
+     */
+    public function labsDetach(ExternalLab $lab)
+    {
+        $orgId = auth()->user()->organisation_id;
+        $lab->organisations()->detach($orgId);
+
+        // Remove org-specific test pricing
+        ExternalLabTest::where('external_lab_id', $lab->id)
+            ->where('organisation_id', $orgId)
+            ->delete();
+
         return redirect()->route('organisation.labs.index')
-            ->with('success', 'External lab onboarded successfully.');
+            ->with('success', "Lab '{$lab->name}' removed from your organisation.");
     }
 
     public function labsEdit(ExternalLab $lab)
