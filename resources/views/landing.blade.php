@@ -615,8 +615,8 @@
                 <div class="pricing-name">Starter</div>
                 <div class="pricing-desc">For solo practitioners and small clinics</div>
                 <div class="pricing-price">
-                    <span class="original">&#8377;1,999</span><br>
-                    <span class="currency">&#8377;</span><span class="amount">1,499</span>
+                    <span class="original">&#8377;1,499</span><br>
+                    <span class="currency">&#8377;</span><span class="amount">999</span>
                     <span class="period">/doctor/month</span>
                 </div>
                 <div class="pricing-trial">1st Month Free</div>
@@ -660,11 +660,10 @@
                 <div class="pricing-name">Enterprise</div>
                 <div class="pricing-desc">For multi-branch hospitals and chains</div>
                 <div class="pricing-price">
-                    <span class="original">&#8377;1,999</span><br>
-                    <span class="currency">&#8377;</span><span class="amount">1,499</span>
-                    <span class="period">/doctor/month</span>
+                    <span class="amount" style="font-size:32px;">Custom</span>
+                    <span class="period">/tailored to your needs</span>
                 </div>
-                <div class="pricing-trial">1st Month Free</div>
+                <div class="pricing-trial" style="background:#f1f5f9;color:#475569;">Book a Demo</div>
                 <ul class="pricing-features">
                     <li><span class="pricing-check yes"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>Everything in Professional</li>
                     <li><span class="pricing-check yes"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>IPD Management</li>
