@@ -354,7 +354,7 @@
                 <p>Streamline appointments, billing, prescriptions, inventory, and patient records. Everything your clinic needs, beautifully designed and incredibly simple.</p>
                 <div class="hero-btns">
                     <a href="/register/organisation" class="btn-cta btn-primary btn-lg">Register My Clinic</a>
-                    <a href="/vet/register" class="btn-cta btn-secondary btn-lg" style="color:#fff;border-color:rgba(255,255,255,.3);">I'm a Veterinarian</a>
+                    <a href="/vet/register" class="btn-cta btn-lg" style="background:rgba(255,255,255,0.12);color:#fff;border:2px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px);">I'm a Veterinarian</a>
                 </div>
             </div>
             <div class="hero-mockup">
