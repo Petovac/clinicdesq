@@ -7,7 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class LabOrderTest extends Model
 {
     protected $fillable = [
-        'lab_order_id', 'lab_test_catalog_id', 'test_name', 'status', 'notes',
+        'lab_order_id', 'lab_test_catalog_id', 'external_lab_test_id',
+        'test_name', 'parameters', 'price', 'status', 'notes',
+    ];
+
+    protected $casts = [
+        'parameters' => 'array',
+        'price' => 'decimal:2',
     ];
 
     public function labOrder()
@@ -18,6 +24,11 @@ class LabOrderTest extends Model
     public function catalogItem()
     {
         return $this->belongsTo(LabTestCatalog::class, 'lab_test_catalog_id');
+    }
+
+    public function externalLabTest()
+    {
+        return $this->belongsTo(ExternalLabTest::class, 'external_lab_test_id');
     }
 
     public function results()

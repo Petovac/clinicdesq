@@ -281,6 +281,25 @@ Fee Configuration
 
 @endif
 
+{{-- Lab Management --}}
+<div class="nav-section">
+<div class="nav-parent">Lab</div>
+<div class="nav-children">
+<a href="{{ route('organisation.lab-catalog.index') }}"
+class="{{ request()->is('organisation/lab-catalog*') ? 'active' : '' }}">
+Test Catalog
+</a>
+<a href="{{ route('organisation.labs.index') }}"
+class="{{ request()->is('organisation/labs*') ? 'active' : '' }}">
+External Labs
+</a>
+<a href="{{ route('organisation.lab-techs.index') }}"
+class="{{ request()->is('organisation/lab-techs*') ? 'active' : '' }}">
+Lab Technicians
+</a>
+</div>
+</div>
+
 {{-- Settings --}}
 @if(auth()->user()->hasPermission('settings.manage'))
 <div class="nav-section">

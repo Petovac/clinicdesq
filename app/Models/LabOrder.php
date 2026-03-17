@@ -10,6 +10,7 @@ class LabOrder extends Model
         'order_number', 'appointment_id', 'pet_id', 'clinic_id', 'vet_id',
         'lab_id', 'routing', 'status', 'priority', 'notes',
         'routed_by', 'routed_at', 'completed_at',
+        'result_uploaded_by', 'result_uploaded_by_type',
     ];
 
     protected $casts = [
@@ -83,5 +84,10 @@ class LabOrder extends Model
     public function isAwaitingReview(): bool
     {
         return in_array($this->status, ['results_uploaded', 'vet_review']);
+    }
+
+    public function totalPrice(): float
+    {
+        return $this->tests->sum('price');
     }
 }

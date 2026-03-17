@@ -7,16 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 class ExternalLab extends Model
 {
     protected $fillable = [
-        'organisation_id', 'name', 'phone', 'email', 'address', 'type', 'is_active',
+        'name', 'phone', 'email', 'address', 'city', 'state', 'pincode', 'is_active',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
     ];
 
-    public function organisation()
+    public function organisations()
     {
-        return $this->belongsTo(Organisation::class);
+        return $this->belongsToMany(Organisation::class, 'organisation_lab')
+            ->withPivot('is_active')
+            ->withTimestamps();
     }
 
     public function users()
@@ -27,5 +29,10 @@ class ExternalLab extends Model
     public function labOrders()
     {
         return $this->hasMany(LabOrder::class, 'lab_id');
+    }
+
+    public function testOfferings()
+    {
+        return $this->hasMany(ExternalLabTest::class);
     }
 }

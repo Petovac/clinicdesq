@@ -27,7 +27,7 @@ class Permission extends Model
      */
     public static function grouped()
     {
-        return static::orderByRaw("FIELD(`group`, 'Dashboard','Clinics','Users & Roles','Vets','Appointments','Clinical Records','Diagnostics & Reports','Billing','Inventory','Pricing','Followups & Performance')")
+        return static::orderByRaw("FIELD(`group`, 'Dashboard','Clinics','Users & Roles','Vets','Appointments','Clinical Records','Diagnostics & Reports','Lab Orders','Billing','Inventory','Pricing','Followups & Performance')")
             ->orderBy('id')
             ->get()
             ->groupBy('group');

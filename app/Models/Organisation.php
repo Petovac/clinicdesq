@@ -70,4 +70,21 @@ class Organisation extends Model
     {
         return $this->logo_path ? asset('storage/' . $this->logo_path) : null;
     }
+
+    public function externalLabs()
+    {
+        return $this->belongsToMany(ExternalLab::class, 'organisation_lab')
+            ->withPivot('is_active')
+            ->withTimestamps();
+    }
+
+    public function labTestCatalog()
+    {
+        return $this->hasMany(LabTestCatalog::class);
+    }
+
+    public function labUsers()
+    {
+        return $this->hasMany(LabUser::class);
+    }
 }

@@ -4,10 +4,10 @@
 
 @section('content')
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-    <h1 style="font-size:20px;font-weight:700;">Lab Orders</h1>
+    <h2 style="font-size:20px;font-weight:700;color:#111827;">Lab Orders</h2>
     @if($pendingCount > 0)
-        <span style="background:#fef3c7;color:#92400e;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">
-            {{ $pendingCount }} pending routing
+        <span style="background:#fef3c7;color:#92400e;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;">
+            {{ $pendingCount }} Awaiting Routing
         </span>
     @endif
 </div>
@@ -16,115 +16,119 @@
 <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
     <a href="{{ route('clinic.lab-orders.index') }}"
        style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;{{ !$status ? 'background:#2563eb;color:#fff;' : 'background:#fff;color:#374151;border:1px solid #e5e7eb;' }}">All</a>
-    @foreach(['ordered' => 'Needs Routing', 'routed' => 'Routed', 'processing' => 'Processing', 'results_uploaded' => 'Results Ready', 'approved' => 'Approved'] as $key => $label)
+    @foreach(['ordered' => 'Pending', 'routed' => 'Routed', 'processing' => 'Processing', 'results_uploaded' => 'Results Ready', 'approved' => 'Approved'] as $key => $label)
         <a href="{{ route('clinic.lab-orders.index', ['status' => $key]) }}"
            style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;{{ $status === $key ? 'background:#2563eb;color:#fff;' : 'background:#fff;color:#374151;border:1px solid #e5e7eb;' }}">{{ $label }}</a>
     @endforeach
 </div>
 
 @if($orders->isEmpty())
-    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:40px;text-align:center;color:#6b7280;">
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:40px;text-align:center;color:#6b7280;">
         No lab orders found.
     </div>
 @else
-    @foreach($orders as $order)
-        <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-bottom:12px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <span style="font-weight:700;color:#2563eb;font-size:14px;">{{ $order->order_number }}</span>
-                    @if($order->priority === 'urgent')
-                        <span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;">URGENT</span>
-                    @endif
-                    <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;
-                        @if($order->status === 'ordered') background:#fef3c7;color:#92400e;
-                        @elseif($order->status === 'routed') background:#dbeafe;color:#1d4ed8;
-                        @elseif($order->status === 'processing') background:#e0e7ff;color:#4338ca;
-                        @elseif($order->status === 'results_uploaded') background:#d1fae5;color:#065f46;
-                        @elseif($order->status === 'approved') background:#dcfce7;color:#166534;
-                        @else background:#fee2e2;color:#991b1b;
-                        @endif">{{ str_replace('_', ' ', ucfirst($order->status)) }}</span>
-                </div>
-                <span style="font-size:12px;color:#6b7280;">{{ $order->created_at->format('d M Y, h:i A') }}</span>
-            </div>
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+                <tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb;">
+                    <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;">Order #</th>
+                    <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;">Pet</th>
+                    <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;">Doctor</th>
+                    <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;">Tests</th>
+                    <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;">Priority</th>
+                    <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;">Status</th>
+                    <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;">Lab</th>
+                    <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;">Date</th>
+                    <th style="padding:10px 14px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($orders as $order)
+                    <tr style="border-bottom:1px solid #f3f4f6;">
+                        <td style="padding:10px 14px;font-weight:600;color:#2563eb;">{{ $order->order_number }}</td>
+                        <td style="padding:10px 14px;">{{ $order->pet->name ?? '—' }}</td>
+                        <td style="padding:10px 14px;">{{ $order->vet->name ?? '—' }}</td>
+                        <td style="padding:10px 14px;">
+                            @foreach($order->tests->take(2) as $test)
+                                <span style="display:inline-block;background:#eff6ff;color:#1e40af;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;margin:1px;">{{ $test->test_name }}</span>
+                            @endforeach
+                            @if($order->tests->count() > 2)
+                                <span style="font-size:11px;color:#6b7280;">+{{ $order->tests->count() - 2 }}</span>
+                            @endif
+                        </td>
+                        <td style="padding:10px 14px;">
+                            @if($order->priority !== 'routine')
+                                <span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">{{ strtoupper($order->priority) }}</span>
+                            @else
+                                <span style="color:#6b7280;font-size:12px;">Routine</span>
+                            @endif
+                        </td>
+                        <td style="padding:10px 14px;">
+                            @php
+                                $sc = ['ordered'=>'#fef3c7;color:#92400e','routed'=>'#dbeafe;color:#1d4ed8','processing'=>'#e0e7ff;color:#4338ca','results_uploaded'=>'#d1fae5;color:#065f46','approved'=>'#dcfce7;color:#166534','retest_requested'=>'#fee2e2;color:#991b1b'];
+                            @endphp
+                            <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:{{ explode(';',$sc[$order->status] ?? '#f3f4f6;color:#6b7280')[0] }};{{ $sc[$order->status] ?? '' }}">
+                                {{ str_replace('_', ' ', ucfirst($order->status)) }}
+                            </span>
+                        </td>
+                        <td style="padding:10px 14px;font-size:12px;color:#6b7280;">
+                            {{ $order->lab->name ?? ($order->routing === 'in_house' ? 'In-house' : '—') }}
+                        </td>
+                        <td style="padding:10px 14px;font-size:12px;color:#6b7280;">{{ $order->created_at->format('d M') }}</td>
+                        <td style="padding:10px 14px;white-space:nowrap;">
+                            @if($order->status === 'ordered')
+                                <button onclick="document.getElementById('rf-{{ $order->id }}').style.display='table-row'"
+                                        style="background:#2563eb;color:#fff;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;border:none;cursor:pointer;">Route</button>
+                            @endif
+                            @if(in_array($order->status, ['routed', 'processing']))
+                                <button onclick="document.getElementById('uf-{{ $order->id }}').style.display='table-row'"
+                                        style="background:#16a34a;color:#fff;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;border:none;cursor:pointer;">Upload PDF</button>
+                            @endif
+                        </td>
+                    </tr>
 
-            <div style="display:flex;gap:20px;font-size:13px;margin-bottom:10px;">
-                <div><span style="color:#6b7280;">Pet:</span> <strong>{{ $order->pet->name ?? '—' }}</strong> ({{ $order->pet->species ?? '' }})</div>
-                <div><span style="color:#6b7280;">Vet:</span> {{ $order->vet->name ?? '—' }}</div>
-                <div><span style="color:#6b7280;">Lab:</span> {{ $order->lab->name ?? ($order->routing === 'in_house' ? 'In-house' : '—') }}</div>
-            </div>
-
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
-                @foreach($order->tests as $test)
-                    <span style="background:#eff6ff;color:#1e40af;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;">{{ $test->test_name }}</span>
-                @endforeach
-            </div>
-
-            {{-- Routing action for pending orders --}}
-            @if($order->status === 'ordered')
-                <form method="POST" action="{{ route('clinic.lab-orders.route', $order) }}" style="display:flex;align-items:center;gap:10px;padding-top:10px;border-top:1px solid #f3f4f6;">
-                    @csrf
-                    @method('PUT')
-                    <select name="routing" id="routing-{{ $order->id }}" onchange="toggleLabSelect({{ $order->id }})"
-                        style="padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;background:#fff;">
-                        <option value="">— Route to —</option>
-                        <option value="in_house">In-House</option>
-                        <option value="external">External Lab</option>
-                    </select>
-                    <select name="lab_id" id="lab-select-{{ $order->id }}" style="display:none;padding:7px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;background:#fff;">
-                        <option value="">— Select Lab —</option>
-                        @foreach($labs as $lab)
-                            <option value="{{ $lab->id }}">{{ $lab->name }} ({{ $lab->type }})</option>
-                        @endforeach
-                    </select>
-                    <button type="submit" style="padding:7px 16px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Route</button>
-                </form>
-            @endif
-
-            {{-- In-house result upload for routed/processing orders --}}
-            @if($order->routing === 'in_house' && in_array($order->status, ['routed', 'processing']))
-                <div style="padding-top:10px;border-top:1px solid #f3f4f6;">
-                    <div style="font-size:12px;font-weight:600;color:#6b7280;margin-bottom:8px;">Upload In-House Results</div>
-                    @foreach($order->tests as $test)
-                        @if($test->status !== 'completed')
-                            <form method="POST" action="{{ route('clinic.lab-orders.upload-result', [$order, $test]) }}" enctype="multipart/form-data"
-                                style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                                @csrf
-                                <span style="font-size:12px;font-weight:600;min-width:120px;">{{ $test->test_name }}</span>
-                                <input type="file" name="file" required style="font-size:12px;">
-                                <input type="text" name="notes" placeholder="Notes" style="padding:5px 8px;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;width:150px;">
-                                <button type="submit" style="padding:5px 12px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Upload</button>
+                    {{-- Route form row --}}
+                    @if($order->status === 'ordered')
+                    <tr id="rf-{{ $order->id }}" style="display:none;background:#f9fafb;">
+                        <td colspan="9" style="padding:14px;">
+                            <form method="POST" action="{{ route('clinic.lab-orders.route', $order) }}" style="display:flex;align-items:center;gap:12px;">
+                                @csrf @method('PUT')
+                                <select name="routing" onchange="this.nextElementSibling.style.display=this.value==='external'?'inline-block':'none'" style="padding:7px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;">
+                                    <option value="in_house">In-house</option>
+                                    <option value="external">External Lab</option>
+                                </select>
+                                <select name="lab_id" style="display:none;padding:7px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;">
+                                    <option value="">Select Lab...</option>
+                                    @foreach($labs as $lab)
+                                        <option value="{{ $lab->id }}">{{ $lab->name }}{{ $lab->city ? " ({$lab->city})" : '' }}</option>
+                                    @endforeach
+                                </select>
+                                <button type="submit" style="background:#2563eb;color:#fff;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;border:none;cursor:pointer;">Assign</button>
+                                <button type="button" onclick="this.closest('tr').style.display='none'" style="color:#6b7280;background:none;border:none;cursor:pointer;font-size:12px;">Cancel</button>
                             </form>
-                        @else
-                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px;">
-                                <span style="font-weight:600;min-width:120px;">{{ $test->test_name }}</span>
-                                <span style="color:#16a34a;font-weight:600;">Completed</span>
-                            </div>
-                        @endif
-                    @endforeach
-
-                    @if($order->tests->every(fn($t) => $t->status === 'completed'))
-                        <form method="POST" action="{{ route('clinic.lab-orders.complete', $order) }}" style="margin-top:8px;">
-                            @csrf
-                            <button type="submit" style="padding:7px 16px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">
-                                Submit All Results to Vet
-                            </button>
-                        </form>
+                        </td>
+                    </tr>
                     @endif
-                </div>
-            @endif
-        </div>
-    @endforeach
 
+                    {{-- Upload form row --}}
+                    @if(in_array($order->status, ['routed', 'processing']))
+                    <tr id="uf-{{ $order->id }}" style="display:none;background:#f0fdf4;">
+                        <td colspan="9" style="padding:14px;">
+                            <form method="POST" action="{{ route('clinic.lab-orders.direct-upload', $order) }}" enctype="multipart/form-data" style="display:flex;align-items:center;gap:12px;">
+                                @csrf
+                                <span style="font-size:12px;color:#374151;font-weight:600;">Upload lab report PDF:</span>
+                                <input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required style="font-size:12px;">
+                                <input type="text" name="notes" placeholder="Notes" style="padding:7px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;width:180px;">
+                                <button type="submit" style="background:#16a34a;color:#fff;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;border:none;cursor:pointer;">Upload</button>
+                                <button type="button" onclick="this.closest('tr').style.display='none'" style="color:#6b7280;background:none;border:none;cursor:pointer;font-size:12px;">Cancel</button>
+                            </form>
+                        </td>
+                    </tr>
+                    @endif
+                @endforeach
+            </tbody>
+        </table>
+    </div>
     <div style="margin-top:16px;">{{ $orders->appends(request()->query())->links() }}</div>
 @endif
-@endsection
-
-@section('scripts')
-<script>
-function toggleLabSelect(orderId) {
-    const routing = document.getElementById('routing-' + orderId).value;
-    const labSelect = document.getElementById('lab-select-' + orderId);
-    labSelect.style.display = routing === 'external' ? 'inline-block' : 'none';
-}
-</script>
 @endsection

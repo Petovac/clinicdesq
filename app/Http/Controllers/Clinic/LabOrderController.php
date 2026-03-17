@@ -8,6 +8,7 @@ use App\Models\LabOrder;
 use App\Models\LabResult;
 use App\Models\LabOrderTest;
 use App\Models\ExternalLab;
+use App\Models\Clinic;
 
 class LabOrderController extends Controller
 {
@@ -32,13 +33,21 @@ class LabOrderController extends Controller
             ->where('status', 'ordered')
             ->count();
 
-        $labs = ExternalLab::where(function ($q) use ($clinicId) {
-            $q->whereHas('organisation', function ($q2) use ($clinicId) {
-                $q2->whereHas('clinics', function ($q3) use ($clinicId) {
-                    $q3->where('clinics.id', $clinicId);
-                });
-            })->orWhere('type', 'external');
-        })->where('is_active', true)->get();
+        // Get city-matched external labs tied to this org
+        $clinic = Clinic::with('organisation')->find($clinicId);
+        $orgId = $clinic->organisation_id ?? null;
+
+        $labs = collect();
+        if ($orgId) {
+            $labs = ExternalLab::where('is_active', true)
+                ->whereHas('organisations', function ($q) use ($orgId) {
+                    $q->where('organisation_id', $orgId)->where('organisation_lab.is_active', true);
+                })
+                ->when($clinic->city, function ($q) use ($clinic) {
+                    $q->where('city', $clinic->city);
+                })
+                ->get();
+        }
 
         return view('clinic.lab-orders.index', compact('orders', 'status', 'pendingCount', 'labs'));
     }
@@ -74,7 +83,6 @@ class LabOrderController extends Controller
         $clinicId = session('active_clinic_id');
         abort_if(!$clinicId, 403);
         abort_if($order->clinic_id !== (int) $clinicId, 403);
-        abort_if($order->routing !== 'in_house', 422);
         abort_if($test->lab_order_id !== $order->id, 404);
 
         $request->validate([
@@ -93,6 +101,7 @@ class LabOrderController extends Controller
             'mime_type' => $file->getMimeType(),
             'file_size' => $file->getSize(),
             'summary' => $request->notes,
+            'uploaded_by_user_id' => auth()->id(),
         ]);
 
         $test->update(['status' => 'completed']);
@@ -100,12 +109,48 @@ class LabOrderController extends Controller
         return back()->with('success', "Result uploaded for {$test->test_name}.");
     }
 
+    /**
+     * Direct PDF upload to an order (for non-ClinicDesq labs sending PDFs).
+     */
+    public function directUpload(Request $request, LabOrder $order)
+    {
+        $clinicId = session('active_clinic_id');
+        abort_if(!$clinicId, 403);
+        abort_if($order->clinic_id !== (int) $clinicId, 403);
+
+        $request->validate([
+            'file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:20480',
+            'notes' => 'nullable|string|max:2000',
+        ]);
+
+        $file = $request->file('file');
+        $path = $file->store("lab-results/{$order->id}", 'private');
+
+        LabResult::create([
+            'lab_order_id' => $order->id,
+            'file_path' => $path,
+            'original_filename' => $file->getClientOriginalName(),
+            'mime_type' => $file->getMimeType(),
+            'file_size' => $file->getSize(),
+            'summary' => $request->notes,
+            'uploaded_by_user_id' => auth()->id(),
+        ]);
+
+        $order->update([
+            'status' => 'results_uploaded',
+            'completed_at' => now(),
+            'result_uploaded_by' => auth()->id(),
+            'result_uploaded_by_type' => 'user',
+        ]);
+
+        return back()->with('success', 'Lab report uploaded. Awaiting vet review.');
+    }
+
     public function markInHouseComplete(LabOrder $order)
     {
         $clinicId = session('active_clinic_id');
         abort_if(!$clinicId, 403);
         abort_if($order->clinic_id !== (int) $clinicId, 403);
-        abort_if($order->routing !== 'in_house', 422);
 
         $order->update([
             'status' => 'results_uploaded',

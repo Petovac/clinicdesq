@@ -68,6 +68,7 @@ use App\Http\Controllers\Lab\LabDashboardController;
 use App\Http\Controllers\Lab\LabOrderController as LabPortalOrderController;
 use App\Http\Controllers\Vet\LabOrderController as VetLabOrderController;
 use App\Http\Controllers\Clinic\LabOrderController as ClinicLabOrderController;
+use App\Http\Controllers\Organisation\LabManagementController;
 
 /* ===========================
 | Pet Parent Controllers
@@ -361,6 +362,36 @@ Route::middleware(['auth'])
                 ->name('settings.branding.gst');
             Route::get('/settings/branding/preview/{type}/{template}', [OrganisationSettingsController::class, 'preview'])
                 ->name('settings.branding.preview');
+        });
+
+
+    /* =========================
+         Lab Management (Org Admin)
+         ========================= */
+    Route::middleware(['auth'])
+        ->prefix('organisation')
+        ->name('organisation.')
+        ->group(function () {
+            // Lab Test Catalog
+            Route::get('/lab-catalog', [LabManagementController::class, 'catalogIndex'])->name('lab-catalog.index');
+            Route::get('/lab-catalog/create', [LabManagementController::class, 'catalogCreate'])->name('lab-catalog.create');
+            Route::post('/lab-catalog', [LabManagementController::class, 'catalogStore'])->name('lab-catalog.store');
+            Route::get('/lab-catalog/{test}/edit', [LabManagementController::class, 'catalogEdit'])->name('lab-catalog.edit');
+            Route::put('/lab-catalog/{test}', [LabManagementController::class, 'catalogUpdate'])->name('lab-catalog.update');
+            Route::delete('/lab-catalog/{test}', [LabManagementController::class, 'catalogDestroy'])->name('lab-catalog.destroy');
+
+            // External Labs
+            Route::get('/labs', [LabManagementController::class, 'labsIndex'])->name('labs.index');
+            Route::get('/labs/create', [LabManagementController::class, 'labsCreate'])->name('labs.create');
+            Route::post('/labs', [LabManagementController::class, 'labsStore'])->name('labs.store');
+            Route::get('/labs/{lab}/edit', [LabManagementController::class, 'labsEdit'])->name('labs.edit');
+            Route::put('/labs/{lab}', [LabManagementController::class, 'labsUpdate'])->name('labs.update');
+            Route::post('/labs/{lab}/tests', [LabManagementController::class, 'labTestStore'])->name('labs.test.store');
+
+            // Lab Technicians
+            Route::get('/lab-techs', [LabManagementController::class, 'labTechIndex'])->name('lab-techs.index');
+            Route::post('/lab-techs', [LabManagementController::class, 'labTechStore'])->name('lab-techs.store');
+            Route::post('/lab-techs/{labUser}/toggle', [LabManagementController::class, 'labTechToggle'])->name('lab-techs.toggle');
         });
 
 
@@ -964,7 +995,7 @@ Route::middleware('auth:vet')->group(function () {
  ========================= */
 Route::middleware('auth:vet')->prefix('vet/lab-orders')->name('vet.lab-orders.')->group(function () {
     Route::get('/', [VetLabOrderController::class, 'index'])->name('index');
-    Route::get('/search-tests', [VetLabOrderController::class, 'searchTests'])->name('search-tests');
+    Route::get('/available-tests', [VetLabOrderController::class, 'availableTests'])->name('available-tests');
     Route::get('/results/{result}/download', [VetLabOrderController::class, 'downloadResult'])->name('result.download');
     Route::get('/{order}', [VetLabOrderController::class, 'show'])->name('show');
     Route::post('/{order}/approve', [VetLabOrderController::class, 'approve'])->name('approve');
@@ -983,6 +1014,7 @@ Route::middleware('auth')->prefix('clinic/lab-orders')->name('clinic.lab-orders.
     Route::get('/', [ClinicLabOrderController::class, 'index'])->name('index');
     Route::put('/{order}/route', [ClinicLabOrderController::class, 'route'])->name('route');
     Route::post('/{order}/tests/{test}/result', [ClinicLabOrderController::class, 'uploadInHouseResult'])->name('upload-result');
+    Route::post('/{order}/direct-upload', [ClinicLabOrderController::class, 'directUpload'])->name('direct-upload');
     Route::post('/{order}/complete', [ClinicLabOrderController::class, 'markInHouseComplete'])->name('complete');
 });
 
@@ -997,6 +1029,7 @@ Route::middleware('guest:lab')->group(function () {
 Route::middleware('auth:lab')->prefix('lab')->name('lab.')->group(function () {
     Route::post('/logout', [LabAuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [LabDashboardController::class, 'index'])->name('dashboard');
+    Route::post('/toggle-availability', [LabDashboardController::class, 'toggleAvailability'])->name('toggle-availability');
     Route::get('/orders', [LabPortalOrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{order}', [LabPortalOrderController::class, 'show'])->name('orders.show');
     Route::post('/orders/{order}/start', [LabPortalOrderController::class, 'startProcessing'])->name('orders.start');
