@@ -61,7 +61,8 @@
         .nav-login-group { position: relative; }
         .nav-login-btn { font-size: 13px; font-weight: 600; color: #475569; padding: 8px 16px; border-radius: 8px; cursor: pointer; border: 1px solid #e2e8f0; background: #fff; transition: all .2s; }
         .nav-login-btn:hover { background: #f8fafc; border-color: #cbd5e1; }
-        .nav-login-dropdown { display: none; position: absolute; top: calc(100% + 8px); right: 0; background: #fff; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.12); border: 1px solid #e2e8f0; padding: 8px; min-width: 200px; z-index: 100; }
+        .nav-login-dropdown { display: none; position: absolute; top: 100%; right: 0; background: #fff; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.12); border: 1px solid #e2e8f0; padding: 8px; min-width: 200px; z-index: 100; padding-top: 16px; }
+        .nav-login-dropdown::before { content: ''; position: absolute; top: -10px; left: 0; right: 0; height: 10px; }
         .nav-login-group:hover .nav-login-dropdown,
         .nav-login-group:focus-within .nav-login-dropdown { display: block; }
         .nav-login-dropdown a { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; color: #334155; transition: background .15s; }
