@@ -68,17 +68,53 @@
 
         <div class="card" style="margin-top:16px;">
             <h3 style="font-size:14px;font-weight:700;margin-bottom:14px;">Test Offerings ({{ $lab->testOfferings->count() }})</h3>
-            @foreach($lab->testOfferings as $test)
-                <div style="padding:8px 0;{{ !$loop->last ? 'border-bottom:1px solid #f3f4f6;' : '' }};font-size:13px;">
-                    <div style="display:flex;justify-content:space-between;">
-                        <strong>{{ $test->test_name }}</strong>
-                        <span style="color:#6b7280;">B2B: ₹{{ number_format($test->b2b_price, 2) }} @if($test->org_selling_price)| Sell: ₹{{ number_format($test->org_selling_price, 2) }}@endif</span>
-                    </div>
-                    @if($test->parameters)
-                        <div style="font-size:11px;color:#6b7280;margin-top:2px;">{{ is_array($test->parameters) ? implode(', ', $test->parameters) : $test->parameters }}</div>
-                    @endif
-                </div>
-            @endforeach
+            @if($lab->testOfferings->count())
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead>
+                        <tr style="border-bottom:1px solid #e5e7eb;">
+                            <th style="padding:8px 0;text-align:left;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;">Test</th>
+                            <th style="padding:8px 0;text-align:left;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;">Parameters</th>
+                            <th style="padding:8px 0;text-align:right;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;">B2B Price</th>
+                            <th style="padding:8px 0;text-align:right;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;">Your Selling Price</th>
+                            <th style="padding:8px 0;text-align:right;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;">Margin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($lab->testOfferings as $test)
+                            <tr style="border-bottom:1px solid #f3f4f6;">
+                                <td style="padding:10px 0;">
+                                    <strong>{{ $test->test_name }}</strong>
+                                    @if($test->estimated_time)<div style="font-size:11px;color:#6b7280;">{{ $test->estimated_time }}</div>@endif
+                                </td>
+                                <td style="padding:10px 0;font-size:11px;color:#6b7280;">
+                                    {{ is_array($test->parameters) ? implode(', ', $test->parameters) : ($test->parameters ?? '—') }}
+                                </td>
+                                <td style="padding:10px 0;text-align:right;color:#6b7280;">₹{{ number_format($test->b2b_price, 2) }}</td>
+                                <td style="padding:10px 0;text-align:right;">
+                                    <form method="POST" action="{{ route('organisation.labs.test.update-price', $test) }}" style="display:inline-flex;align-items:center;gap:4px;">
+                                        @csrf @method('PUT')
+                                        <span style="color:#6b7280;">₹</span>
+                                        <input type="number" name="org_selling_price" value="{{ $test->org_selling_price ?? $test->b2b_price }}" step="0.01" min="0"
+                                            style="width:90px;padding:5px 8px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;text-align:right;font-weight:600;">
+                                        <button type="submit" style="background:#2563eb;color:#fff;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">Set</button>
+                                    </form>
+                                </td>
+                                <td style="padding:10px 0;text-align:right;">
+                                    @php
+                                        $sell = $test->org_selling_price ?? $test->b2b_price;
+                                        $margin = $sell - $test->b2b_price;
+                                    @endphp
+                                    <span style="color:{{ $margin > 0 ? '#16a34a' : ($margin < 0 ? '#dc2626' : '#6b7280') }};font-weight:600;">
+                                        {{ $margin >= 0 ? '+' : '' }}₹{{ number_format($margin, 2) }}
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @else
+                <p style="color:#6b7280;text-align:center;padding:20px 0;">No tests imported yet. Click "Import Tests" above.</p>
+            @endif
         </div>
 
         <div class="card" style="margin-top:16px;">

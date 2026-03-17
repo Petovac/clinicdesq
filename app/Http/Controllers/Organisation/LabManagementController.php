@@ -210,6 +210,23 @@ class LabManagementController extends Controller
     }
 
     /**
+     * Update org selling price for an imported test.
+     */
+    public function labTestUpdatePrice(Request $request, ExternalLabTest $test)
+    {
+        $orgId = auth()->user()->organisation_id;
+        abort_if($test->organisation_id !== $orgId, 403);
+
+        $request->validate([
+            'org_selling_price' => 'required|numeric|min:0',
+        ]);
+
+        $test->update(['org_selling_price' => $request->org_selling_price]);
+
+        return back()->with('success', "Selling price updated for {$test->test_name}.");
+    }
+
+    /**
      * Remove tie-up with an external lab.
      */
     public function labsDetach(ExternalLab $lab)

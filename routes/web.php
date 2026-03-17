@@ -388,6 +388,7 @@ Route::middleware(['auth'])
             Route::get('/labs/{lab}/edit', [LabManagementController::class, 'labsEdit'])->name('labs.edit');
             Route::put('/labs/{lab}', [LabManagementController::class, 'labsUpdate'])->name('labs.update');
             Route::post('/labs/{lab}/tests', [LabManagementController::class, 'labTestStore'])->name('labs.test.store');
+            Route::put('/labs/tests/{test}/price', [LabManagementController::class, 'labTestUpdatePrice'])->name('labs.test.update-price');
             Route::post('/labs/{lab}/import-tests', [LabManagementController::class, 'labsImportTests'])->name('labs.import-tests');
             Route::delete('/labs/{lab}/detach', [LabManagementController::class, 'labsDetach'])->name('labs.detach');
 
