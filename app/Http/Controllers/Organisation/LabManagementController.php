@@ -113,7 +113,7 @@ class LabManagementController extends Controller
         $tiedUpLabs = ExternalLab::whereHas('organisations', function ($q) use ($orgId) {
             $q->where('organisation_id', $orgId);
         })->with(['testOfferings' => function ($q) use ($orgId) {
-            $q->where('organisation_id', $orgId)->orWhereNull('organisation_id');
+            $q->where('organisation_id', $orgId);
         }])->get();
 
         return view('organisation.labs.index', compact('tiedUpLabs'));
@@ -248,11 +248,17 @@ class LabManagementController extends Controller
         $orgId = auth()->user()->organisation_id;
         abort_unless($lab->organisations()->where('organisation_id', $orgId)->exists(), 403);
 
+        // Only load org-specific imported tests (not the lab's master catalog)
         $lab->load(['testOfferings' => function ($q) use ($orgId) {
-            $q->where('organisation_id', $orgId)->orWhereNull('organisation_id');
+            $q->where('organisation_id', $orgId);
         }, 'users']);
 
-        return view('organisation.labs.edit', compact('lab'));
+        // Count how many master tests the lab has (to show "X tests available to import")
+        $masterTestCount = ExternalLabTest::where('external_lab_id', $lab->id)
+            ->whereNull('organisation_id')
+            ->count();
+
+        return view('organisation.labs.edit', compact('lab', 'masterTestCount'));
     }
 
     public function labsUpdate(Request $request, ExternalLab $lab)

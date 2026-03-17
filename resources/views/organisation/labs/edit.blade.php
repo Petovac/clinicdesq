@@ -57,7 +57,7 @@
             <div style="display:flex;align-items:center;justify-content:space-between;">
                 <div>
                     <div style="font-size:14px;font-weight:700;color:#0c4a6e;">Import Lab's Test Catalog</div>
-                    <div style="font-size:12px;color:#0369a1;margin-top:2px;">Pull in all tests this lab offers and set your org pricing</div>
+                    <div style="font-size:12px;color:#0369a1;margin-top:2px;">{{ $masterTestCount }} tests available from this lab. Import and set your selling prices.</div>
                 </div>
                 <form method="POST" action="{{ route('organisation.labs.import-tests', $lab) }}">
                     @csrf
@@ -115,25 +115,6 @@
             @else
                 <p style="color:#6b7280;text-align:center;padding:20px 0;">No tests imported yet. Click "Import Tests" above.</p>
             @endif
-        </div>
-
-        <div class="card" style="margin-top:16px;">
-            <h3 style="font-size:14px;font-weight:700;margin-bottom:14px;">Add Test Offering</h3>
-            <form method="POST" action="{{ route('organisation.labs.test.store', $lab) }}">
-                @csrf
-                <div class="form-group"><label>Test Name *</label><input type="text" name="test_name" required></div>
-                <div class="form-row">
-                    <div class="form-group"><label>Code</label><input type="text" name="test_code"></div>
-                    <div class="form-group"><label>Category</label><input type="text" name="category"></div>
-                </div>
-                <div class="form-group"><label>Parameters</label><input type="text" name="parameters" placeholder="e.g. RBC, WBC, Platelets"></div>
-                <div class="form-row">
-                    <div class="form-group"><label>B2B Price (₹) *</label><input type="number" name="b2b_price" step="0.01" min="0" required></div>
-                    <div class="form-group"><label>Selling Price (₹)</label><input type="number" name="org_selling_price" step="0.01" min="0"></div>
-                </div>
-                <div class="form-group"><label>Est. Time</label><input type="text" name="estimated_time" placeholder="e.g. 24 hours"></div>
-                <button type="submit" class="btn-primary">Add Test</button>
-            </form>
         </div>
 
         @if($lab->users->count())
