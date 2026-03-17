@@ -5,108 +5,76 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lab Portal Login — ClinicDesq</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f1f5f9;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .login-card {
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-            padding: 40px;
-            width: 100%;
-            max-width: 400px;
-        }
-        .login-card h1 {
-            font-size: 22px;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 4px;
-        }
-        .login-card .subtitle {
-            font-size: 14px;
-            color: #64748b;
-            margin-bottom: 28px;
-        }
-        .badge {
-            display: inline-block;
-            background: #dbeafe;
-            color: #1d4ed8;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 3px 10px;
-            border-radius: 20px;
-            margin-bottom: 16px;
-        }
-        label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: #334155;
-            margin-bottom: 6px;
-        }
-        input[type="email"], input[type="password"] {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 14px;
-            margin-bottom: 16px;
-            transition: border-color 0.2s;
-        }
-        input:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
-        }
-        .btn {
-            width: 100%;
-            padding: 11px;
-            background: #2563eb;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .btn:hover { background: #1d4ed8; }
-        .error {
-            background: #fef2f2;
-            color: #dc2626;
-            font-size: 13px;
-            padding: 8px 12px;
-            border-radius: 6px;
-            margin-bottom: 16px;
-        }
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;}
+        .left{flex:1;background:linear-gradient(135deg,#7c3aed 0%,#4c1d95 100%);display:flex;flex-direction:column;justify-content:center;padding:60px;color:#fff;position:relative;overflow:hidden;}
+        .left::before{content:'';position:absolute;top:-80px;right:-80px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,0.05);}
+        .left::after{content:'';position:absolute;bottom:-120px;left:-60px;width:400px;height:400px;border-radius:50%;background:rgba(255,255,255,0.03);}
+        .left-brand{font-size:18px;font-weight:700;margin-bottom:48px;letter-spacing:0.3px;position:relative;z-index:1;}
+        .left-brand span{color:#c4b5fd;}
+        .left h2{font-size:36px;font-weight:800;line-height:1.2;margin-bottom:16px;position:relative;z-index:1;}
+        .left p{font-size:16px;color:rgba(255,255,255,0.7);line-height:1.6;max-width:400px;position:relative;z-index:1;}
+        .left-features{margin-top:36px;position:relative;z-index:1;}
+        .left-features li{display:flex;align-items:center;gap:12px;padding:8px 0;font-size:14px;color:rgba(255,255,255,0.8);list-style:none;}
+        .left-features li svg{width:20px;height:20px;color:#c4b5fd;flex-shrink:0;}
+        .right{flex:1;display:flex;align-items:center;justify-content:center;background:#f8fafc;padding:40px;}
+        .login-card{width:100%;max-width:420px;}
+        .login-card .badge{display:inline-block;background:#ede9fe;color:#6d28d9;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:20px;text-transform:uppercase;letter-spacing:0.5px;}
+        .login-card h1{font-size:28px;font-weight:800;color:#0f172a;margin-bottom:6px;}
+        .login-card .subtitle{font-size:14px;color:#64748b;margin-bottom:32px;}
+        .form-group{margin-bottom:20px;}
+        .form-group label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;}
+        .form-group input{width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;background:#fff;transition:all 0.2s;}
+        .form-group input:focus{outline:none;border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,0.1);}
+        .form-group input::placeholder{color:#94a3b8;}
+        .btn-login{width:100%;padding:13px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;}
+        .btn-login:hover{background:#6d28d9;transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,0.3);}
+        .error-box{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:20px;}
+        .divider{margin-top:24px;padding-top:20px;border-top:1px solid #e2e8f0;text-align:center;font-size:12px;color:#94a3b8;}
+        .divider a{color:#64748b;text-decoration:none;font-weight:500;}
+        .divider a:hover{color:#7c3aed;}
+        @media(max-width:768px){.left{display:none;}.right{padding:24px;}}
     </style>
 </head>
 <body>
-    <div class="login-card">
-        <div class="badge">Lab Portal</div>
-        <h1>Laboratory Login</h1>
-        <p class="subtitle">Access your lab orders and upload results</p>
+    <div class="left">
+        <div class="left-brand">Clinic<span>Desq</span></div>
+        <h2>Lab Portal</h2>
+        <p>Process lab orders, upload results, and manage test availability — all from one dashboard.</p>
+        <ul class="left-features">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>View & Process Incoming Lab Orders</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Upload Results Per Test</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Manage Test Availability</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Real-time Order Status Tracking</li>
+        </ul>
+    </div>
+    <div class="right">
+        <div class="login-card">
+            <div class="badge">Laboratory</div>
+            <h1>Lab Portal Login</h1>
+            <p class="subtitle">Access your lab orders and upload results</p>
 
-        @error('email')
-            <div class="error">{{ $message }}</div>
-        @enderror
+            @error('email')
+                <div class="error-box">{{ $message }}</div>
+            @enderror
 
-        <form method="POST" action="{{ route('lab.login') }}">
-            @csrf
-            <label for="email">Email</label>
-            <input type="email" id="email" name="email" value="{{ old('email') }}" required autofocus>
+            <form method="POST" action="{{ route('lab.login') }}">
+                @csrf
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" value="{{ old('email') }}" placeholder="lab@example.com" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                </div>
+                <button type="submit" class="btn-login">Sign In</button>
+            </form>
 
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password" required>
-
-            <button type="submit" class="btn">Sign In</button>
-        </form>
+            <div class="divider">
+                <a href="/">Back to ClinicDesq</a>
+            </div>
+        </div>
     </div>
 </body>
 </html>
