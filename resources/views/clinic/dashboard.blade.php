@@ -56,8 +56,40 @@
     </div>
 
     <div class="card">
+        <h3>Waiting</h3>
+        <div class="value" style="color:#f59e0b;">{{ $waitingCount }}</div>
+    </div>
+
+    <div class="card">
+        <h3>In Consultation</h3>
+        <div class="value" style="color:#0ea5e9;">{{ $consultationCount }}</div>
+    </div>
+
+    <div class="card">
+        <h3>Ready for Billing</h3>
+        <div class="value" style="color:#ef4444;">{{ $needsBillingCount }}</div>
+    </div>
+
+    <div class="card">
         <h3>Doctors Linked</h3>
         <div class="value">{{ $clinic->vets->count() }}</div>
+    </div>
+</div>
+
+<div class="section" style="margin-bottom:20px;">
+    <h4>Quick Links</h4>
+    <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        @if(auth()->user()->hasPermission('appointments.view'))
+        <a href="{{ route('clinic.appointments.index') }}" class="btn btn-primary" style="padding:10px 20px; background:#3b82f6; color:#fff; text-decoration:none; border-radius:8px;">
+            View Appointments
+        </a>
+        @endif
+
+        @if(auth()->user()->hasPermission('appointments.create'))
+        <a href="{{ route('clinic.appointments.create') }}" class="btn btn-success" style="padding:10px 20px; background:#22c55e; color:#fff; text-decoration:none; border-radius:8px;">
+            + Create Appointment
+        </a>
+        @endif
     </div>
 </div>
 

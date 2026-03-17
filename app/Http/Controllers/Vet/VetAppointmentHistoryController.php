@@ -38,13 +38,15 @@ public function show(Appointment $appointment)
         'pet.petParent',
         'caseSheet',
         'prescription.items',
+        'treatments.drugGeneric',
+        'treatments.priceItem',
+        'diagnosticReports',
     ]);
 
-    // 🔑 ADD THIS (pet history for modal + history section)
     $petHistory = Appointment::where('pet_id', $appointment->pet_id)
         ->where('id', '!=', $appointment->id)
         ->orderByDesc('scheduled_at')
-        ->with(['caseSheet', 'prescription.items'])
+        ->with(['caseSheet', 'prescription.items', 'treatments.drugGeneric', 'treatments.priceItem'])
         ->get();
 
     return view('vet.appointments.case', [

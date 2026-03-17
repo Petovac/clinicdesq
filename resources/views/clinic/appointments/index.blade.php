@@ -99,7 +99,7 @@ class="btn btn-success">
 
 <div class="row mb-4">
 
-<div class="col-md-4">
+<div class="col-md-3">
 <div class="card text-center shadow-sm">
 <div class="card-body">
 <h6>Waiting</h6>
@@ -108,7 +108,7 @@ class="btn btn-success">
 </div>
 </div>
 
-<div class="col-md-4">
+<div class="col-md-3">
 <div class="card text-center shadow-sm">
 <div class="card-body">
 <h6>In Consultation</h6>
@@ -117,11 +117,20 @@ class="btn btn-success">
 </div>
 </div>
 
-<div class="col-md-4">
+<div class="col-md-3">
 <div class="card text-center shadow-sm">
 <div class="card-body">
 <h6>Completed Today</h6>
 <h2 class="text-success">{{ $completedCount }}</h2>
+</div>
+</div>
+</div>
+
+<div class="col-md-3">
+<div class="card text-center shadow-sm">
+<div class="card-body">
+<h6>Ready for Billing</h6>
+<h2 class="text-danger">{{ $needsBillingCount }}</h2>
 </div>
 </div>
 </div>
@@ -176,6 +185,55 @@ Started
 @endforeach
 
 </ul>
+
+@if($needsBillingCount > 0)
+<h4 class="mb-3" style="color:#dc3545;">Ready for Billing ({{ $needsBillingCount }})</h4>
+
+<table class="table table-bordered mb-4">
+<thead>
+<tr>
+<th>#</th>
+<th>Pet</th>
+<th>Owner</th>
+<th>Vet</th>
+<th>Completed</th>
+<th>Bill Status</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+@foreach($needsBilling as $nb)
+<tr>
+<td>#{{ $nb->appointment_number }}</td>
+<td>{{ $nb->pet->name ?? '—' }}</td>
+<td>{{ $nb->pet->petParent->name ?? '—' }}</td>
+<td>{{ $nb->vet->name ?? 'Unassigned' }}</td>
+<td>{{ $nb->completed_at ? \Carbon\Carbon::parse($nb->completed_at)->format('d M h:i A') : '—' }}</td>
+<td>
+@if($nb->bill && $nb->bill->status == 'draft')
+<span class="badge bg-warning">Draft</span>
+@else
+<span class="badge bg-secondary">No Bill</span>
+@endif
+</td>
+<td>
+@if(auth()->user()->hasPermission('billing.create'))
+<a href="{{ route('clinic.billing.create', $nb->id) }}" class="btn btn-primary btn-sm">
+{{ $nb->bill ? 'Edit Bill' : 'Create Bill' }}
+</a>
+@elseif(auth()->user()->hasPermission('billing.view') && $nb->bill)
+<a href="{{ route('clinic.billing.create', $nb->id) }}" class="btn btn-outline-primary btn-sm">
+View Bill
+</a>
+@endif
+</td>
+</tr>
+@endforeach
+</tbody>
+</table>
+@endif
+
+<h4 class="mb-3">All Appointments</h4>
 
 <table class="table table-bordered">
 
@@ -261,7 +319,7 @@ Consult {{ \Carbon\Carbon::parse($appointment->consultation_started_at)->diffInM
 <td>
 
 {{-- Check In --}}
-@if($appointment->status == 'scheduled')
+@if($appointment->status == 'scheduled' && auth()->user()->hasPermission('appointments.manage'))
 
 <form method="POST"
 action="{{ route('clinic.appointments.updateStatus',$appointment->id) }}"
@@ -279,7 +337,7 @@ Check In
 @endif
 
 {{-- Start Consultation --}}
-@if($appointment->status == 'checked_in')
+@if($appointment->status == 'checked_in' && auth()->user()->hasPermission('appointments.manage'))
 
 <form method="POST"
 action="{{ route('clinic.appointments.updateStatus',$appointment->id) }}"
@@ -298,7 +356,7 @@ Start
 
 
 {{-- Billing --}}
-@if($appointment->status == 'completed')
+@if($appointment->status == 'completed' && auth()->user()->hasPermission('billing.create'))
 
 <a href="{{ route('clinic.billing.create',$appointment->id) }}"
 class="btn btn-primary btn-sm">
@@ -308,7 +366,7 @@ Billing
 @endif
 
 {{-- Reschedule --}}
-@if(!in_array($appointment->status, ['completed','cancelled']))
+@if(!in_array($appointment->status, ['completed','cancelled']) && auth()->user()->hasPermission('appointments.manage'))
 
 <button
 class="btn btn-secondary btn-sm reschedule-btn"
@@ -324,7 +382,7 @@ Reschedule
 
 
 {{-- Cancel --}}
-@if(!in_array($appointment->status, ['completed','cancelled']))
+@if(!in_array($appointment->status, ['completed','cancelled']) && auth()->user()->hasPermission('appointments.manage'))
 
 <form method="POST"
 action="{{ route('clinic.appointments.updateStatus',$appointment->id) }}"

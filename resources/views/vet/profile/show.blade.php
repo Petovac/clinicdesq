@@ -2,113 +2,26 @@
 
 @section('content')
 
-<style>
-    .profile-card {
-        max-width: 900px;
-        margin: 30px auto;
-        background: #ffffff;
-        border-radius: 10px;
-        padding: 30px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        font-family: Arial, sans-serif;
-    }
+<div style="max-width:900px;margin:0 auto;">
+    <div class="v-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h2 style="font-size:22px;font-weight:600;color:var(--text-dark);margin:0;">My Profile</h2>
+            <a href="{{ route('vet.profile.edit') }}" class="v-btn v-btn--primary v-btn--sm">Edit Profile</a>
+        </div>
 
-    .profile-card h2 {
-        margin-bottom: 25px;
-        color: #2c3e50;
-        font-size: 22px;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 10px;
-    }
+        <hr class="v-divider" style="margin-top:0;">
 
-    .profile-row {
-        display: flex;
-        margin-bottom: 14px;
-        font-size: 14px;
-    }
-
-    .profile-row strong {
-        width: 200px;
-        color: #34495e;
-        font-weight: 600;
-    }
-
-    .profile-row span {
-        color: #555;
-    }
-
-    .profile-actions {
-        margin-top: 25px;
-        text-align: right;
-    }
-
-    .btn-edit {
-        display: inline-block;
-        background-color: #3498db;
-        color: #fff;
-        text-decoration: none;
-        padding: 10px 22px;
-        border-radius: 6px;
-        font-size: 14px;
-    }
-
-    .btn-edit:hover {
-        background-color: #2980b9;
-    }
-</style>
-
-<div class="profile-card">
-    <h2>My Profile</h2>
-
-    <div class="profile-row">
-        <strong>Name</strong>
-        <span>{{ $vet->name }}</span>
-    </div>
-
-    <div class="profile-row">
-        <strong>Email</strong>
-        <span>{{ $vet->email ?? '-' }}</span>
-    </div>
-
-    <div class="profile-row">
-        <strong>Phone</strong>
-        <span>{{ $vet->phone ?? '-' }}</span>
-    </div>
-
-    <div class="profile-row">
-        <strong>Registration Number</strong>
-        <span>{{ $vet->registration_number ?? '-' }}</span>
-    </div>
-
-    <div class="profile-row">
-        <strong>Specialization</strong>
-        <span>{{ $vet->specialization ?? '-' }}</span>
-    </div>
-
-    <div class="profile-row">
-        <strong>Degree</strong>
-        <span>{{ $vet->degree ?? '-' }}</span>
-    </div>
-
-    <div class="profile-row">
-        <strong>Skills</strong>
-        <span>{{ $vet->skills ?? '-' }}</span>
-    </div>
-
-    <div class="profile-row">
-        <strong>Certifications</strong>
-        <span>{{ $vet->certifications ?? '-' }}</span>
-    </div>
-
-    <div class="profile-row">
-        <strong>Experience</strong>
-        <span>{{ $vet->experience ?? '-' }}</span>
-    </div>
-
-    <div class="profile-actions">
-        <a href="{{ route('vet.profile.edit') }}" class="btn-edit">
-            Edit Profile
-        </a>
+        <dl>
+            <div class="v-detail-row"><dt>Name</dt><dd>{{ $vet->name }}</dd></div>
+            <div class="v-detail-row"><dt>Email</dt><dd>{{ $vet->email ?? '-' }}</dd></div>
+            <div class="v-detail-row"><dt>Phone</dt><dd>{{ $vet->phone ?? '-' }}</dd></div>
+            <div class="v-detail-row"><dt>Registration Number</dt><dd>{{ $vet->registration_number ?? '-' }}</dd></div>
+            <div class="v-detail-row"><dt>Specialization</dt><dd>{{ $vet->specialization ?? '-' }}</dd></div>
+            <div class="v-detail-row"><dt>Degree</dt><dd>{{ $vet->degree ?? '-' }}</dd></div>
+            <div class="v-detail-row"><dt>Skills</dt><dd>{{ $vet->skills ?? '-' }}</dd></div>
+            <div class="v-detail-row"><dt>Certifications</dt><dd>{{ $vet->certifications ?? '-' }}</dd></div>
+            <div class="v-detail-row"><dt>Experience</dt><dd>{{ $vet->experience ?? '-' }}</dd></div>
+        </dl>
     </div>
 </div>
 

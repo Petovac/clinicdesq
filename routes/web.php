@@ -22,6 +22,10 @@ use App\Http\Controllers\Organisation\PriceListController;
 use App\Http\Controllers\Organisation\OrganisationVetController;
 use App\Http\Controllers\Organisation\OrganisationRoleController;
 use App\Http\Controllers\Organisation\InventoryController;
+use App\Http\Controllers\Organisation\FeeConfigController;
+use App\Http\Controllers\Organisation\OrganisationSettingsController;
+use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\LandingController;
 
 /* ===========================
 | Clinic Controllers
@@ -29,12 +33,16 @@ use App\Http\Controllers\Organisation\InventoryController;
 use App\Http\Controllers\Clinic\ClinicDashboardController;
 use App\Http\Controllers\Clinic\BillingController;
 use App\Http\Controllers\Clinic\ClinicAppointmentController;
+use App\Http\Controllers\Clinic\ClinicInventoryController;
+use App\Http\Controllers\Clinic\FollowupController;
+use App\Http\Controllers\Clinic\IpdController as ClinicIpdController;
 
 /* ===========================
 | Vet Controllers
 =========================== */
 
 use App\Http\Controllers\Vet\Auth\VetLoginController;
+use App\Http\Controllers\Vet\Auth\VetRegisterController;
 use App\Http\Controllers\Vet\VetDashboardController;
 use App\Http\Controllers\Vet\VetProfileController;
 use App\Http\Controllers\Vet\PetParentController;
@@ -43,13 +51,29 @@ use App\Http\Controllers\Vet\PetController;
 use App\Http\Controllers\Vet\PetProfileController;
 use App\Http\Controllers\Vet\AppointmentController;
 use App\Http\Controllers\Auth\RoleLoginController;
+use App\Http\Controllers\Auth\OrgRegisterController;
 use App\Http\Controllers\Vet\VetClinicController;
 use App\Http\Controllers\Vet\VetAppointmentHistoryController;
 use App\Http\Controllers\Vet\VetPetHistoryController;
 use App\Http\Controllers\Vet\VetAiController;
 use App\Http\Controllers\Vet\DiagnosticController;
 use App\Http\Controllers\Vet\DiagnosticReportController;
+use App\Http\Controllers\Vet\IpdController as VetIpdController;
 
+/* ===========================
+| Lab Controllers
+=========================== */
+use App\Http\Controllers\Lab\LabAuthController;
+use App\Http\Controllers\Lab\LabDashboardController;
+use App\Http\Controllers\Lab\LabOrderController as LabPortalOrderController;
+use App\Http\Controllers\Vet\LabOrderController as VetLabOrderController;
+use App\Http\Controllers\Clinic\LabOrderController as ClinicLabOrderController;
+
+/* ===========================
+| Pet Parent Controllers
+=========================== */
+use App\Http\Controllers\PetParent\ParentAuthController;
+use App\Http\Controllers\PetParent\ParentDashboardController;
 
 /* ===========================
 | OPEN AI
@@ -62,8 +86,11 @@ use App\Services\AiClinicalService;
 | Public
 |--------------------------------------------------------------------------
 */
-Route::get('/', function () {
-    return redirect('/login');
+Route::get('/', [LandingController::class, 'index'])->name('landing');
+
+Route::middleware('guest')->group(function () {
+    Route::get('/register/organisation', [OrgRegisterController::class, 'showForm'])->name('org.register');
+    Route::post('/register/organisation', [OrgRegisterController::class, 'register']);
 });
 
 
@@ -272,11 +299,69 @@ Route::middleware(['auth'])
         Route::post('/price-lists/{priceList}/activate', [PriceListController::class, 'activate'])
             ->name('price-lists.activate');
 
+        Route::post(
+            '/price-lists/{priceList}/items',
+            [PriceListController::class,'storeItem']
+        )->name('price-lists.store-item');
+
         Route::put(
             '/price-list-items/{item}',
             [PriceListController::class,'updateItem']
         )->name('organisation.price-items.update');
+
+        Route::delete(
+            '/price-list-items/{item}',
+            [PriceListController::class,'deleteItem']
+        )->name('organisation.price-items.delete');
     });
+
+    /* =========================
+         Fee Configuration
+         ========================= */
+
+    Route::middleware(['auth', 'permission:pricing.manage'])
+        ->prefix('organisation')
+        ->name('organisation.')
+        ->group(function () {
+
+            Route::get('/fee-config', [FeeConfigController::class, 'index'])
+                ->name('fee-config.index');
+
+            Route::post('/fee-config/visit-fee', [FeeConfigController::class, 'updateVisitFee'])
+                ->name('fee-config.visit-fee');
+
+            Route::post('/fee-config/routes', [FeeConfigController::class, 'updateRouteFees'])
+                ->name('fee-config.routes');
+
+            Route::post('/fee-config/procedures', [FeeConfigController::class, 'updateProcedureFees'])
+                ->name('fee-config.procedures');
+
+            Route::get('/fee-config/procedures/{procedure}/consumables', [FeeConfigController::class, 'procedureConsumables'])
+                ->name('fee-config.procedure-consumables');
+
+            Route::post('/fee-config/procedures/{procedure}/consumables', [FeeConfigController::class, 'saveProcedureConsumables'])
+                ->name('fee-config.save-procedure-consumables');
+        });
+
+    /* =========================
+         Settings / Branding
+         ========================= */
+
+    Route::middleware(['auth', 'permission:settings.manage'])
+        ->prefix('organisation')
+        ->name('organisation.')
+        ->group(function () {
+            Route::get('/settings/branding', [OrganisationSettingsController::class, 'edit'])
+                ->name('settings.branding');
+            Route::post('/settings/branding', [OrganisationSettingsController::class, 'update'])
+                ->name('settings.branding.update');
+            Route::post('/settings/branding/logo', [OrganisationSettingsController::class, 'updateLogo'])
+                ->name('settings.branding.logo');
+            Route::post('/settings/branding/gst', [OrganisationSettingsController::class, 'updateGst'])
+                ->name('settings.branding.gst');
+            Route::get('/settings/branding/preview/{type}/{template}', [OrganisationSettingsController::class, 'preview'])
+                ->name('settings.branding.preview');
+        });
 
 
     /* =========================
@@ -310,7 +395,26 @@ Route::middleware(['auth'])
             Route::get('/drug-search', [InventoryController::class, 'searchDrugs']);
             Route::get('/generic-search', [InventoryController::class, 'searchGenerics']);
             Route::get('/brands-by-generic', [InventoryController::class, 'brandsByGeneric']);
-        
+            Route::get('/inventory-search', [InventoryController::class, 'searchInventoryItems']);
+
+            // Stock Transfer
+            Route::get('/inventory-transfer', [InventoryController::class, 'transferForm'])
+                ->name('inventory.transfer');
+
+            Route::post('/inventory-transfer', [InventoryController::class, 'transfer'])
+                ->name('inventory.transfer.store');
+
+            Route::get('/inventory-transfer/{item}/batches', [InventoryController::class, 'centralBatches'])
+                ->name('inventory.central.batches');
+
+            // Inventory Movement Log
+            Route::get('/inventory-movements', [InventoryController::class, 'movements'])
+                ->name('inventory.movements');
+
+            // Clinic Inventory Overview
+            Route::get('/clinic-inventory/{clinic}', [InventoryController::class, 'clinicOverview'])
+                ->name('inventory.clinic-overview');
+
         });
 
 
@@ -355,76 +459,153 @@ Route::middleware(['auth'])
 
 
 
-Route::middleware([
-    'auth',
-    'permission:appointments.view'
-])
+Route::middleware(['auth'])
 ->prefix('clinic')
 ->name('clinic.')
 ->group(function () {
 
-    // Route::get('/dashboard', [ClinicDashboardController::class, 'index'])
-    //     ->name('dashboard');
+    /* =========================
+     | Dashboard (any clinic staff)
+     ========================= */
+    Route::get('/dashboard', [ClinicDashboardController::class, 'index'])
+        ->middleware('permission:dashboard.view')
+        ->name('dashboard');
 
+    /* =========================
+     | Appointments (view)
+     ========================= */
+    Route::middleware('permission:appointments.view')->group(function () {
+
+        Route::get(
+            '/appointments',
+            [ClinicAppointmentController::class,'index']
+        )->name('appointments.index');
+
+        Route::get(
+            '/appointments/create',
+            [ClinicAppointmentController::class,'create']
+        )->name('appointments.create');
+
+        Route::post(
+            '/appointments/search',
+            [ClinicAppointmentController::class,'searchPetParent']
+        )->name('appointments.search');
+
+        Route::get(
+            '/appointments/create/pet/{pet}',
+            [ClinicAppointmentController::class,'createForPet']
+        )->name('appointments.createForPet');
+
+        Route::post(
+            '/appointments',
+            [ClinicAppointmentController::class,'store']
+        )->name('appointments.store');
+
+        Route::post(
+            '/appointments/{id}/status',
+            [ClinicAppointmentController::class,'updateStatus']
+        )->name('appointments.updateStatus');
+
+        Route::post(
+            '/appointments/{appointment}/reschedule',
+            [ClinicAppointmentController::class,'reschedule']
+        )->name('appointments.reschedule');
+    });
+
+    /* =========================
+     | Billing
+     ========================= */
     Route::get(
         '/appointments/{appointment}/billing',
         [BillingController::class, 'create']
-    )->name('billing.create');
+    )->middleware('permission:billing.view')->name('billing.create');
 
     Route::post(
         '/bills/{bill}/confirm',
         [BillingController::class, 'confirm']
-    )->name('billing.confirm');
+    )->middleware('permission:billing.create')->name('billing.confirm');
 
     Route::post(
         '/bills/{bill}/items',
         [BillingController::class, 'addItem']
-    )->name('billing.item.add');
+    )->middleware('permission:billing.create')->name('billing.item.add');
 
     Route::patch(
         '/bill-items/{item}',
         [BillingController::class, 'updateItem']
-    )->name('billing.item.update');
+    )->middleware('permission:billing.create')->name('billing.item.update');
 
-    Route::get('/permission-test', function () {
-        return 'Permission middleware works';
-    })->middleware('permission:users.view');
-    
-    
-    Route::get(
-        '/appointments',
-        [ClinicAppointmentController::class,'index']
-    )->name('appointments.index');
+    /* =========================
+     | Inventory
+     ========================= */
+    Route::get('/inventory', [ClinicInventoryController::class, 'index'])
+        ->middleware('permission:inventory.view')->name('inventory.index');
 
-    Route::get(
-        '/appointments/create',
-        [ClinicAppointmentController::class,'create']
-    )->name('appointments.create');
+    Route::get('/inventory/adjust', [ClinicInventoryController::class, 'adjustForm'])
+        ->middleware('permission:inventory.adjust')->name('inventory.adjust.form');
 
-    Route::post(
-        '/appointments/search',
-        [ClinicAppointmentController::class,'searchPetParent']
-    )->name('appointments.search');
+    Route::post('/inventory/adjust', [ClinicInventoryController::class, 'adjust'])
+        ->middleware('permission:inventory.adjust')->name('inventory.adjust');
 
-    Route::get(
-    '/appointments/create/pet/{pet}',
-    [ClinicAppointmentController::class,'createForPet']
-    )->name('appointments.createForPet');
+    Route::post('/inventory/add-stock', [ClinicInventoryController::class, 'addStock'])
+        ->middleware('permission:inventory.manage')->name('inventory.addStock');
 
-    Route::post(
-    '/appointments',
-    [ClinicAppointmentController::class,'store']
-    )->name('appointments.store');
+    Route::get('/inventory/movements', [ClinicInventoryController::class, 'movements'])
+        ->middleware('permission:inventory.movements.view')->name('inventory.movements');
 
-    Route::post(
-    '/appointments/{id}/status',
-    [ClinicAppointmentController::class,'updateStatus']
-    )->name('appointments.updateStatus');
+    Route::get('/inventory/{item}/batches', [ClinicInventoryController::class, 'itemBatches'])
+        ->middleware('permission:inventory.view')->name('inventory.batches');
 
-    Route::post(
-    '/appointments/{appointment}/reschedule',
-    [ClinicAppointmentController::class,'reschedule']
-    )->name('appointments.reschedule');
+    Route::get('/inventory/{item}', [ClinicInventoryController::class, 'show'])
+        ->middleware('permission:inventory.view')->name('inventory.show');
+
+    /* =========================
+     | Order Requests
+     ========================= */
+    Route::get('/orders', [ClinicInventoryController::class, 'orderIndex'])
+        ->middleware('permission:inventory.purchase')->name('orders.index');
+
+    Route::get('/orders/create', [ClinicInventoryController::class, 'orderCreate'])
+        ->middleware('permission:inventory.purchase')->name('orders.create');
+
+    Route::post('/orders', [ClinicInventoryController::class, 'orderStore'])
+        ->middleware('permission:inventory.purchase')->name('orders.store');
+
+    Route::get('/orders/{order}', [ClinicInventoryController::class, 'orderShow'])
+        ->middleware('permission:inventory.purchase')->name('orders.show');
+
+    Route::post('/orders/{order}/submit', [ClinicInventoryController::class, 'orderSubmit'])
+        ->middleware('permission:inventory.purchase')->name('orders.submit');
+
+    /* =========================
+     | Follow-ups
+     ========================= */
+    Route::get('/followups', [FollowupController::class, 'index'])
+        ->middleware('permission:followups.view')->name('followups.index');
+
+    /* =========================
+     | IPD (In-Patient Department)
+     ========================= */
+    Route::middleware('permission:ipd.view')->group(function () {
+        Route::get('/ipd', [ClinicIpdController::class, 'index'])->name('ipd.index');
+        Route::get('/ipd/{admission}', [ClinicIpdController::class, 'show'])->name('ipd.show');
+    });
+
+    Route::middleware('permission:ipd.manage')->group(function () {
+        Route::get('/ipd-admit', [ClinicIpdController::class, 'create'])->name('ipd.create');
+        Route::post('/ipd', [ClinicIpdController::class, 'store'])->name('ipd.store');
+        Route::post('/ipd/{admission}/vitals', [ClinicIpdController::class, 'storeVitals'])->name('ipd.vitals.store');
+        Route::post('/ipd/{admission}/notes', [ClinicIpdController::class, 'storeNote'])->name('ipd.notes.store');
+        Route::post('/ipd/{admission}/discharge', [ClinicIpdController::class, 'discharge'])->name('ipd.discharge');
+    });
+
+    /* =========================
+     | Documents (Print/PDF)
+     ========================= */
+    Route::get('/bills/{bill}/print', [DocumentController::class, 'billPrint'])->name('bill.print');
+    Route::get('/bills/{bill}/pdf', [DocumentController::class, 'billPdf'])->name('bill.pdf');
+    Route::get('/prescriptions/{prescription}/print', [DocumentController::class, 'prescriptionPrint'])->name('prescription.print');
+    Route::get('/prescriptions/{prescription}/pdf', [DocumentController::class, 'prescriptionPdf'])->name('prescription.pdf');
 
 });
 
@@ -450,6 +631,10 @@ Route::middleware('guest:vet')->group(function () {
         ->name('vet.login');
 
     Route::post('/vet/login', [VetLoginController::class, 'login']);
+
+    Route::get('/vet/register', [VetRegisterController::class, 'showRegistrationForm'])
+        ->name('vet.register');
+    Route::post('/vet/register', [VetRegisterController::class, 'register']);
 });
 
 Route::middleware('auth:vet')->group(function () {
@@ -624,6 +809,16 @@ Route::middleware('auth:vet')->group(function () {
         [AppointmentController::class, 'addTreatment']
     )->name('vet.treatment.add');
 
+    Route::delete(
+        '/vet/appointments/{appointment}/treatment/{treatment}',
+        [AppointmentController::class, 'deleteTreatment']
+    )->name('vet.treatment.delete');
+
+    Route::post(
+        '/vet/appointments/{appointment}/followup',
+        [AppointmentController::class, 'saveFollowup']
+    )->name('vet.appointments.saveFollowup');
+
     Route::get(
         '/vet/appointments/{appointment}/diagnostics/create',
         [DiagnosticController::class, 'create']
@@ -738,6 +933,92 @@ Route::post(
     [DiagnosticController::class, 'verifyFile']
 )->middleware('auth:vet')->name('vet.diagnostics.files.verify');
 
+/* =========================
+ | Vet IPD Routes
+ ========================= */
+Route::middleware('auth:vet')->prefix('vet/ipd')->name('vet.ipd.')->group(function () {
+    Route::get('/', [VetIpdController::class, 'index'])->name('index');
+    Route::get('/admit/{appointment}', [VetIpdController::class, 'admitFromCase'])->name('admitFromCase');
+    Route::post('/', [VetIpdController::class, 'store'])->name('store');
+    Route::get('/{admission}', [VetIpdController::class, 'show'])->name('show');
+    Route::post('/{admission}/vitals', [VetIpdController::class, 'storeVitals'])->name('vitals.store');
+    Route::post('/{admission}/treatments', [VetIpdController::class, 'storeTreatment'])->name('treatments.store');
+    Route::post('/{admission}/notes', [VetIpdController::class, 'storeNote'])->name('notes.store');
+    Route::post('/{admission}/discharge', [VetIpdController::class, 'discharge'])->name('discharge');
+});
+
+/* =========================
+ | Vet Document Routes (Print/PDF)
+ ========================= */
+Route::middleware('auth:vet')->group(function () {
+    Route::get('/vet/prescriptions/{prescription}/print', [DocumentController::class, 'prescriptionPrint'])->name('vet.prescription.print');
+    Route::get('/vet/prescriptions/{prescription}/pdf', [DocumentController::class, 'prescriptionPdf'])->name('vet.prescription.pdf');
+    Route::get('/vet/case-sheets/{caseSheet}/print', [DocumentController::class, 'caseSheetPrint'])->name('vet.casesheet.print');
+    Route::get('/vet/case-sheets/{caseSheet}/pdf', [DocumentController::class, 'caseSheetPdf'])->name('vet.casesheet.pdf');
+    Route::get('/vet/bills/{bill}/print', [DocumentController::class, 'billPrint'])->name('vet.bill.print');
+    Route::get('/vet/bills/{bill}/pdf', [DocumentController::class, 'billPdf'])->name('vet.bill.pdf');
+});
+
+/* =========================
+ | Vet Lab Order Routes
+ ========================= */
+Route::middleware('auth:vet')->prefix('vet/lab-orders')->name('vet.lab-orders.')->group(function () {
+    Route::get('/', [VetLabOrderController::class, 'index'])->name('index');
+    Route::get('/search-tests', [VetLabOrderController::class, 'searchTests'])->name('search-tests');
+    Route::get('/results/{result}/download', [VetLabOrderController::class, 'downloadResult'])->name('result.download');
+    Route::get('/{order}', [VetLabOrderController::class, 'show'])->name('show');
+    Route::post('/{order}/approve', [VetLabOrderController::class, 'approve'])->name('approve');
+    Route::post('/{order}/retest', [VetLabOrderController::class, 'requestRetest'])->name('retest');
+});
+
+Route::middleware('auth:vet')->group(function () {
+    Route::post('/vet/appointments/{appointment}/lab-orders', [VetLabOrderController::class, 'store'])
+        ->name('vet.lab-orders.store');
+});
+
+/* =========================
+ | Clinic Lab Order Routes
+ ========================= */
+Route::middleware('auth')->prefix('clinic/lab-orders')->name('clinic.lab-orders.')->group(function () {
+    Route::get('/', [ClinicLabOrderController::class, 'index'])->name('index');
+    Route::put('/{order}/route', [ClinicLabOrderController::class, 'route'])->name('route');
+    Route::post('/{order}/tests/{test}/result', [ClinicLabOrderController::class, 'uploadInHouseResult'])->name('upload-result');
+    Route::post('/{order}/complete', [ClinicLabOrderController::class, 'markInHouseComplete'])->name('complete');
+});
+
+/* =========================
+ | Lab Portal Routes
+ ========================= */
+Route::middleware('guest:lab')->group(function () {
+    Route::get('/lab/login', [LabAuthController::class, 'showLoginForm'])->name('lab.login');
+    Route::post('/lab/login', [LabAuthController::class, 'login']);
+});
+
+Route::middleware('auth:lab')->prefix('lab')->name('lab.')->group(function () {
+    Route::post('/logout', [LabAuthController::class, 'logout'])->name('logout');
+    Route::get('/dashboard', [LabDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/orders', [LabPortalOrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [LabPortalOrderController::class, 'show'])->name('orders.show');
+    Route::post('/orders/{order}/start', [LabPortalOrderController::class, 'startProcessing'])->name('orders.start');
+    Route::post('/orders/{order}/tests/{test}/result', [LabPortalOrderController::class, 'uploadResult'])->name('orders.upload-result');
+    Route::post('/orders/{order}/complete', [LabPortalOrderController::class, 'markComplete'])->name('orders.complete');
+});
+
+/* =========================
+     Pet Parent Portal
+     ========================= */
+
+Route::middleware('guest:pet_parent')->group(function () {
+    Route::get('/parent/login', [ParentAuthController::class, 'showLoginForm'])->name('parent.login');
+    Route::post('/parent/login', [ParentAuthController::class, 'login'])->middleware('throttle:5,1');
+});
+
+Route::middleware('auth:pet_parent')->prefix('parent')->name('parent.')->group(function () {
+    Route::post('/logout', [ParentAuthController::class, 'logout'])->name('logout');
+    Route::get('/dashboard', [ParentDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/pets/{pet}', [ParentDashboardController::class, 'showPet'])->name('pets.show');
+    Route::get('/appointments/{appointment}', [ParentDashboardController::class, 'showAppointment'])->name('appointments.show');
+});
 
 require __DIR__.'/auth.php';
 

@@ -83,11 +83,9 @@ input, select {
             <label>Role</label>
             <select name="role" id="roleSelect" required>
                 <option value="">Select role</option>
-                @foreach($roles as $role)
-                    <option 
-                        value="{{ $role->name }}"
-                        data-scope="{{ $role->clinic_scope }}">
-                        {{ $role->name }}
+                @foreach($roles as $roleKey => $level)
+                    <option value="{{ $roleKey }}">
+                        {{ ucfirst(str_replace('_', ' ', $roleKey)) }}
                     </option>
                 @endforeach
             </select>
@@ -124,20 +122,16 @@ const singleClinic = document.getElementById('singleClinic');
 const multiClinic = document.getElementById('multiClinic');
 
 function updateClinicFields() {
-
-    const selectedOption = roleSelect.options[roleSelect.selectedIndex];
-    const scope = selectedOption ? selectedOption.dataset.scope : null;
-
-    console.log("Selected scope:", scope); // debug line
+    const val = roleSelect.value;
 
     singleClinic.classList.add('hidden');
     multiClinic.classList.add('hidden');
 
-    if (scope === 'single') {
+    if (['clinic_manager','receptionist','sales'].includes(val)) {
         singleClinic.classList.remove('hidden');
     }
 
-    if (scope === 'multiple') {
+    if (['regional_manager','area_manager'].includes(val)) {
         multiClinic.classList.remove('hidden');
     }
 }

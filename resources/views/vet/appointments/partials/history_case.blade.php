@@ -31,6 +31,33 @@
             'Presenting Complaint' => $appointment->caseSheet->presenting_complaint,
             'History' => $appointment->caseSheet->history,
             'Clinical Examination' => $appointment->caseSheet->clinical_examination,
+        ] as $label => $value)
+            @if($value)
+                <p><strong>{{ $label }}:</strong> {{ $value }}</p>
+            @endif
+        @endforeach
+
+        @php
+            $vitals = collect([
+                'Temp' => $appointment->caseSheet->temperature ? $appointment->caseSheet->temperature . '°F' : null,
+                'HR' => $appointment->caseSheet->heart_rate ? $appointment->caseSheet->heart_rate . ' bpm' : null,
+                'RR' => $appointment->caseSheet->respiratory_rate ? $appointment->caseSheet->respiratory_rate . ' bpm' : null,
+                'CRT' => $appointment->caseSheet->capillary_refill_time,
+                'MM' => $appointment->caseSheet->mucous_membrane,
+                'Hydration' => $appointment->caseSheet->hydration_status,
+                'PLN' => $appointment->caseSheet->lymph_nodes,
+                'BCS' => $appointment->caseSheet->body_condition_score,
+                'Pain' => $appointment->caseSheet->pain_score,
+            ])->filter();
+        @endphp
+
+        @if($vitals->isNotEmpty())
+            <p style="font-size:13px;color:#374151;background:#f9fafb;padding:8px 12px;border-radius:6px;border:1px solid #e5e7eb;">
+                <strong>Vitals:</strong> {{ $vitals->map(fn($v, $k) => "$k: $v")->implode(' | ') }}
+            </p>
+        @endif
+
+        @foreach([
             'Differentials' => $appointment->caseSheet->differentials,
             'Diagnosis' => $appointment->caseSheet->diagnosis,
             'Treatment Given' => $appointment->caseSheet->treatment_given,
@@ -63,6 +90,30 @@
                     @if($item->dosage) — {{ $item->dosage }} @endif
                     @if($item->frequency), {{ $item->frequency }} @endif
                     @if($item->duration) ({{ $item->duration }}) @endif
+                </li>
+            @endforeach
+        </ul>
+
+        <hr>
+    @endif
+
+    {{-- ===================== --}}
+    {{-- TREATMENTS --}}
+    {{-- ===================== --}}
+    @if($appointment->treatments && $appointment->treatments->count())
+        <h4>💉 Treatments</h4>
+
+        <ul style="padding-left:18px;">
+            @foreach($appointment->treatments as $t)
+                <li>
+                    @if($t->drug_generic_id)
+                        {{ optional($t->drugGeneric)->name ?? 'Drug' }}
+                        @if($t->dose_mg) — {{ $t->dose_mg }} mg @endif
+                        @if($t->dose_volume_ml) ({{ $t->dose_volume_ml }} ml) @endif
+                        @if($t->route) · {{ $t->route }} @endif
+                    @else
+                        {{ optional($t->priceItem)->name ?? 'Procedure' }}
+                    @endif
                 </li>
             @endforeach
         </ul>

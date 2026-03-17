@@ -285,7 +285,7 @@ text-decoration:underline;
 
 <label style="display:block;margin-bottom:6px;">Item Type</label>
 
-<div style="display:flex;gap:20px;align-items:center;">
+<div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
 
 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
 <input type="radio" name="item_type" value="drug" checked>
@@ -295,6 +295,16 @@ text-decoration:underline;
 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
 <input type="radio" name="item_type" value="consumable">
 <span>Consumable</span>
+</label>
+
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+<input type="radio" name="item_type" value="product">
+<span>Product</span>
+</label>
+
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+<input type="radio" name="item_type" value="surgical">
+<span>Surgical</span>
 </label>
 
 </div>
@@ -481,13 +491,13 @@ z-index:1000;
 
 
 
-<!-- CONSUMABLE FIELDS -->
+<!-- CONSUMABLE / PRODUCT / SURGICAL FIELDS -->
 
 <div id="consumableFields">
 
 <div class="form-group">
 
-<label>Product Name</label>
+<label id="consumableNameLabel">Item Name</label>
 
 <input type="text" name="name" class="input">
 
@@ -506,7 +516,13 @@ z-index:1000;
 <option value="packet">Packet</option>
 <option value="tube">Tube</option>
 <option value="piece">Piece</option>
-<option value="Sachet">Sachet</option>
+<option value="sachet">Sachet</option>
+<option value="roll">Roll</option>
+<option value="box">Box</option>
+<option value="canister">Canister</option>
+<option value="kit">Kit</option>
+<option value="bag">Bag</option>
+<option value="pair">Pair</option>
 
 </select>
 
@@ -528,6 +544,8 @@ z-index:1000;
 <option value="gm">gm</option>
 <option value="kg">kg</option>
 <option value="piece">piece</option>
+<option value="litre">litre</option>
+<option value="unit">unit</option>
 
 </select>
 
@@ -663,6 +681,7 @@ let type=document.querySelector('input[name="item_type"]:checked').value
 let drugFlow=document.getElementById("drugFlow")
 let drugFields=document.getElementById("drugFields")
 let consumableFields=document.getElementById("consumableFields")
+let nameLabel=document.getElementById("consumableNameLabel")
 
 if(type==="drug"){
 
@@ -680,6 +699,10 @@ consumableFields.style.display="block"
 
 drugFields.querySelectorAll("input,select").forEach(el=>el.disabled=true)
 consumableFields.querySelectorAll("input,select").forEach(el=>el.disabled=false)
+
+// Update label based on type
+let labels = {consumable:"Consumable Name", product:"Product Name", surgical:"Surgical Item Name"}
+if(nameLabel) nameLabel.textContent = labels[type] || "Item Name"
 
 }
 

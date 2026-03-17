@@ -1,25 +1,31 @@
 @extends('layouts.vet')
 
 @section('content')
-<div class="card">
-    <h2>Verify Access</h2>
 
-    {{-- DEV ONLY: Show OTP on screen --}}
-    @if(isset($devOtp))
-        <div style="background:#fff3cd; padding:10px; margin-bottom:15px; border-radius:4px;">
-            <strong>DEV OTP:</strong> {{ $devOtp }}
-        </div>
-    @endif
+<div class="v-form-card v-form-card--narrow">
+    <div class="v-card">
+        <h2 style="text-align:center;font-size:22px;font-weight:600;color:var(--text-dark);margin:0 0 20px;">
+            Verify Access
+        </h2>
 
-    <form method="POST" action="{{ route('vet.appointments.verifyOtp') }}">
-        @csrf
+        @if(isset($devOtp))
+            <div class="v-flash" style="background:var(--warning-soft);color:#92400e;border:1px solid var(--warning-border);">
+                <strong>DEV OTP:</strong> {{ $devOtp }}
+            </div>
+        @endif
 
-        <input type="hidden" name="mobile" value="{{ $mobile }}">
+        <form method="POST" action="{{ route('vet.appointments.verifyOtp') }}">
+            @csrf
+            <input type="hidden" name="mobile" value="{{ $mobile }}">
 
-        <label>Enter OTP</label>
-        <input name="otp" required>
+            <div class="v-form-group">
+                <label>Enter OTP</label>
+                <input name="otp" required class="v-input">
+            </div>
 
-        <button type="submit">Verify & Continue</button>
-    </form>
+            <button type="submit" class="v-btn v-btn--primary v-btn--block">Verify & Continue</button>
+        </form>
+    </div>
 </div>
+
 @endsection

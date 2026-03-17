@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Organisation;
 
 use App\Http\Controllers\Controller;
 use App\Models\OrganisationRole;
+use App\Models\Permission;
 use Illuminate\Http\Request;
 
 class OrganisationRoleController extends Controller
@@ -20,47 +21,44 @@ class OrganisationRoleController extends Controller
 
     public function create()
     {
-        $permissions = \App\Models\Permission::orderBy('name')->get();
+        $groupedPermissions = Permission::grouped();
 
         return view('organisation.roles.create', [
-            'permissions' => $permissions
+            'groupedPermissions' => $groupedPermissions,
         ]);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'clinic_scope' => 'required|in:none,single,multiple',
-            'permissions' => 'nullable|array',
-            'permissions.*' => 'exists:permissions,id'
+            'name'           => 'required|string|max:255',
+            'clinic_scope'   => 'required|in:none,single,multiple',
+            'permissions'    => 'nullable|array',
+            'permissions.*'  => 'exists:permissions,id',
         ]);
 
         $role = OrganisationRole::create([
             'organisation_id' => auth()->user()->organisation_id,
-            'name' => $request->name,
-            'clinic_scope' => $request->clinic_scope
+            'name'            => $request->name,
+            'clinic_scope'    => $request->clinic_scope,
         ]);
 
         if ($request->filled('permissions')) {
+            $rows = collect($request->permissions)->map(fn($pid) => [
+                'role_id'       => $role->id,
+                'permission_id' => $pid,
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ])->toArray();
 
-            foreach ($request->permissions as $permissionId) {
-
-                \DB::table('role_permissions')->insert([
-                    'role_id' => $role->id,
-                    'permission_id' => $permissionId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-
-            }
+            \DB::table('role_permissions')->insert($rows);
         }
 
         return redirect()
             ->route('organisation.roles.index')
             ->with('success', 'Role created successfully');
     }
-    
+
     public function edit($id)
     {
         $role = OrganisationRole::where(
@@ -68,7 +66,7 @@ class OrganisationRoleController extends Controller
             auth()->user()->organisation_id
         )->findOrFail($id);
 
-        $permissions = \App\Models\Permission::orderBy('name')->get();
+        $groupedPermissions = Permission::grouped();
 
         $rolePermissions = \DB::table('role_permissions')
             ->where('role_id', $role->id)
@@ -76,48 +74,47 @@ class OrganisationRoleController extends Controller
             ->toArray();
 
         return view('organisation.roles.edit', [
-            'role' => $role,
-            'permissions' => $permissions,
-            'rolePermissions' => $rolePermissions
+            'role'                => $role,
+            'groupedPermissions'  => $groupedPermissions,
+            'rolePermissions'     => $rolePermissions,
         ]);
     }
 
     public function update(Request $request, $id)
-{
-    $role = OrganisationRole::where(
-        'organisation_id',
-        auth()->user()->organisation_id
-    )->findOrFail($id);
+    {
+        $role = OrganisationRole::where(
+            'organisation_id',
+            auth()->user()->organisation_id
+        )->findOrFail($id);
 
-    $request->validate([
-        'name' => 'required|string|max:255',
-        'clinic_scope' => 'required|in:none,single,multiple',
-        'permissions' => 'nullable|array'
-    ]);
+        $request->validate([
+            'name'           => 'required|string|max:255',
+            'clinic_scope'   => 'required|in:none,single,multiple',
+            'permissions'    => 'nullable|array',
+            'permissions.*'  => 'exists:permissions,id',
+        ]);
 
-    $role->update([
-        'name' => $request->name,
-        'clinic_scope' => $request->clinic_scope
-    ]);
+        $role->update([
+            'name'         => $request->name,
+            'clinic_scope' => $request->clinic_scope,
+        ]);
 
-   // delete old permissions
-\DB::table('role_permissions')
-->where('role_id', $role->id)
-->delete();
+        // Sync permissions: delete old, insert new
+        \DB::table('role_permissions')->where('role_id', $role->id)->delete();
 
-foreach ($request->permissions as $permissionId) {
+        if ($request->filled('permissions')) {
+            $rows = collect($request->permissions)->map(fn($pid) => [
+                'role_id'       => $role->id,
+                'permission_id' => $pid,
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ])->toArray();
 
-\DB::table('role_permissions')->insert([
-    'role_id' => $role->id,
-    'permission_id' => $permissionId,
-    'created_at' => now(),
-    'updated_at' => now(),
-]);
+            \DB::table('role_permissions')->insert($rows);
+        }
 
-}
-
-// DEBUG
-dd('insert complete', $role->id, $request->permissions);
-}
-
+        return redirect()
+            ->route('organisation.roles.index')
+            ->with('success', 'Role updated successfully');
+    }
 }

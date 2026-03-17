@@ -15,10 +15,7 @@ class OrganisationUserController extends Controller
 
     public function create()
     {
-        $roles = \App\Models\OrganisationRole::where(
-            'organisation_id',
-            auth()->user()->organisation_id
-        )->get();
+        $roles = config('roles');
 
         $clinics = Clinic::where(
             'organisation_id',
@@ -109,7 +106,7 @@ class OrganisationUserController extends Controller
             'clinic_ids.*'=> 'exists:clinics,id',
         ]);
 
-        $targetRole = strtolower(str_replace(' ', '_', $request->role));
+        $targetRole = $request->role;
 
         $clinic = null;
         $clinicId = null;
@@ -143,23 +140,24 @@ class OrganisationUserController extends Controller
             'password'        => Hash::make('changeme123'),
         ]);
 
+        // Map config role key to OrganisationRole display name
+        $roleName = ucwords(str_replace('_', ' ', $targetRole));
         $role = \App\Models\OrganisationRole::where(
             'organisation_id',
             auth()->user()->organisation_id
         )
-        ->where('name', $request->role)
+        ->where('name', $roleName)
         ->first();
-        
-        if (!$role) {
-            abort(500, 'Role not found in organisation_roles');
+
+        // Create OrganisationUserRole if matching role exists
+        if ($role) {
+            \App\Models\OrganisationUserRole::create([
+                'organisation_id' => auth()->user()->organisation_id,
+                'clinic_id'       => $clinicId,
+                'user_id'         => $user->id,
+                'role_id'         => $role->id,
+            ]);
         }
-        
-        \App\Models\OrganisationUserRole::create([
-            'organisation_id' => auth()->user()->organisation_id,
-            'clinic_id'       => $clinicId,
-            'user_id'         => $user->id,
-            'role_id'         => $role->id
-        ]);
 
         /*
         |--------------------------------------------------------------------------
@@ -205,10 +203,7 @@ class OrganisationUserController extends Controller
                 403
             );
 
-            $roles = \App\Models\OrganisationRole::where(
-                'organisation_id',
-                auth()->user()->organisation_id
-            )->get();
+            $roles = config('roles');
             $clinics = Clinic::where('organisation_id', auth()->user()->organisation_id)->get();
 
             return view('organisation.users.edit', compact('user', 'roles', 'clinics'));
@@ -287,16 +282,18 @@ class OrganisationUserController extends Controller
                 'clinic_id' => $clinicId,
             ]);
             
-            $role = \App\Models\OrganisationRole::where(
+            $roleName = ucwords(str_replace('_', ' ', $targetRole));
+            $orgRole = \App\Models\OrganisationRole::where(
                 'organisation_id',
                 auth()->user()->organisation_id
-            )->where('name', $request->role)->first();
-            
-            \App\Models\OrganisationUserRole::where('user_id', $user->id)
-                ->update([
-                    'role_id' => $role->id,
-                    'clinic_id' => $clinicId
-                ]);
+            )->where('name', $roleName)->first();
+
+            if ($orgRole) {
+                \App\Models\OrganisationUserRole::updateOrCreate(
+                    ['user_id' => $user->id],
+                    ['role_id' => $orgRole->id, 'clinic_id' => $clinicId, 'organisation_id' => auth()->user()->organisation_id]
+                );
+            }
 
             /*
             |--------------------------------------------------------------------------

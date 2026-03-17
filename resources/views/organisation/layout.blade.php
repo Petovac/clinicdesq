@@ -202,7 +202,7 @@ Vets
 @endif
 
 
-@if(auth()->user()->hasPermission('inventory.manage'))
+@if(auth()->user()->hasPermission('inventory.view') || auth()->user()->hasPermission('inventory.manage'))
 
 <div class="nav-section">
 
@@ -212,6 +212,7 @@ Inventory
 
 <div class="nav-children">
 
+@if(auth()->user()->hasPermission('inventory.manage'))
 <a href="{{ route('organisation.inventory.items') }}"
 class="{{ request()->is('organisation/inventory-items*') ? 'active' : '' }}">
 Inventory Items
@@ -222,6 +223,29 @@ class="{{ request()->is('organisation/inventory-stock*') ? 'active' : '' }}">
 Stock Management
 </a>
 
+@php $firstClinic = \App\Models\Clinic::where('organisation_id', auth()->user()->organisation_id)->orderBy('name')->first(); @endphp
+@if($firstClinic)
+<a href="{{ route('organisation.inventory.clinic-overview', $firstClinic->id) }}"
+class="{{ request()->is('organisation/clinic-inventory*') ? 'active' : '' }}">
+Clinic Inventory
+</a>
+@endif
+@endif
+
+@if(auth()->user()->hasPermission('inventory.transfer'))
+<a href="{{ route('organisation.inventory.transfer') }}"
+class="{{ request()->is('organisation/inventory-transfer') ? 'active' : '' }}">
+Stock Transfer
+</a>
+@endif
+
+@if(auth()->user()->hasPermission('inventory.movements.view'))
+<a href="{{ route('organisation.inventory.movements') }}"
+class="{{ request()->is('organisation/inventory-movements*') ? 'active' : '' }}">
+Inventory Log
+</a>
+@endif
+
 </div>
 
 </div>
@@ -229,11 +253,45 @@ Stock Management
 @endif
 
 
-@if(auth()->user()->hasPermission('pricing.manage'))
+@if(auth()->user()->hasPermission('pricing.view') || auth()->user()->hasPermission('pricing.manage'))
+
+<div class="nav-section">
+
+<div class="nav-parent">
+Pricing
+</div>
+
+<div class="nav-children">
+
 <a href="{{ route('organisation.price-lists.index') }}"
 class="{{ request()->is('organisation/price-lists*') ? 'active' : '' }}">
 Price List
 </a>
+
+@if(auth()->user()->hasPermission('pricing.manage'))
+<a href="{{ route('organisation.fee-config.index') }}"
+class="{{ request()->is('organisation/fee-config*') ? 'active' : '' }}">
+Fee Configuration
+</a>
+@endif
+
+</div>
+
+</div>
+
+@endif
+
+{{-- Settings --}}
+@if(auth()->user()->hasPermission('settings.manage'))
+<div class="nav-section">
+    <div class="nav-parent">Settings</div>
+    <div class="nav-children">
+        <a href="{{ route('organisation.settings.branding') }}"
+           class="{{ request()->is('organisation/settings/branding*') ? 'active' : '' }}">
+            Branding &amp; Templates
+        </a>
+    </div>
+</div>
 @endif
 
 </div>
@@ -251,8 +309,12 @@ Price List
 Organisation Panel
 </div>
 
-<div class="user-box">
-{{ Auth::user()->name ?? 'User' }}
+<div class="user-box" style="display:flex;align-items:center;gap:14px;">
+<span>{{ Auth::user()->name ?? 'User' }}</span>
+<form method="POST" action="{{ route('logout') }}" style="margin:0;">
+@csrf
+<button type="submit" style="background:none;border:1px solid #d1d5db;color:#6b7280;padding:5px 14px;border-radius:6px;font-size:13px;cursor:pointer;">Logout</button>
+</form>
 </div>
 
 </header>

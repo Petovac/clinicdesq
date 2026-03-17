@@ -104,42 +104,42 @@ font-weight:600;
 @if($showAppointments)
 <div class="card">
     <h3>Appointments</h3>
-    <a href="/clinic/appointments">Open module</a>
+    <a href="{{ route('clinic.appointments.index') }}">Open module</a>
 </div>
 @endif
 
 @if($showBilling)
 <div class="card">
     <h3>Billing</h3>
-    <a href="#">Open module</a>
+    <a href="{{ route('clinic.appointments.index') }}">Open module</a>
 </div>
 @endif
 
 @if($showInventory)
 <div class="card">
     <h3>Inventory</h3>
-    <a href="#">Open module</a>
+    <a href="{{ route('clinic.inventory.index') }}">Open module</a>
 </div>
 @endif
 
 @if($showClinics)
 <div class="card">
     <h3>Clinics</h3>
-    <a href="/organisation/clinics">Manage clinics</a>
+    <a href="{{ route('organisation.clinics.index') }}">Manage clinics</a>
 </div>
 @endif
 
 @if($showUsers)
 <div class="card">
     <h3>Users</h3>
-    <a href="/organisation/users">Manage users</a>
+    <a href="{{ route('organisation.users.index') }}">Manage users</a>
 </div>
 @endif
 
 @if($showReports)
 <div class="card">
     <h3>Reports</h3>
-    <a href="#">View reports</a>
+    <a href="{{ route('clinic.appointments.index') }}">View reports</a>
 </div>
 @endif
 

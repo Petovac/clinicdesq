@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
             'role'  => \App\Http\Middleware\RoleMiddleware::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
+            'package.feature' => \App\Http\Middleware\CheckPackageFeature::class,
         ]);
     
     })

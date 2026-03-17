@@ -22,6 +22,12 @@ class Vet extends Authenticatable
 
         'is_active',
         'role',
+
+        // Auth & files
+        'password',
+        'signature_path',
+        'license_path',
+        'certificate_paths',
     ];
 
     protected $hidden = [
@@ -31,7 +37,13 @@ class Vet extends Authenticatable
 
     protected $casts = [
         'password' => 'hashed',
+        'certificate_paths' => 'array',
     ];
+
+    public function getSignatureUrlAttribute(): ?string
+    {
+        return $this->signature_path ? asset('storage/' . $this->signature_path) : null;
+    }
 
     /**
      * A vet can belong to many clinics

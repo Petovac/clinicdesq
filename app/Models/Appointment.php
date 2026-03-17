@@ -24,6 +24,11 @@ class Appointment extends Model
         'weight',
         'pet_age_at_visit',
         'status',
+        'appointment_number',
+        'created_by',
+        'checked_in_at',
+        'consultation_started_at',
+        'completed_at',
     ];
 
     protected $casts = [
@@ -109,5 +114,10 @@ class Appointment extends Model
     public function bill()
     {
         return $this->hasOne(\App\Models\Bill::class);
+    }
+
+    public function labOrders()
+    {
+        return $this->hasMany(\App\Models\LabOrder::class);
     }
 }

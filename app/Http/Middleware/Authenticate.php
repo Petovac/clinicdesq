@@ -17,6 +17,11 @@ class Authenticate extends Middleware
             return route('vet.login');
         }
 
+        // Pet parent panel → parent login
+        if ($request->is('parent/*')) {
+            return route('parent.login');
+        }
+
         // Everything else → staff login (/login)
         return route('login');
     }

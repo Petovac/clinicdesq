@@ -32,6 +32,18 @@ return [
             'driver' => 'session',
             'provider' => 'vets',
         ],
+
+        // Pet parents (phone-only login)
+        'pet_parent' => [
+            'driver' => 'session',
+            'provider' => 'pet_parents',
+        ],
+
+        // Lab users (external/in-house lab staff)
+        'lab' => [
+            'driver' => 'session',
+            'provider' => 'lab_users',
+        ],
     ],
 
     /*
@@ -50,6 +62,16 @@ return [
         'vets' => [
             'driver' => 'eloquent',
             'model' => App\Models\Vet::class,
+        ],
+
+        'pet_parents' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\PetParent::class,
+        ],
+
+        'lab_users' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\LabUser::class,
         ],
     ],
 

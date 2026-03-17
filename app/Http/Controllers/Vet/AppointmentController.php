@@ -13,6 +13,7 @@ use App\Models\Prescription;
 use App\Models\PrescriptionItem;
 use App\Models\CaseSheet;
 use App\Models\PriceListItem;
+use App\Models\InjectionRouteFee;
 
 class AppointmentController extends Controller
 {
@@ -22,6 +23,11 @@ class AppointmentController extends Controller
      */
     public function create()
     {
+        if (!session()->has('active_clinic_id')) {
+            return redirect()->route('vet.dashboard')
+                ->with('error', 'Please select a clinic first before creating an appointment.');
+        }
+
         return view('vet.appointments.create');
     }
 
@@ -32,7 +38,10 @@ class AppointmentController extends Controller
     public function searchPetParent(Request $request)
     {
         // Vet must be inside clinic to create appointment
-        abort_if(!session()->has('active_clinic_id'), 403);
+        if (!session()->has('active_clinic_id')) {
+            return redirect()->route('vet.dashboard')
+                ->with('error', 'Please select a clinic first before creating an appointment.');
+        }
     
         $request->validate([
             'mobile' => 'required|string',
@@ -115,7 +124,7 @@ class AppointmentController extends Controller
             'scheduled_at'      => $request->scheduled_at,
             'weight'            => $request->weight,
             'pet_age_at_visit'  => $petAgeAtVisit,
-            'created_by' => auth()->id(),
+            'created_by' => auth('vet')->id(),
             'status'            => 'scheduled',
         ]);
 
@@ -132,7 +141,7 @@ class AppointmentController extends Controller
         }
 
         $appointment->update([
-            'vet_id' => 1, // TEMP until auth
+            'vet_id' => auth('vet')->id(),
             'status' => 'scheduled',
         ]);
 
@@ -161,14 +170,17 @@ class AppointmentController extends Controller
             'pet.petParent',
             'caseSheet',
             'prescription.items',
-            'diagnosticReports'
+            'treatments.drugGeneric',
+            'treatments.priceItem',
+            'diagnosticReports',
+            'labOrders.tests',
         ]);
     
         // Load pet history (read-only)
         $petHistory = Appointment::where('pet_id', $appointment->pet_id)
             ->where('id', '!=', $appointment->id)
             ->orderByDesc('scheduled_at')
-            ->with(['caseSheet', 'prescription.items'])
+            ->with(['caseSheet', 'prescription.items', 'treatments.drugGeneric', 'treatments.priceItem'])
             ->get();
     
             return view('vet.appointments.case', [
@@ -189,7 +201,7 @@ class AppointmentController extends Controller
         abort_if($appointment->clinic_id !== $clinicId, 403);
 
         // History is read-only, but still clinic-restricted
-        $appointment->load(['caseSheet', 'prescription.items']);
+        $appointment->load(['caseSheet', 'prescription.items', 'treatments.drugGeneric', 'treatments.priceItem', 'diagnosticReports']);
 
         return view('vet.appointments.partials.history_case', [
             'appointment' => $appointment,
@@ -236,7 +248,7 @@ class AppointmentController extends Controller
             $billingQuantity = $invItem?->is_multi_use ? $request->dose_volume_ml : 1;
         }
 
-        $appointment->treatments()->create([
+        $treatment = $appointment->treatments()->create([
             'price_list_item_id' => $priceListItemId,
             'drug_generic_id'    => $request->drug_generic_id,
             'drug_brand_id'      => $request->drug_brand_id,
@@ -247,10 +259,19 @@ class AppointmentController extends Controller
             'billing_quantity'   => $billingQuantity,
         ]);
 
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'id' => $treatment->id]);
     }
 
+    public function deleteTreatment(Appointment $appointment, \App\Models\AppointmentTreatment $treatment)
+    {
+        $clinicId = session('active_clinic_id') ?? 1;
+        abort_if($appointment->clinic_id !== $clinicId, 403);
+        abort_if($treatment->appointment_id !== $appointment->id, 403);
 
+        $treatment->delete();
+
+        return response()->json(['success' => true]);
+    }
 
     public function createPrescription(Appointment $appointment)
     {
@@ -266,7 +287,7 @@ class AppointmentController extends Controller
                 ->with('error', 'Prescription already exists.');
         }
 
-        $appointment->load('pet');
+        $appointment->load('pet', 'clinic.organisation', 'vet');
 
         return view('vet.prescriptions.create', compact('appointment'));
     }
@@ -275,7 +296,9 @@ class AppointmentController extends Controller
     {
         $appointment = Appointment::with([
             'pet',
-            'prescription.items'
+            'prescription.items',
+            'clinic.organisation',
+            'vet',
         ])->findOrFail($appointmentId);
 
         abort_if($appointment->status === 'completed', 403);
@@ -358,11 +381,11 @@ class AppointmentController extends Controller
                         'frequency'         => $item['frequency'] ?? null,
                         'duration'          => $item['duration'] ?? null,
                         'instructions'      => $item['instructions'] ?? null,
-                        'drug_generic_id'   => $item['drug_generic_id'] ?: null,
-                        'inventory_item_id' => $item['inventory_item_id'] ?: null,
-                        'strength_value'    => $item['strength_value'] ?: null,
-                        'strength_unit'     => $item['strength_unit'] ?: null,
-                        'form'              => $item['form'] ?: null,
+                        'drug_generic_id'   => ($item['drug_generic_id'] ?? null) ?: null,
+                        'inventory_item_id' => ($item['inventory_item_id'] ?? null) ?: null,
+                        'strength_value'    => ($item['strength_value'] ?? null) ?: null,
+                        'strength_unit'     => ($item['strength_unit'] ?? null) ?: null,
+                        'form'              => ($item['form'] ?? null) ?: null,
                     ]);
                 }
             }
@@ -382,16 +405,26 @@ class AppointmentController extends Controller
 
         abort_if($appointment->clinic_id !== $clinicId, 403);
 
-        $appointment->load(['caseSheet', 'pet', 'treatments.priceItem']);
+        $appointment->load(['caseSheet', 'pet', 'clinic.organisation', 'vet', 'treatments.priceItem', 'treatments.drugGeneric', 'labOrders.tests']);
 
         $priceListItems = PriceListItem::where('is_active',1)->get();
         $drugGenerics = \App\Models\DrugGeneric::orderBy('name')->get();
+
+        // Get org's active injection routes for the route selector
+        $orgId = $appointment->clinic->organisation_id ?? null;
+        $injectionRoutes = $orgId
+            ? InjectionRouteFee::where('organisation_id', $orgId)
+                ->where('is_active', true)
+                ->orderByRaw("FIELD(route_code, 'IV','IM','SC','ID','PO','IO','IT')")
+                ->get()
+            : collect();
 
         return view('vet.case_sheets.edit', [
             'appointment' => $appointment,
             'caseSheet'   => $appointment->caseSheet,
             'priceListItems' => $priceListItems,
-            'drugGenerics' => $drugGenerics
+            'drugGenerics' => $drugGenerics,
+            'injectionRoutes' => $injectionRoutes,
         ]);
     }
 
@@ -407,6 +440,15 @@ class AppointmentController extends Controller
                 'presenting_complaint',
                 'history',
                 'clinical_examination',
+                'temperature',
+                'heart_rate',
+                'respiratory_rate',
+                'capillary_refill_time',
+                'mucous_membrane',
+                'hydration_status',
+                'lymph_nodes',
+                'body_condition_score',
+                'pain_score',
                 'differentials',
                 'diagnosis',
                 'treatment_given',
@@ -421,6 +463,27 @@ class AppointmentController extends Controller
             ->with('success', 'Case sheet saved successfully');
     }
 
+
+    public function saveFollowup(Request $request, Appointment $appointment)
+    {
+        $clinicId = session('active_clinic_id');
+        abort_if($appointment->clinic_id !== $clinicId, 403);
+        abort_if($appointment->vet_id !== auth('vet')->id(), 403);
+
+        $request->validate([
+            'prognosis'       => 'nullable|in:good,guarded,poor,grave,hopeless',
+            'followup_date'   => 'nullable|date|after_or_equal:today',
+            'followup_reason' => 'nullable|string|max:1000',
+        ]);
+
+        $caseSheet = CaseSheet::firstOrCreate(
+            ['appointment_id' => $appointment->id]
+        );
+
+        $caseSheet->update($request->only(['prognosis', 'followup_date', 'followup_reason']));
+
+        return response()->json(['success' => true]);
+    }
 
     public function drugDosage(Request $request, $genericId)
     {
@@ -443,38 +506,75 @@ class AppointmentController extends Controller
     public function drugStrengths($genericId)
     {
         $generic = \App\Models\DrugGeneric::find($genericId);
-        if (!$generic) {
-            return response()->json([]);
-        }
+        if (!$generic) return response()->json([]);
 
         $clinicId = session('active_clinic_id');
         $clinic   = \App\Models\Clinic::find($clinicId);
-        if (!$clinic) {
-            return response()->json([]);
-        }
+        if (!$clinic) return response()->json([]);
 
         $orgId = $clinic->organisation_id;
 
-        // Find inventory items for this org that belong to this generic
-        // (via direct drug_generic_id FK or by matching generic_name text)
-        $items = \App\Models\InventoryItem::where('organisation_id', $orgId)
+        // 1. All org inventory items linked to this generic (in-stock OR not)
+        $invItems = \App\Models\InventoryItem::where('organisation_id', $orgId)
             ->where('item_type', 'drug')
             ->where(function ($q) use ($genericId, $generic) {
                 $q->where('drug_generic_id', $genericId)
                   ->orWhere('generic_name', $generic->name);
             })
-            // Only items that have stock in this clinic
-            ->whereHas('allBatches', function ($q) use ($clinicId) {
-                $q->where('clinic_id', $clinicId)
-                  ->where('quantity', '>', 0)
-                  ->where(function ($q2) {
-                      $q2->whereNull('expiry_date')
-                         ->orWhere('expiry_date', '>=', now()->toDateString());
-                  });
-            })
-            ->get(['id as inventory_item_id', 'name', 'strength_value', 'strength_unit', 'package_type as form', 'is_multi_use', 'unit_volume_ml']);
+            ->get();
 
-        return response()->json($items);
+        $results = [];
+        $coveredKeys = [];
+
+        foreach ($invItems as $item) {
+            $inStock = \App\Models\InventoryBatch::where('inventory_item_id', $item->id)
+                ->where('clinic_id', $clinicId)
+                ->where('quantity', '>', 0)
+                ->where(function ($q) {
+                    $q->whereNull('expiry_date')
+                       ->orWhere('expiry_date', '>=', now()->toDateString());
+                })
+                ->exists();
+
+            $results[] = [
+                'inventory_item_id' => $item->id,
+                'name'              => $item->name,
+                'strength_value'    => $item->strength_value,
+                'strength_unit'     => $item->strength_unit,
+                'form'              => $item->package_type,
+                'is_multi_use'      => (bool) $item->is_multi_use,
+                'unit_volume_ml'    => $item->unit_volume_ml,
+                'in_stock'          => $inStock,
+                'source'            => 'inventory',
+            ];
+            $coveredKeys[] = $item->strength_value . '_' . $item->strength_unit;
+        }
+
+        // 2. KB brands for this generic that are NOT already covered by an inventory item
+        $kbBrands = \App\Models\DrugBrand::where('generic_id', $genericId)->get();
+        foreach ($kbBrands as $brand) {
+            $key = $brand->strength_value . '_' . $brand->strength_unit;
+            if (in_array($key, $coveredKeys)) continue; // already shown via inventory
+
+            $results[] = [
+                'inventory_item_id' => null,
+                'name'              => $brand->brand_name,
+                'strength_value'    => $brand->strength_value,
+                'strength_unit'     => $brand->strength_unit,
+                'form'              => $brand->form,
+                'is_multi_use'      => true,
+                'unit_volume_ml'    => $brand->pack_size,
+                'in_stock'          => false,
+                'source'            => 'kb',
+            ];
+        }
+
+        // In-stock items first, then by strength ascending
+        usort($results, fn($a, $b) =>
+            $b['in_stock'] <=> $a['in_stock'] ?: $a['strength_value'] <=> $b['strength_value']
+        );
+
+        return response()->json($results);
     }
 
     /**
@@ -525,67 +625,113 @@ class AppointmentController extends Controller
         $clinicId = $appointment->clinic_id;
         $clinic   = \App\Models\Clinic::find($clinicId);
         $orgId    = $clinic?->organisation_id;
+        $species  = strtolower($appointment->pet?->species ?? 'dog');
 
         if (strlen($q) < 2) {
             return response()->json([]);
         }
 
-        // 1. KB matches — DrugGeneric + DrugBrand
-        $kbResults = \DB::table('drug_generics as dg')
+        // Helper: get dosage info for a generic + species
+        $getDosage = function ($genericId) use ($species) {
+            if (!$genericId) return null;
+            $d = \App\Models\DrugDosage::where('generic_id', $genericId)
+                ->where('species', $species)
+                ->first();
+            if (!$d) {
+                // Fallback to any species
+                $d = \App\Models\DrugDosage::where('generic_id', $genericId)->first();
+            }
+            if (!$d) return null;
+            return [
+                'dose_min'   => (float) $d->dose_min,
+                'dose_max'   => (float) $d->dose_max,
+                'dose_unit'  => $d->dose_unit,
+                'frequencies'=> is_string($d->frequencies) ? json_decode($d->frequencies, true) : ($d->frequencies ?? []),
+                'routes'     => is_string($d->routes) ? json_decode($d->routes, true) : ($d->routes ?? []),
+            ];
+        };
+
+        // Helper: check if an inventory item has stock at this clinic
+        $hasStock = function ($inventoryItemId) use ($clinicId) {
+            if (!$inventoryItemId) return false;
+            return \App\Models\InventoryBatch::where('inventory_item_id', $inventoryItemId)
+                ->where('clinic_id', $clinicId)
+                ->where('quantity', '>', 0)
+                ->exists();
+        };
+
+        // 1. KB matches — DrugGeneric + DrugBrand (search by generic name OR brand name)
+        $kbRows = \DB::table('drug_generics as dg')
             ->join('drug_brands as db', 'dg.id', '=', 'db.generic_id')
             ->where(function ($query) use ($q) {
-                $query->where('dg.name', 'like', "{$q}%")
-                      ->orWhere('db.brand_name', 'like', "{$q}%");
+                $query->where('dg.name', 'like', "%{$q}%")
+                      ->orWhere('db.brand_name', 'like', "%{$q}%");
             })
-            ->select(
-                'dg.id as drug_generic_id',
-                'db.id as drug_brand_id',
-                \DB::raw("CONCAT(db.brand_name, ' ', db.strength_value, db.strength_unit, ' (', db.form, ')') as display_name"),
-                'db.strength_value',
-                'db.strength_unit',
-                'db.form',
-                \DB::raw("NULL as inventory_item_id")
-            )
-            ->limit(10)
+            ->select('dg.id as drug_generic_id', 'dg.name as generic_name',
+                     'db.id as drug_brand_id', 'db.brand_name',
+                     'db.strength_value', 'db.strength_unit', 'db.form', 'db.pack_size')
+            ->limit(15)
             ->get();
 
-        // 2. Tag which KB results have matching inventory in this clinic
-        $results = $kbResults->map(function ($row) use ($orgId, $clinicId) {
+        $results     = [];
+        $coveredInvIds = [];
+
+        foreach ($kbRows as $row) {
+            // Find matching org inventory item (by drug_generic_id + matching strength)
             $invItem = \App\Models\InventoryItem::where('organisation_id', $orgId)
-                ->where('drug_brand_id', $row->drug_brand_id)
-                ->whereHas('allBatches', function ($q) use ($clinicId) {
-                    $q->where('clinic_id', $clinicId)->where('quantity', '>', 0);
-                })
+                ->where('drug_generic_id', $row->drug_generic_id)
+                ->where('strength_value', $row->strength_value)
+                ->where('strength_unit', $row->strength_unit)
                 ->first();
 
-            $row->inventory_item_id = $invItem?->id;
-            $row->in_inventory      = $invItem !== null;
-            return $row;
-        });
+            // Fallback: match by drug_brand_id
+            if (!$invItem) {
+                $invItem = \App\Models\InventoryItem::where('organisation_id', $orgId)
+                    ->where('drug_brand_id', $row->drug_brand_id)
+                    ->first();
+            }
 
-        // 3. Also search org inventory items directly for free-text matches
+            if ($invItem) $coveredInvIds[] = $invItem->id;
+
+            $results[] = [
+                'drug_generic_id'   => $row->drug_generic_id,
+                'drug_brand_id'     => $row->drug_brand_id,
+                'display_name'      => $row->brand_name . ' ' . $row->strength_value . $row->strength_unit . ' (' . $row->form . ')',
+                'strength_value'    => $row->strength_value,
+                'strength_unit'     => $row->strength_unit,
+                'form'              => $row->form,
+                'inventory_item_id' => $invItem?->id,
+                'in_inventory'      => $invItem && $hasStock($invItem->id),
+                'dosage'            => $getDosage($row->drug_generic_id),
+            ];
+        }
+
+        // 2. Org inventory items not covered by KB search
         $invOnly = \App\Models\InventoryItem::where('organisation_id', $orgId)
             ->where('item_type', 'drug')
-            ->where('name', 'like', "{$q}%")
-            ->whereNull('drug_brand_id') // not already covered by KB
-            ->whereHas('allBatches', function ($q) use ($clinicId) {
-                $q->where('clinic_id', $clinicId)->where('quantity', '>', 0);
-            })
+            ->where('name', 'like', "%{$q}%")
+            ->whereNotIn('id', $coveredInvIds)
             ->limit(5)
             ->get()
-            ->map(function ($item) {
-                return (object) [
-                    'drug_generic_id'  => $item->drug_generic_id,
-                    'drug_brand_id'    => null,
-                    'display_name'     => $item->name . ' ' . $item->strength_value . $item->strength_unit,
-                    'strength_value'   => $item->strength_value,
-                    'strength_unit'    => $item->strength_unit,
-                    'form'             => $item->package_type,
-                    'inventory_item_id'=> $item->id,
-                    'in_inventory'     => true,
+            ->map(function ($item) use ($hasStock, $getDosage) {
+                return [
+                    'drug_generic_id'   => $item->drug_generic_id,
+                    'drug_brand_id'     => null,
+                    'display_name'      => $item->name . ($item->strength_value ? ' ' . $item->strength_value . $item->strength_unit : ''),
+                    'strength_value'    => $item->strength_value,
+                    'strength_unit'     => $item->strength_unit,
+                    'form'              => $item->package_type,
+                    'inventory_item_id' => $item->id,
+                    'in_inventory'      => $hasStock($item->id),
+                    'dosage'            => $getDosage($item->drug_generic_id),
                 ];
             });
 
-        return response()->json($results->concat($invOnly)->values());
+        $all = array_merge($results, $invOnly->toArray());
+
+        // In-stock first
+        usort($all, fn($a, $b) => $b['in_inventory'] <=> $a['in_inventory']);
+
+        return response()->json(array_values($all));
     }
 }

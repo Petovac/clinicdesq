@@ -18,7 +18,8 @@ body { background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, "S
 .bill-header { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; }
 .bill-header h2 { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
 .bill-header p  { margin: 0; font-size: 14px; color: var(--muted); }
-.section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 16px; overflow: hidden; }
+.section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 16px; }
+.section-clip { overflow: hidden; }
 .section-title { padding: 12px 20px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: #f9fafb; border-bottom: 1px solid var(--border); }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 12px 20px; font-size: 14px; text-align: left; }
@@ -47,22 +48,69 @@ tr + tr td { border-top: 1px solid #f3f4f6; }
 
 <div class="bill-wrap">
 
-    <div class="bill-header">
-        <h2>
-            Bill
-            @if($bill->isConfirmed())
-                <span class="badge badge-approved" style="font-size:14px;margin-left:8px;">Confirmed</span>
-            @else
-                <span class="badge badge-pending" style="font-size:14px;margin-left:8px;">Draft</span>
-            @endif
-        </h2>
-        <p>
-            <strong>{{ $appointment->pet->name }}</strong>
-            &nbsp;·&nbsp;{{ \Carbon\Carbon::parse($appointment->scheduled_at)->format('d M Y') }}
-            &nbsp;·&nbsp;{{ optional($appointment->vet)->name ?? '—' }}
-            &nbsp;·&nbsp;{{ optional($appointment->clinic)->name ?? '—' }}
-        </p>
+    <div class="bill-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+            <h2>
+                Bill
+                @if($bill->isConfirmed())
+                    <span class="badge badge-approved" style="font-size:14px;margin-left:8px;">Confirmed</span>
+                @else
+                    <span class="badge badge-pending" style="font-size:14px;margin-left:8px;">Draft</span>
+                @endif
+            </h2>
+            <p>
+                <strong>{{ $appointment->pet->name }}</strong>
+                &nbsp;·&nbsp;{{ \Carbon\Carbon::parse($appointment->scheduled_at)->format('d M Y') }}
+                &nbsp;·&nbsp;{{ optional($appointment->vet)->name ?? '—' }}
+                &nbsp;·&nbsp;{{ optional($appointment->clinic)->name ?? '—' }}
+            </p>
+        </div>
+        @if($appointment->prescription && $appointment->prescription->items->count())
+        <button type="button" class="btn btn-grey" onclick="document.getElementById('rxModal').style.display='flex'" style="display:flex;align-items:center;gap:6px;white-space:nowrap;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            Prescription
+        </button>
+        @endif
     </div>
+
+    {{-- Prescription Preview Modal --}}
+    @if($appointment->prescription && $appointment->prescription->items->count())
+    <div id="rxModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:999;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+        <div style="background:#fff;border-radius:14px;max-width:700px;width:95%;max-height:80vh;overflow-y:auto;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h3 style="margin:0;font-size:18px;">Prescription — {{ $appointment->pet->name }}</h3>
+                <button onclick="document.getElementById('rxModal').style.display='none'" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6b7280;">&times;</button>
+            </div>
+            <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr style="border-bottom:2px solid #e5e7eb;">
+                        <th style="text-align:left;padding:8px 10px;font-size:12px;color:#6b7280;">Medicine</th>
+                        <th style="text-align:left;padding:8px 10px;font-size:12px;color:#6b7280;">Dosage</th>
+                        <th style="text-align:left;padding:8px 10px;font-size:12px;color:#6b7280;">Frequency</th>
+                        <th style="text-align:left;padding:8px 10px;font-size:12px;color:#6b7280;">Duration</th>
+                        <th style="text-align:left;padding:8px 10px;font-size:12px;color:#6b7280;">Instructions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach($appointment->prescription->items as $rxItem)
+                    <tr style="border-bottom:1px solid #f3f4f6;">
+                        <td style="padding:10px;font-size:14px;font-weight:500;">{{ $rxItem->medicine }}</td>
+                        <td style="padding:10px;font-size:14px;">{{ $rxItem->dosage ?: '—' }}</td>
+                        <td style="padding:10px;font-size:14px;">{{ $rxItem->frequency ?: '—' }}</td>
+                        <td style="padding:10px;font-size:14px;">{{ $rxItem->duration ?: '—' }}</td>
+                        <td style="padding:10px;font-size:13px;color:#6b7280;">{{ $rxItem->instructions ?: '—' }}</td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+            @if($appointment->prescription->notes)
+            <div style="margin-top:14px;padding:10px 12px;background:#f9fafb;border-radius:8px;font-size:13px;color:#6b7280;">
+                <strong>Notes:</strong> {{ $appointment->prescription->notes }}
+            </div>
+            @endif
+        </div>
+    </div>
+    @endif
 
     @if(session('success'))
         <div class="alert-success">✅ {{ session('success') }}</div>
@@ -74,7 +122,7 @@ tr + tr td { border-top: 1px solid #f3f4f6; }
     {{-- VISIT FEE --}}
     @php $visitItems = $bill->items->where('source','visit_fee'); @endphp
     @if($visitItems->count())
-    <div class="section">
+    <div class="section section-clip">
         <div class="section-title">Consultation / Visit Fee</div>
         <table>
             <thead><tr><th>Item</th><th>Amount</th><th>Status</th>@if($bill->isDraft())<th></th>@endif</tr></thead>
@@ -97,17 +145,22 @@ tr + tr td { border-top: 1px solid #f3f4f6; }
     {{-- INJECTIONS --}}
     @php $injections = $bill->items->where('source','injection'); @endphp
     @if($injections->count())
-    <div class="section">
+    <div class="section section-clip">
         <div class="section-title">Injectable Drugs (administered)</div>
         <table>
-            <thead><tr><th>Drug</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
+            <thead><tr><th>Drug</th><th>Volume</th><th>Drug Cost</th><th>Route Fee</th><th>Total</th></tr></thead>
             <tbody>
             @foreach($injections as $item)
+            @php
+                $drugCost = round($item->price * $item->quantity, 2);
+                $routeFee = round($item->total - $drugCost, 2);
+            @endphp
             <tr>
                 <td>{{ $item->description ?? optional($item->priceItem)->name ?? '—' }}</td>
-                <td>{{ $item->quantity }}</td>
-                <td>₹{{ number_format($item->price, 2) }}</td>
-                <td>₹{{ number_format($item->total, 2) }}</td>
+                <td>{{ number_format($item->quantity, 1) }} ml</td>
+                <td>₹{{ number_format($drugCost, 2) }}</td>
+                <td>{{ $routeFee > 0 ? '₹' . number_format($routeFee, 2) : '—' }}</td>
+                <td style="font-weight:600;">₹{{ number_format($item->total, 2) }}</td>
             </tr>
             @endforeach
             </tbody>
@@ -118,7 +171,7 @@ tr + tr td { border-top: 1px solid #f3f4f6; }
     {{-- PROCEDURES --}}
     @php $procedures = $bill->items->where('source','procedure'); @endphp
     @if($procedures->count())
-    <div class="section">
+    <div class="section section-clip">
         <div class="section-title">Procedures</div>
         <table>
             <thead><tr><th>Procedure</th><th>Amount</th></tr></thead>
@@ -137,7 +190,7 @@ tr + tr td { border-top: 1px solid #f3f4f6; }
     {{-- PRESCRIPTION REVIEW --}}
     @php $rxItems = $bill->items->where('source','prescription'); @endphp
     @if($rxItems->count())
-    <div class="section">
+    <div class="section section-clip">
         <div class="section-title">
             Prescription Items — Staff Review
             @if($bill->isDraft())
@@ -198,17 +251,20 @@ tr + tr td { border-top: 1px solid #f3f4f6; }
     {{-- MANUAL / ADDITIONAL ITEMS --}}
     @php $manualItems = $bill->items->where('source','manual'); @endphp
     @if($manualItems->count())
-    <div class="section">
+    <div class="section section-clip">
         <div class="section-title">Additional Items</div>
         <table>
-            <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+            <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th>@if($bill->isDraft())<th></th>@endif</tr></thead>
             <tbody>
             @foreach($manualItems as $item)
-            <tr>
+            <tr id="manual-row-{{ $item->id }}">
                 <td>{{ $item->description ?? optional($item->priceItem)->name ?? '—' }}</td>
                 <td>{{ $item->quantity }}</td>
                 <td>₹{{ number_format($item->price, 2) }}</td>
                 <td>₹{{ number_format($item->total, 2) }}</td>
+                @if($bill->isDraft())
+                <td><button class="btn btn-danger" onclick="rejectItem({{ $item->id }})">Remove</button></td>
+                @endif
             </tr>
             @endforeach
             </tbody>
@@ -220,16 +276,17 @@ tr + tr td { border-top: 1px solid #f3f4f6; }
     @if($bill->isDraft())
     <div class="section">
         <div class="section-title">Add Item</div>
-        <form method="POST" action="{{ route('billing.item.add', $bill->id) }}">
+        <form method="POST" action="{{ route('clinic.billing.item.add', $bill->id) }}">
             @csrf
-            <div class="add-item-row">
-                <select name="price_list_item_id" required>
-                    <option value="">Select from price list…</option>
-                    @foreach($priceItems as $pi)
-                        <option value="{{ $pi->id }}">{{ $pi->name }} — ₹{{ number_format($pi->price, 2) }}</option>
-                    @endforeach
-                </select>
-                <input type="number" name="quantity" value="1" min="0.001" step="0.001" placeholder="Qty">
+            <input type="hidden" name="price_list_item_id" id="addItemId">
+            <div class="add-item-row" style="position:relative;">
+                <div style="flex:1;position:relative;">
+                    <input type="text" id="addItemSearch" class="form-control" placeholder="Type to search items..." autocomplete="off"
+                           style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:14px;">
+                    <div id="addItemDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;max-height:250px;overflow-y:auto;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.12);margin-top:4px;"></div>
+                </div>
+                <input type="number" name="quantity" value="1" min="0.001" step="0.001" placeholder="Qty"
+                       style="width:80px;padding:9px 10px;border:1px solid var(--border);border-radius:7px;font-size:14px;text-align:center;">
                 <button type="submit" class="btn btn-grey">+ Add</button>
             </div>
         </form>
@@ -244,7 +301,7 @@ tr + tr td { border-top: 1px solid #f3f4f6; }
         </div>
 
         @if($bill->isDraft())
-        <form method="POST" action="{{ route('billing.confirm', $bill->id) }}">
+        <form method="POST" action="{{ route('clinic.billing.confirm', $bill->id) }}">
             @csrf
             <button type="submit" class="btn btn-primary">
                 Confirm Bill &amp; Update Inventory →
@@ -257,12 +314,15 @@ tr + tr td { border-top: 1px solid #f3f4f6; }
 
 </div>
 
+@php
+    $priceItemsJson = $priceItems->map(fn($p) => ['id' => $p->id, 'name' => $p->name, 'price' => $p->price, 'type' => $p->item_type])->values();
+@endphp
 <script>
 const _csrf = '{{ csrf_token() }}';
 
 async function approveItem(id) {
     const qty = parseFloat(document.getElementById('qty-' + id)?.value || 1);
-    const res  = await fetch('/bill-items/' + id, {
+    const res  = await fetch('/clinic/bill-items/' + id, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': _csrf },
         body: JSON.stringify({ status: 'approved', quantity: qty })
@@ -277,7 +337,7 @@ async function approveItem(id) {
 }
 
 async function rejectItem(id) {
-    const res  = await fetch('/bill-items/' + id, {
+    const res  = await fetch('/clinic/bill-items/' + id, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': _csrf },
         body: JSON.stringify({ status: 'rejected' })
@@ -290,6 +350,47 @@ async function rejectItem(id) {
         const actionCell = document.getElementById('action-' + id);
         if (actionCell) actionCell.innerHTML = '<span style="font-size:13px;color:var(--muted);">Removed</span>';
     }
+}
+
+// Searchable Add Item dropdown
+const priceItems = @json($priceItemsJson);
+const searchInput = document.getElementById('addItemSearch');
+const dropdown = document.getElementById('addItemDropdown');
+const hiddenId = document.getElementById('addItemId');
+
+if (searchInput) {
+    searchInput.addEventListener('input', function() {
+        const q = this.value.toLowerCase().trim();
+        if (q.length < 1) { dropdown.style.display = 'none'; return; }
+        const matches = priceItems.filter(p => p.name.toLowerCase().includes(q)).slice(0, 15);
+        if (matches.length === 0) {
+            dropdown.innerHTML = '<div style="padding:10px 14px;color:#9ca3af;font-size:13px;">No items found</div>';
+        } else {
+            dropdown.innerHTML = matches.map(p =>
+                '<div class="add-item-option" data-id="'+p.id+'" data-name="'+p.name+'" style="padding:10px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;" onmouseover="this.style.background=\'#f0f7ff\'" onmouseout="this.style.background=\'#fff\'">' +
+                '<span>' + p.name + '</span><span style="color:#6b7280;font-size:13px;">₹' + parseFloat(p.price).toFixed(2) + '</span></div>'
+            ).join('');
+        }
+        dropdown.style.display = 'block';
+    });
+
+    searchInput.addEventListener('focus', function() {
+        if (this.value.trim().length >= 1) this.dispatchEvent(new Event('input'));
+    });
+
+    dropdown.addEventListener('click', function(e) {
+        const opt = e.target.closest('.add-item-option');
+        if (!opt) return;
+        hiddenId.value = opt.dataset.id;
+        searchInput.value = opt.dataset.name;
+        dropdown.style.display = 'none';
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
 }
 </script>
 

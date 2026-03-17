@@ -54,17 +54,28 @@ class User extends Authenticatable
         ];
     }
 
-    public function assignedClinics()
+    public function clinics()
     {
-        return $this->belongsToMany(
-            Clinic::class,
-            'clinic_user_assignments'
-        );
+        return $this->belongsToMany(Clinic::class, 'clinic_user');
     }
 
     public function clinic()
     {
         return $this->belongsTo(Clinic::class);
+    }
+
+    /**
+     * Get all clinic IDs this user has access to (single clinic_id + pivot clinics).
+     */
+    public function assignedClinicIds(): array
+    {
+        $ids = $this->clinics()->pluck('clinics.id')->toArray();
+
+        if ($this->clinic_id && !in_array($this->clinic_id, $ids)) {
+            $ids[] = $this->clinic_id;
+        }
+
+        return $ids;
     }
 
 

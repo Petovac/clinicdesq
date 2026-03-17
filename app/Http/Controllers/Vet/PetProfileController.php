@@ -16,7 +16,11 @@ class PetProfileController extends Controller
             'petParent',
             'appointments' => function ($q) {
                 $q->orderBy('scheduled_at', 'desc');
-            }
+            },
+            'appointments.caseSheet',
+            'appointments.prescription.items',
+            'appointments.treatments.drugGeneric',
+            'appointments.treatments.priceItem',
         ])->findOrFail($id);
         
 

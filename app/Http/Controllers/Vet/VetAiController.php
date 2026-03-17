@@ -33,7 +33,23 @@ class VetAiController extends Controller
             'presenting_complaint' => 'nullable|string',
             'history'              => 'nullable|string',
             'clinical_examination' => 'nullable|string',
+            'differentials'        => 'nullable|string',
             'diagnosis'            => 'nullable|string',
+            'treatment_given'      => 'nullable|string',
+            'procedures_done'      => 'nullable|string',
+            'further_plan'         => 'nullable|string',
+            'advice'               => 'nullable|string',
+
+            // ✅ Vitals
+            'temperature'          => 'nullable|string',
+            'heart_rate'           => 'nullable|string',
+            'respiratory_rate'     => 'nullable|string',
+            'capillary_refill_time'=> 'nullable|string',
+            'mucous_membrane'      => 'nullable|string',
+            'hydration_status'     => 'nullable|string',
+            'lymph_nodes'          => 'nullable|string',
+            'body_condition_score' => 'nullable|string',
+            'pain_score'           => 'nullable|string',
 
             // ✅ Pet context
             'species'              => 'nullable|string',
@@ -41,6 +57,10 @@ class VetAiController extends Controller
             'gender'               => 'nullable|string',
             'pet_age'              => 'nullable|string',
             'body_weight'          => 'nullable|string',
+
+            // ✅ Structured treatments from live form
+            'treatments'           => 'nullable|string',
+            'procedures'           => 'nullable|string',
         ]);
 
         $insights = $ai->clinicalInsights($caseData);
@@ -70,6 +90,9 @@ class VetAiController extends Controller
             'pet',
             'caseSheet',
             'diagnosticReports.files',
+            'treatments.drugGeneric',
+            'treatments.priceItem',
+            'prescription.items',
         ]);
 
         // 🕓 Collect brief relevant history (no AI)
@@ -77,7 +100,9 @@ class VetAiController extends Controller
         $pastAppointments = Appointment::with([
             'caseSheet',
             'prescription.items',
-            'diagnosticReports.files'
+            'diagnosticReports.files',
+            'treatments.drugGeneric',
+            'treatments.priceItem',
         ])
         ->where('pet_id', $appointment->pet_id)
         ->where('id', '!=', $appointment->id)
@@ -104,9 +129,32 @@ class VetAiController extends Controller
                     }
                 }
             
-                // 💊 Prescription
+                // 💉 In-clinic Treatments (drugs & procedures)
+                if ($past->treatments->isNotEmpty()) {
+                    $drugTx = $past->treatments->whereNotNull('drug_generic_id');
+                    $procTx = $past->treatments->whereNull('drug_generic_id');
+
+                    if ($drugTx->isNotEmpty()) {
+                        $historyText .= "In-clinic Drug Treatments:\n";
+                        foreach ($drugTx as $tx) {
+                            $historyText .= "- " . (optional($tx->drugGeneric)->name ?? 'Unknown drug');
+                            if ($tx->dose_mg) $historyText .= " | Dose: {$tx->dose_mg} mg";
+                            if ($tx->dose_volume_ml) $historyText .= " | Vol: {$tx->dose_volume_ml} ml";
+                            if ($tx->route) $historyText .= " | Route: {$tx->route}";
+                            $historyText .= "\n";
+                        }
+                    }
+                    if ($procTx->isNotEmpty()) {
+                        $historyText .= "Procedures Performed:\n";
+                        foreach ($procTx as $tx) {
+                            $historyText .= "- " . (optional($tx->priceItem)->name ?? 'Unknown procedure') . "\n";
+                        }
+                    }
+                }
+
+                // 💊 Prescription (take-home medication)
                 if ($past->prescription && $past->prescription->items->isNotEmpty()) {
-                    $historyText .= "Prescription:\n";
+                    $historyText .= "Prescription (Take-home):\n";
                     foreach ($past->prescription->items as $item) {
                         $historyText .=
                             "- {$item->medicine}" .
@@ -138,6 +186,33 @@ class VetAiController extends Controller
                 $historyText .= "— — —\n";
             }
 
+        // Build structured treatment text for current appointment
+        $treatmentText = '';
+        if ($appointment->treatments->isNotEmpty()) {
+            $drugTx = $appointment->treatments->whereNotNull('drug_generic_id');
+            $procTx = $appointment->treatments->whereNull('drug_generic_id');
+
+            if ($drugTx->isNotEmpty()) {
+                $treatmentText .= "Injectable/In-clinic Drug Treatments:\n";
+                foreach ($drugTx as $tx) {
+                    $treatmentText .= "- " . (optional($tx->drugGeneric)->name ?? 'Unknown');
+                    if ($tx->dose_mg) $treatmentText .= " | Dose: {$tx->dose_mg} mg";
+                    if ($tx->dose_volume_ml) $treatmentText .= " | Volume: {$tx->dose_volume_ml} ml";
+                    if ($tx->route) $treatmentText .= " | Route: {$tx->route}";
+                    $treatmentText .= "\n";
+                }
+            }
+            if ($procTx->isNotEmpty()) {
+                $treatmentText .= "Procedures Performed:\n";
+                foreach ($procTx as $tx) {
+                    $treatmentText .= "- " . (optional($tx->priceItem)->name ?? 'Unknown procedure') . "\n";
+                }
+            }
+        }
+
+        // Build vitals string
+        $vitals = $this->buildVitalsString($appointment->caseSheet);
+
         $context = [
             'pet' => [
                 'species' => $appointment->pet->species ?? '-',
@@ -150,11 +225,14 @@ class VetAiController extends Controller
                 'presenting_complaint' => $appointment->caseSheet->presenting_complaint ?? '-',
                 'history'              => $appointment->caseSheet->history ?? '-',
                 'clinical_examination' => $appointment->caseSheet->clinical_examination ?? '-',
+                'vitals'               => $vitals,
                 'differentials'        => $appointment->caseSheet->differentials ?? '-',
                 'diagnosis'            => $appointment->caseSheet->diagnosis ?? '-',
-                'treatment_given'      => $appointment->caseSheet->treatment_given ?? '-',
-
-                // ✅ ADD THIS
+                'treatment_notes'      => $appointment->caseSheet->treatment_given ?? '-',
+                'procedures_done'      => $appointment->caseSheet->procedures_done ?? '-',
+                'further_plan'         => $appointment->caseSheet->further_plan ?? '-',
+                'advice'               => $appointment->caseSheet->advice ?? '-',
+                'treatments'           => $treatmentText ?: 'No in-clinic treatments administered.',
                 'prescription' => $appointment->prescription
                     ? $appointment->prescription->items
                         ->map(function ($item) {
@@ -189,6 +267,25 @@ class VetAiController extends Controller
         ]);
     }
 
+    private function buildVitalsString($caseSheet): string
+    {
+        if (!$caseSheet) return 'Not recorded';
+
+        $parts = array_filter([
+            $caseSheet->temperature ? "Temp: {$caseSheet->temperature}°F" : null,
+            $caseSheet->heart_rate ? "HR: {$caseSheet->heart_rate} bpm" : null,
+            $caseSheet->respiratory_rate ? "RR: {$caseSheet->respiratory_rate} bpm" : null,
+            $caseSheet->capillary_refill_time ? "CRT: {$caseSheet->capillary_refill_time}" : null,
+            $caseSheet->mucous_membrane ? "MM: {$caseSheet->mucous_membrane}" : null,
+            $caseSheet->hydration_status ? "Hydration: {$caseSheet->hydration_status}" : null,
+            $caseSheet->lymph_nodes ? "PLN: {$caseSheet->lymph_nodes}" : null,
+            $caseSheet->body_condition_score ? "BCS: {$caseSheet->body_condition_score}" : null,
+            $caseSheet->pain_score ? "Pain: {$caseSheet->pain_score}" : null,
+        ]);
+
+        return !empty($parts) ? implode(' | ', $parts) : 'Not recorded';
+    }
+
     public function prescriptionSupport(Appointment $appointment, AiClinicalService $ai)
     {
 
@@ -204,8 +301,10 @@ class VetAiController extends Controller
             'pet',
             'caseSheet',
             'diagnosticReports.files',
+            'treatments.drugGeneric',
+            'treatments.priceItem',
         ]);
-    
+
         // ❌ HARD STOP — prescription guidance without case sheet is unsafe
         if (!$appointment->caseSheet) {
             return response()->json([
@@ -249,6 +348,33 @@ class VetAiController extends Controller
          * Build Context for Senior Vet AI
          * -----------------------------------
          */
+        // Build structured treatment text
+        $treatmentText = '';
+        if ($appointment->treatments->isNotEmpty()) {
+            $drugTx = $appointment->treatments->whereNotNull('drug_generic_id');
+            $procTx = $appointment->treatments->whereNull('drug_generic_id');
+
+            if ($drugTx->isNotEmpty()) {
+                $treatmentText .= "Injectable/In-clinic Drugs Already Given:\n";
+                foreach ($drugTx as $tx) {
+                    $treatmentText .= "- " . (optional($tx->drugGeneric)->name ?? 'Unknown');
+                    if ($tx->dose_mg) $treatmentText .= " | Dose: {$tx->dose_mg} mg";
+                    if ($tx->dose_volume_ml) $treatmentText .= " | Volume: {$tx->dose_volume_ml} ml";
+                    if ($tx->route) $treatmentText .= " | Route: {$tx->route}";
+                    $treatmentText .= "\n";
+                }
+            }
+            if ($procTx->isNotEmpty()) {
+                $treatmentText .= "Procedures Already Performed:\n";
+                foreach ($procTx as $tx) {
+                    $treatmentText .= "- " . (optional($tx->priceItem)->name ?? 'Unknown procedure') . "\n";
+                }
+            }
+        }
+
+        // Build vitals string
+        $rxVitals = $this->buildVitalsString($appointment->caseSheet);
+
         $context = [
             'pet' => [
                 'species' => $appointment->pet->species ?? '-',
@@ -261,13 +387,16 @@ class VetAiController extends Controller
                 'presenting_complaint' => $appointment->caseSheet->presenting_complaint ?? '-',
                 'history'              => $appointment->caseSheet->history ?? '-',
                 'clinical_examination' => $appointment->caseSheet->clinical_examination ?? '-',
+                'vitals'               => $rxVitals,
                 'differentials'        => $appointment->caseSheet->differentials ?? '-',
                 'diagnosis'            => $appointment->caseSheet->diagnosis ?? '-',
-                'treatment_given'      => $appointment->caseSheet->treatment_given ?? '-',
+                'treatment_notes'      => $appointment->caseSheet->treatment_given ?? '-',
+                'procedures_done'      => $appointment->caseSheet->procedures_done ?? '-',
+                'treatments'           => $treatmentText ?: 'No in-clinic treatments administered yet.',
             ],
             'diagnostics' => $diagnosticFindings,
         ];
-    
+
         /**
          * -----------------------------------
          * Senior Vet Prescription Guidance

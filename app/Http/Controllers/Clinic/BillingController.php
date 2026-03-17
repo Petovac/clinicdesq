@@ -11,6 +11,8 @@ use App\Models\BillItem;
 use App\Models\PriceList;
 use App\Models\PriceListItem;
 use App\Models\InventoryBatch;
+use App\Models\InventoryMovement;
+use App\Models\InjectionRouteFee;
 
 class BillingController extends Controller
 {
@@ -209,7 +211,7 @@ class BillingController extends Controller
         }
 
         return redirect()
-            ->route('billing.create', $bill->appointment_id)
+            ->route('clinic.billing.create', $bill->appointment_id)
             ->with('success', 'Bill confirmed. Inventory updated.');
     }
 
@@ -242,6 +244,8 @@ class BillingController extends Controller
         }
 
         // 2. Treatments (injections + procedures)
+        $orgId = $appointment->clinic->organisation_id;
+
         foreach ($appointment->treatments as $treatment) {
             if (!$treatment->priceItem) {
                 continue;
@@ -250,18 +254,45 @@ class BillingController extends Controller
             $source = $treatment->drug_generic_id ? 'injection' : 'procedure';
             $qty    = $treatment->billing_quantity ?? 1;
 
-            $bill->items()->create([
-                'price_list_item_id' => $treatment->priceItem->id,
-                'quantity'           => $qty,
-                'price'              => $treatment->priceItem->price,
-                'total'              => round($treatment->priceItem->price * $qty, 2),
-                'source'             => $source,
-                'status'             => 'approved',
-                'description'        => $treatment->priceItem->name
-                    . ($source === 'injection' && $treatment->dose_volume_ml
-                        ? ' (' . $treatment->dose_volume_ml . ' ml)'
-                        : ''),
-            ]);
+            if ($source === 'injection') {
+                // Injection billing: route_admin_fee + (drug_price_per_ml × volume)
+                $drugCostPerUnit = (float) $treatment->priceItem->price;
+                $volume          = (float) ($treatment->dose_volume_ml ?? $qty);
+                $drugCost        = round($drugCostPerUnit * $volume, 2);
+
+                $routeFee = InjectionRouteFee::feeFor($orgId, $treatment->route);
+                $total    = $drugCost + $routeFee;
+
+                // Build description with breakdown
+                $desc = $treatment->priceItem->name;
+                if ($treatment->dose_volume_ml) {
+                    $desc .= ' (' . $treatment->dose_volume_ml . ' ml)';
+                }
+                if ($routeFee > 0 && $treatment->route) {
+                    $desc .= ' + ' . strtoupper($treatment->route) . ' admin fee';
+                }
+
+                $bill->items()->create([
+                    'price_list_item_id' => $treatment->priceItem->id,
+                    'quantity'           => $volume,
+                    'price'              => $drugCostPerUnit,
+                    'total'              => $total,
+                    'source'             => 'injection',
+                    'status'             => 'approved',
+                    'description'        => $desc,
+                ]);
+            } else {
+                // Procedure billing: flat price
+                $bill->items()->create([
+                    'price_list_item_id' => $treatment->priceItem->id,
+                    'quantity'           => $qty,
+                    'price'              => $treatment->priceItem->price,
+                    'total'              => round($treatment->priceItem->price * $qty, 2),
+                    'source'             => 'procedure',
+                    'status'             => 'approved',
+                    'description'        => $treatment->priceItem->name,
+                ]);
+            }
         }
 
         // 3. Prescription items — pending staff review
@@ -277,13 +308,14 @@ class BillingController extends Controller
                 }
 
                 $inStock = $rxItem->isInStock($clinicId);
+                $qty = $this->calculatePrescriptionQty($rxItem);
 
                 $bill->items()->create([
                     'price_list_item_id'  => $priceItem?->id,
                     'prescription_item_id'=> $rxItem->id,
-                    'quantity'            => 1,
+                    'quantity'            => $qty,
                     'price'               => $priceItem?->price ?? 0,
-                    'total'               => $priceItem?->price ?? 0,
+                    'total'               => round(($priceItem?->price ?? 0) * $qty, 2),
                     'source'              => 'prescription',
                     'status'              => $inStock ? 'pending' : 'rejected',
                     'description'         => $rxItem->medicine
@@ -291,6 +323,39 @@ class BillingController extends Controller
                 ]);
             }
         }
+    }
+
+    /**
+     * Calculate total quantity from prescription item fields.
+     * qty = units_per_dose × frequency_per_day × days
+     */
+    private function calculatePrescriptionQty($rxItem): float
+    {
+        // Parse units per dose from dosage field (e.g. "2.3 tabs", "7.5ml", "1 tab")
+        $unitsPerDose = 1;
+        if (preg_match('/^([\d.]+)\s*(tabs?|ml|capsules?)/i', $rxItem->dosage ?? '', $m)) {
+            $unitsPerDose = (float) $m[1];
+        }
+
+        // Parse frequency per day
+        $freq = strtolower(trim($rxItem->frequency ?? ''));
+        $freqMap = [
+            'sid' => 1, 'od' => 1, 'once daily' => 1, 'qd' => 1,
+            'bid' => 2, 'twice daily' => 2, 'bd' => 2,
+            'tid' => 3, 'three times daily' => 3, 'tds' => 3,
+            'qid' => 4, 'four times daily' => 4,
+            'eod' => 0.5, 'every other day' => 0.5,
+        ];
+        $timesPerDay = $freqMap[$freq] ?? 1;
+
+        // Parse duration days (e.g. "5 days", "10", "28 days")
+        $days = 1;
+        if (preg_match('/(\d+)/', $rxItem->duration ?? '', $m)) {
+            $days = (int) $m[1];
+        }
+
+        $total = round($unitsPerDose * $timesPerDay * $days, 3);
+        return max($total, 1);
     }
 
     /**
@@ -305,10 +370,22 @@ class BillingController extends Controller
             ->orderBy('expiry_date')
             ->get();
 
+        $totalDeducted = 0;
         foreach ($batches as $batch) {
             if ($qty <= 0) break;
             $deduct = min((float) $batch->quantity, $qty);
             $batch->decrement('quantity', $deduct);
+
+            InventoryMovement::create([
+                'clinic_id'          => $clinicId,
+                'inventory_item_id'  => $inventoryItemId,
+                'inventory_batch_id' => $batch->id,
+                'quantity'           => -$deduct,
+                'movement_type'      => 'treatment_usage',
+                'notes'              => 'Used in treatment' . ($batch->batch_number ? " — Batch: {$batch->batch_number}" : ''),
+                'created_by'         => auth()->id(),
+            ]);
+
             $qty -= $deduct;
         }
     }

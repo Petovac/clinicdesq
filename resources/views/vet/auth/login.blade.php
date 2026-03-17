@@ -23,7 +23,15 @@
     @error('email')
         <p style="color:red;">{{ $message }}</p>
     @enderror
+
+    @if(session('success'))
+        <p style="color:green;margin-top:8px;">{{ session('success') }}</p>
+    @endif
 </form>
+
+<p style="margin-top:16px;font-size:13px;color:#64748b;">
+    Don't have an account? <a href="{{ route('vet.register') }}" style="color:#2563eb;font-weight:600;">Register here</a>
+</p>
 
 </body>
 </html>

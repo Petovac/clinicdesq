@@ -28,10 +28,29 @@ class ClinicDashboardController extends Controller
             ->whereDate('scheduled_at', '>', $today)
             ->count();
 
+        $waitingCount = Appointment::where('clinic_id', $clinic->id)
+            ->where('status', 'checked_in')
+            ->count();
+
+        $consultationCount = Appointment::where('clinic_id', $clinic->id)
+            ->where('status', 'in_consultation')
+            ->count();
+
+        $needsBillingCount = Appointment::where('clinic_id', $clinic->id)
+            ->where('status', 'completed')
+            ->where(function ($q) {
+                $q->whereDoesntHave('bill')
+                  ->orWhereHas('bill', fn($b) => $b->where('status', 'draft'));
+            })
+            ->count();
+
         return view('clinic.dashboard', compact(
             'clinic',
             'todayAppointments',
-            'upcomingAppointments'
+            'upcomingAppointments',
+            'waitingCount',
+            'consultationCount',
+            'needsBillingCount'
         ));
     }
 }

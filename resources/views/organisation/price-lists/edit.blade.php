@@ -1,447 +1,685 @@
-        @extends('organisation.layout')
+@extends('organisation.layout')
 
-        @section('content')
+@section('content')
 
-        <style>
+<style>
+.page-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:24px;
+}
 
-        .page-title{
-        font-size:24px;
-        font-weight:700;
-        margin-bottom:24px;
-        color:#111827;
-        }
+.page-title{
+    font-size:24px;
+    font-weight:700;
+    color:#111827;
+}
 
-        .card{
-        background:#ffffff;
-        padding:28px;
-        border-radius:14px;
-        box-shadow:0 12px 30px rgba(0,0,0,0.06);
-        border:1px solid #f1f5f9;
-        }
+.card{
+    background:#ffffff;
+    padding:28px;
+    border-radius:14px;
+    box-shadow:0 12px 30px rgba(0,0,0,0.06);
+    border:1px solid #f1f5f9;
+    margin-bottom:24px;
+}
 
-        /* form */
+label{
+    font-size:13px;
+    font-weight:600;
+    color:#374151;
+    display:block;
+    margin-bottom:6px;
+}
 
-        label{
-        font-size:13px;
-        font-weight:600;
-        color:#374151;
-        display:block;
-        margin-bottom:6px;
-        }
+input,select{
+    padding:8px 10px;
+    border-radius:8px;
+    border:1px solid #d1d5db;
+    width:100%;
+    font-size:13px;
+    background:#fff;
+    box-sizing:border-box;
+    transition:all .2s ease;
+}
 
-        input,select{
-        padding:8px 10px;
-        border-radius:8px;
-        border:1px solid #d1d5db;
-        width:100%;
-        font-size:13px;
-        background:#fff;
-        transition:all .2s ease;
-        }
+input:focus,select:focus{
+    outline:none;
+    border-color:#4f46e5;
+    box-shadow:0 0 0 2px rgba(79,70,229,0.1);
+}
 
-        input:focus,select:focus{
-        outline:none;
-        border-color:#4f46e5;
-        box-shadow:0 0 0 2px rgba(79,70,229,0.1);
-        }
+/* Table */
+.items-table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:16px;
+}
 
-        /* table */
+.items-table thead{
+    background:#f9fafb;
+}
 
-        .items-table{
-        width:100%;
-        border-collapse:collapse;
-        margin-top:20px;
-        background:#fff;
-        }
+.items-table th{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    font-weight:600;
+    color:#6b7280;
+    padding:10px 8px;
+    border-bottom:1px solid #e5e7eb;
+    text-align:left;
+}
 
-        .items-table thead{
-        background:#f9fafb;
-        }
+.items-table td{
+    padding:8px;
+    border-bottom:1px solid #f1f5f9;
+    vertical-align:middle;
+}
 
-        .items-table th{
-        font-size:12px;
-        text-transform:uppercase;
-        letter-spacing:.04em;
-        font-weight:600;
-        color:#6b7280;
-        padding:10px;
-        border-bottom:1px solid #e5e7eb;
-        }
+.items-table tr:hover{
+    background:#fafafa;
+}
 
-        .items-table td{
-        padding:10px;
-        border-bottom:1px solid #f1f5f9;
-        }
+.items-table input,
+.items-table select{
+    font-size:12px;
+    padding:6px 8px;
+}
 
-        .items-table tr:hover{
-        background:#fafafa;
-        }
+/* Buttons */
+.btn{
+    padding:7px 14px;
+    border-radius:8px;
+    border:none;
+    cursor:pointer;
+    font-size:13px;
+    font-weight:500;
+    transition:all .15s ease;
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+}
 
-        /* section headers */
+.btn-primary{ background:#4f46e5; color:#fff; }
+.btn-primary:hover{ background:#4338ca; }
 
-        .table-section{
-        background:#f3f4f6;
-        font-weight:600;
-        color:#374151;
-        }
+.btn-success{ background:#10b981; color:#fff; }
+.btn-success:hover{ background:#059669; }
 
-        /* buttons */
+.btn-danger{ background:#ef4444; color:#fff; font-size:12px; padding:5px 10px; }
+.btn-danger:hover{ background:#dc2626; }
 
-        .btn{
-        padding:8px 14px;
-        border-radius:8px;
-        border:none;
-        cursor:pointer;
-        font-size:13px;
-        font-weight:500;
-        transition:all .15s ease;
-        }
+.btn-secondary{ background:#e5e7eb; color:#374151; }
+.btn-secondary:hover{ background:#d1d5db; }
 
-        .btn-primary{
-        background:#4f46e5;
-        color:#fff;
-        }
+.btn-sm{ padding:5px 10px; font-size:12px; }
 
-        .btn-primary:hover{
-        background:#4338ca;
-        }
+/* Add item section */
+.add-section{
+    background:#eef2ff;
+    padding:20px;
+    border-radius:12px;
+    border:1px solid #c7d2fe;
+}
 
-        .btn-danger{
-        background:#ef4444;
-        color:#fff;
-        }
+.add-section .add-title{
+    font-weight:600;
+    font-size:14px;
+    color:#3730a3;
+    margin-bottom:14px;
+}
 
-        .btn-danger:hover{
-        background:#dc2626;
-        }
+.add-grid{
+    display:grid;
+    grid-template-columns:140px 1fr 130px 110px 110px auto;
+    gap:10px;
+    align-items:end;
+}
 
-        .btn-secondary{
-        background:#e5e7eb;
-        }
+/* Autocomplete dropdown */
+.ac-dropdown{
+    display:none;
+    position:absolute;
+    top:100%;
+    left:0;
+    right:0;
+    background:#fff;
+    border:1px solid #d1d5db;
+    border-radius:8px;
+    max-height:220px;
+    overflow-y:auto;
+    z-index:100;
+    box-shadow:0 4px 12px rgba(0,0,0,.12);
+}
 
-        .btn-secondary:hover{
-        background:#d1d5db;
-        }
+.ac-dropdown .ac-item{
+    padding:8px 12px;
+    cursor:pointer;
+    font-size:13px;
+    border-bottom:1px solid #f1f5f9;
+}
 
-        .actions{
-        margin-top:24px;
-        display:flex;
-        gap:10px;
-        }
+.ac-dropdown .ac-item:hover{
+    background:#eff6ff;
+}
 
-        </style>
+.ac-dropdown .ac-item strong{
+    color:#111827;
+}
+
+.ac-dropdown .ac-item .ac-sub{
+    color:#6b7280;
+    font-size:12px;
+}
+
+/* Status toast */
+.toast{
+    position:fixed;
+    bottom:20px;
+    right:20px;
+    padding:12px 20px;
+    background:#10b981;
+    color:#fff;
+    border-radius:10px;
+    font-size:14px;
+    font-weight:500;
+    box-shadow:0 4px 12px rgba(0,0,0,.15);
+    z-index:999;
+    opacity:0;
+    transform:translateY(10px);
+    transition:all .3s ease;
+}
+
+.toast.show{
+    opacity:1;
+    transform:translateY(0);
+}
+
+.toast.error{
+    background:#ef4444;
+}
+
+/* Editable row highlight */
+tr.editing td{
+    background:#eff6ff;
+}
+
+/* Inline drug/inventory display */
+.linked-label{
+    font-size:12px;
+    color:#6b7280;
+    display:flex;
+    align-items:center;
+    gap:4px;
+}
+
+.linked-label .dot{
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:#10b981;
+    display:inline-block;
+}
+
+@media(max-width:900px){
+    .add-grid{
+        grid-template-columns:1fr 1fr;
+    }
+}
+</style>
 
 
-        <h2 class="page-title">Edit Price List</h2>
-
-
-        <div class="card">
-
-        @if ($errors->any())
-            <div style="background:#fee2e2;padding:12px;border-radius:8px;margin-bottom:16px;">
-                <ul style="margin:0;padding-left:18px;color:#b91c1c;">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        <form method="POST" action="{{ route('organisation.price-lists.update',$priceList) }}">
-        @csrf
-        @method('PUT')
-
-
-        <div style="margin-bottom:20px;">
-        <label>Price List Name</label>
-        <input name="name" value="{{ $priceList->name }}" required>
-        </div>
-
-        <div style="margin-bottom:20px;background:#eef2ff;padding:16px;border-radius:10px;">
-
-                        <div style="font-weight:600;margin-bottom:10px;">
-                            ➕ Add New Item
-                        </div>
-
-                        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr auto;gap:10px;align-items:center;">
-
-                            <select id="itemType" name="new_item[item_type]">
-                            <option value="service">Service</option>
-                            <option value="treatment">Treatment</option>
-                            <option value="product">Product</option>
-                            </select>
-
-                            <input id="itemName" name="new_item[name]" placeholder="Item name">
-
-                            <select id="billingType" name="new_item[billing_type]">
-                            <option value="fixed">Fixed</option>
-                            <option value="per_ml">Per ML</option>
-                            <option value="per_vial">Per Vial</option>
-                            <option value="per_tablet">Per Tablet</option>
-                            <option value="per_unit">Per Unit</option>
-                            </select>
-
-                            <input id="procedurePrice" name="new_item[procedure_price]" placeholder="Procedure Fee">
-
-                            <input id="unitPrice" name="new_item[price]" placeholder="Unit Price">
-
-                            <select id="drugSelect" name="new_item[drug_brand_id]">
-                            <option value="">--</option>
-                            @foreach($drugBrands as $drug)
-                            <option value="{{ $drug->id }}">{{ $drug->brand_name }}</option>
-                            @endforeach
-                            </select>
-
-                            <select id="inventorySelect" name="new_item[inventory_item_id]">
-                            <option value="">--</option>
-                            @foreach($inventoryItems as $inv)
-                            <option value="{{ $inv->id }}">{{ $inv->name }}</option>
-                            @endforeach
-                            </select>
-
-                            <button class="btn btn-primary">Add</button>
-
-                        </div>
-
+<div class="page-header">
+    <h2 class="page-title">Edit Price List</h2>
+    <a href="{{ route('organisation.price-lists.index') }}" class="btn btn-secondary">Back to Lists</a>
 </div>
 
+{{-- Price List Name --}}
+<div class="card">
+    <label>Price List Name</label>
+    <div style="display:flex;gap:10px;align-items:center;max-width:400px;">
+        <input type="text" id="listName" value="{{ $priceList->name }}">
+        <button class="btn btn-primary btn-sm" onclick="saveName()">Save</button>
+    </div>
+</div>
 
-
-
-        <table class="items-table" id="itemsTable">
-
-        <thead>
-        <tr>
-        <th>Type</th>
-        <th>Name</th>
-        <th>Billing</th>
-        <th>Procedure Fee</th>
-        <th>Unit Price</th>
-        <th>Drug</th>
-        <th>Inventory</th>
-        <th width="120">Actions</th>
-        </tr>
-        </thead>
-
-        <tbody id="itemsBody">
-
-
-        @if($priceList->items->count())
-
-        <tr style="background:#f3f4f6;">
-        <td colspan="8" style="font-weight:600;padding:10px;">
-        Existing Items
-        </td>
-        </tr>
-
-        @endif
-
-        @foreach($priceList->items as $i => $item)
-
-        <tr data-id="{{ $item->id }}">
-
-        <td>
-        <select class="field-type" name="items[{{ $i }}][item_type]" disabled>
-        <option value="service" {{ $item->item_type=='service'?'selected':'' }}>Service</option>
-        <option value="treatment" {{ $item->item_type=='treatment'?'selected':'' }}>Treatment</option>
-        <option value="product" {{ $item->item_type=='product'?'selected':'' }}>Product</option>
-        </select>
-        </td>
-
-        <td>
-        <input class="field-name" name="items[{{ $i }}][name]" value="{{ $item->name }}" readonly>
-        </td>
-
-        
-
-        <td>
-        <select class="field-billing" name="items[{{ $i }}][billing_type]" disabled>
-        <option value="fixed" {{ $item->billing_type=='fixed'?'selected':'' }}>Fixed</option>
-        <option value="per_ml" {{ $item->billing_type=='per_ml'?'selected':'' }}>Per ML</option>
-        <option value="per_vial" {{ $item->billing_type=='per_vial'?'selected':'' }}>Per Vial</option>
-        <option value="per_tablet" {{ $item->billing_type=='per_tablet'?'selected':'' }}>Per Tablet</option>
-        <option value="per_unit" {{ $item->billing_type=='per_unit'?'selected':'' }}>Per Unit</option>
-        </select>
-        </td>
-
-        <td>
-        <input class="field-procedure" name="items[{{ $i }}][procedure_price]" value="{{ $item->procedure_price }}" readonly>
-        </td>
-
-        <td>
-        <input class="field-price" name="items[{{ $i }}][price]" value="{{ $item->price }}" readonly>
-        </td>
-
-        <td>
-        <select class="field-drug" name="items[{{ $i }}][drug_brand_id]" disabled>
-        <option value="">--</option>
-        @foreach($drugBrands as $drug)
-        <option value="{{ $drug->id }}"
-        {{ $item->drug_brand_id==$drug->id?'selected':'' }}>
-        {{ $drug->brand_name }}
-        </option>
-        @endforeach
-        </select>
-        </td>
-
-        <td>
-        <select class="field-inventory" name="items[{{ $i }}][inventory_item_id]" disabled>
-        <option value="">--</option>
-        @foreach($inventoryItems as $inv)
-        <option value="{{ $inv->id }}"
-        {{ $item->inventory_item_id==$inv->id?'selected':'' }}>
-        {{ $inv->name }}
-        </option>
-        @endforeach
-        </select>
-        </td>
-
-        <td style="display:flex;gap:6px;">
-
-        <button 
-        type="button"
-        class="btn btn-secondary"
-        onclick="editRow(this)">
-        Edit
-        </button>
-
-        <button 
-        type="button"
-        class="btn btn-danger"
-        onclick="removeRow(this)">
-        ✕
-        </button>
-
-        </td>
-
-        </tr>
-
-        @endforeach
-
-        </tbody>
-        </table>
-
-        </form>
-
+{{-- Add New Item --}}
+<div class="card add-section">
+    <div class="add-title">Add New Item</div>
+    <div class="add-grid">
+        <div>
+            <label>Type</label>
+            <select id="newType" onchange="onNewTypeChange()">
+                <option value="service">Service</option>
+                <option value="treatment">Treatment</option>
+                <option value="product">Product</option>
+            </select>
         </div>
 
-        <script>
+        <div style="position:relative;">
+            <label>Name</label>
+            <input id="newName" placeholder="Search or type name..." autocomplete="off">
+            <div id="newNameDropdown" class="ac-dropdown"></div>
+            <input type="hidden" id="newDrugBrandId">
+            <input type="hidden" id="newInventoryItemId">
+            <div id="newLinked" style="margin-top:4px;"></div>
+        </div>
 
-                    function editRow(btn){
+        <div>
+            <label>Billing</label>
+            <select id="newBilling">
+                <option value="fixed">Fixed</option>
+                <option value="per_ml">Per ML</option>
+                <option value="per_vial">Per Vial</option>
+                <option value="per_tablet">Per Tablet</option>
+                <option value="per_unit">Per Unit</option>
+            </select>
+        </div>
 
-                    let row = btn.closest('tr');
+        <div id="newProcedureWrap">
+            <label>Procedure Fee</label>
+            <input id="newProcedure" type="number" step="0.01" placeholder="0.00">
+        </div>
 
-                    if(btn.dataset.mode !== "editing"){
+        <div>
+            <label>Unit Price</label>
+            <input id="newPrice" type="number" step="0.01" placeholder="0.00">
+        </div>
 
-                        row.querySelectorAll('input').forEach(el=>{
-                            el.removeAttribute('readonly');
-                        });
+        <div style="padding-top:20px;">
+            <button type="button" class="btn btn-success" onclick="addItem()">Add</button>
+        </div>
+    </div>
+</div>
 
-                        row.querySelectorAll('select').forEach(el=>{
-                            el.removeAttribute('disabled');
-                        });
+{{-- Existing Items --}}
+<div class="card">
+    <div style="font-weight:600;font-size:15px;color:#374151;margin-bottom:4px;">
+        Items <span id="itemCount" style="color:#9ca3af;font-weight:400;">({{ $priceList->items->count() }})</span>
+    </div>
 
-                        btn.innerHTML = "✓";
-                        btn.dataset.mode = "editing";
-                        btn.style.background = "#10b981";
+    <table class="items-table" id="itemsTable">
+        <thead>
+            <tr>
+                <th style="width:100px;">Type</th>
+                <th>Name</th>
+                <th style="width:110px;">Billing</th>
+                <th style="width:100px;">Proc. Fee</th>
+                <th style="width:100px;">Unit Price</th>
+                <th style="width:160px;">Linked Drug / Inventory</th>
+                <th style="width:100px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="itemsBody">
+            @foreach($priceList->items as $item)
+            <tr data-id="{{ $item->id }}">
+                <td>
+                    <select class="f-type" disabled>
+                        <option value="service" {{ $item->item_type=='service'?'selected':'' }}>Service</option>
+                        <option value="treatment" {{ $item->item_type=='treatment'?'selected':'' }}>Treatment</option>
+                        <option value="product" {{ $item->item_type=='product'?'selected':'' }}>Product</option>
+                    </select>
+                </td>
+                <td>
+                    <input class="f-name" value="{{ $item->name }}" readonly>
+                </td>
+                <td>
+                    <select class="f-billing" disabled>
+                        <option value="fixed" {{ $item->billing_type=='fixed'?'selected':'' }}>Fixed</option>
+                        <option value="per_ml" {{ $item->billing_type=='per_ml'?'selected':'' }}>Per ML</option>
+                        <option value="per_vial" {{ $item->billing_type=='per_vial'?'selected':'' }}>Per Vial</option>
+                        <option value="per_tablet" {{ $item->billing_type=='per_tablet'?'selected':'' }}>Per Tablet</option>
+                        <option value="per_unit" {{ $item->billing_type=='per_unit'?'selected':'' }}>Per Unit</option>
+                    </select>
+                </td>
+                <td>
+                    <input class="f-procedure" type="number" step="0.01" value="{{ $item->procedure_price }}" readonly>
+                </td>
+                <td>
+                    <input class="f-price" type="number" step="0.01" value="{{ $item->price }}" readonly>
+                </td>
+                <td>
+                    <input type="hidden" class="f-drug-id" value="{{ $item->drug_brand_id }}">
+                    <input type="hidden" class="f-inv-id" value="{{ $item->inventory_item_id }}">
+                    <div class="linked-info">
+                        @if($item->drugBrand)
+                            <span class="linked-label"><span class="dot"></span> {{ $item->drugBrand->brand_name }}@if($item->drugBrand->generic) ({{ $item->drugBrand->generic->name }})@endif</span>
+                        @elseif($item->inventoryItem)
+                            <span class="linked-label"><span class="dot"></span> {{ $item->inventoryItem->name }}</span>
+                        @else
+                            <span style="color:#d1d5db;font-size:12px;">--</span>
+                        @endif
+                    </div>
+                </td>
+                <td>
+                    <div style="display:flex;gap:4px;">
+                        <button type="button" class="btn btn-secondary btn-sm edit-btn" onclick="toggleEdit(this)">Edit</button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteItem(this)">x</button>
+                    </div>
+                </td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
 
-                    }else{
+    @if($priceList->items->isEmpty())
+    <div id="emptyMsg" style="text-align:center;padding:40px 20px;color:#9ca3af;font-size:14px;">
+        No items yet. Use the form above to add your first item.
+    </div>
+    @endif
+</div>
 
-                        let id = row.dataset.id;
+{{-- Toast --}}
+<div class="toast" id="toast"></div>
 
-                        let data = {
-                            name: row.querySelector('.field-name').value,
-                            item_type: row.querySelector('.field-type').value,
-                            billing_type: row.querySelector('.field-billing').value,
-                            price: row.querySelector('.field-price').value,
-                            procedure_price: row.querySelector('.field-procedure').value,
-                            drug_brand_id: row.querySelector('.field-drug').value,
-                            inventory_item_id: row.querySelector('.field-inventory').value
-                        };
+<script>
+const CSRF = '{{ csrf_token() }}';
+const LIST_ID = {{ $priceList->id }};
+const BASE = '/organisation';
+const HEADERS = { 'Content-Type':'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept':'application/json' };
 
-                        fetch(`/organisation/price-list-items/${id}`,{
-                            method:'PUT',
-                            headers:{
-                                'Content-Type':'application/json',
-                                'X-CSRF-TOKEN':'{{ csrf_token() }}'
-                            },
-                            body:JSON.stringify(data)
-                        })
-                        .then(res=>res.json())
-                        .then(res=>{
+// ── Toast ──
+function toast(msg, isError){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (isError ? ' error' : '');
+    setTimeout(() => { t.className = 'toast'; }, 2500);
+}
 
-                            row.querySelectorAll('input').forEach(el=>{
-                                el.setAttribute('readonly', true);
-                            });
+// ── Save price list name ──
+function saveName(){
+    fetch(`${BASE}/price-lists/${LIST_ID}`, {
+        method: 'PUT',
+        headers: HEADERS,
+        body: JSON.stringify({ name: document.getElementById('listName').value })
+    })
+    .then(r => r.json())
+    .then(r => {
+        if(r.success) toast('Name saved');
+        else toast('Error saving name', true);
+    })
+    .catch(() => toast('Error saving name', true));
+}
 
-                            row.querySelectorAll('select').forEach(el=>{
-                                el.setAttribute('disabled', true);
-                            });
+// ── New item type change ──
+function onNewTypeChange(){
+    const t = document.getElementById('newType').value;
+    document.getElementById('newProcedureWrap').style.display = (t === 'treatment') ? 'block' : 'none';
 
-                            btn.innerHTML = "Edit";
-                            btn.dataset.mode = "locked";
-                            btn.style.background = "#e5e7eb";
+    if(t === 'service'){
+        document.getElementById('newBilling').value = 'fixed';
+    } else if(t === 'treatment'){
+        document.getElementById('newBilling').value = 'per_ml';
+    } else {
+        document.getElementById('newBilling').value = 'per_unit';
+    }
 
-                            btn.innerHTML = "Saved";
-                            setTimeout(()=>{ btn.innerHTML="Edit"; },1000);
+    // Clear linked
+    document.getElementById('newDrugBrandId').value = '';
+    document.getElementById('newInventoryItemId').value = '';
+    document.getElementById('newLinked').innerHTML = '';
+    document.getElementById('newName').value = '';
+}
+onNewTypeChange();
 
-                        });
+// ── Autocomplete for new item name ──
+(function(){
+    const input = document.getElementById('newName');
+    const dd = document.getElementById('newNameDropdown');
+    let timer = null;
 
-                    }
-                    }
-        </script>
+    input.addEventListener('input', function(){
+        clearTimeout(timer);
+        const q = this.value.trim();
+        if(q.length < 2){ dd.style.display = 'none'; return; }
 
-        <script>
-                        document.addEventListener("DOMContentLoaded", function(){
+        timer = setTimeout(function(){
+            const type = document.getElementById('newType').value;
+            let url;
 
-                        const type = document.getElementById("itemType");
-                        const procedure = document.getElementById("procedurePrice");
-                        const drug = document.getElementById("drugSelect");
-                        const inventory = document.getElementById("inventorySelect");
-                        const billing = document.getElementById("billingType");
+            if(type === 'treatment'){
+                url = `${BASE}/drug-search?q=${encodeURIComponent(q)}`;
+            } else if(type === 'product'){
+                url = `${BASE}/inventory-search?q=${encodeURIComponent(q)}`;
+            } else {
+                dd.style.display = 'none';
+                return;
+            }
 
-                        function updateUI(){
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(data => {
+                if(!data.length){ dd.style.display = 'none'; return; }
 
-                        let t = type.value;
+                if(type === 'treatment'){
+                    dd.innerHTML = data.map(d =>
+                        `<div class="ac-item"
+                              data-id="${d.id}"
+                              data-name="${d.brand} (${d.generic})"
+                              data-type="drug">
+                            <strong>${d.brand}</strong>
+                            <span class="ac-sub"> -- ${d.generic}</span>
+                            ${d.strength_value ? `<span class="ac-sub" style="font-size:11px;"> ${d.strength_value}${d.strength_unit||''} ${d.form||''}</span>` : ''}
+                        </div>`
+                    ).join('');
+                } else {
+                    dd.innerHTML = data.map(d =>
+                        `<div class="ac-item"
+                              data-id="${d.id}"
+                              data-name="${d.name}"
+                              data-type="inventory">
+                            <strong>${d.name}</strong>
+                            <span class="ac-sub"> (${d.type})</span>
+                        </div>`
+                    ).join('');
+                }
 
-                        if(t === "service"){
+                dd.style.display = 'block';
 
-                        procedure.style.display = "none";
-                        drug.style.display = "none";
-                        inventory.style.display = "none";
-
-                        billing.value = "fixed";
-
+                dd.querySelectorAll('.ac-item').forEach(el => {
+                    el.addEventListener('click', function(){
+                        input.value = this.dataset.name;
+                        if(this.dataset.type === 'drug'){
+                            document.getElementById('newDrugBrandId').value = this.dataset.id;
+                            document.getElementById('newInventoryItemId').value = '';
+                            document.getElementById('newLinked').innerHTML =
+                                `<span class="linked-label"><span class="dot"></span> Drug: ${this.dataset.name}</span>`;
+                        } else {
+                            document.getElementById('newInventoryItemId').value = this.dataset.id;
+                            document.getElementById('newDrugBrandId').value = '';
+                            document.getElementById('newLinked').innerHTML =
+                                `<span class="linked-label"><span class="dot"></span> Inventory: ${this.dataset.name}</span>`;
                         }
+                        dd.style.display = 'none';
+                    });
+                });
+            });
+        }, 250);
+    });
 
-                        if(t === "treatment"){
+    document.addEventListener('click', function(e){
+        if(!input.contains(e.target) && !dd.contains(e.target)){
+            dd.style.display = 'none';
+        }
+    });
+})();
 
-                        procedure.style.display = "block";
-                        drug.style.display = "block";
-                        inventory.style.display = "block";
+// ── Add item (AJAX) ──
+function addItem(){
+    const name = document.getElementById('newName').value.trim();
+    if(!name){ toast('Enter an item name', true); return; }
 
-                        billing.value = "per_ml";
+    const itemType = document.getElementById('newType').value;
+    const drugId = document.getElementById('newDrugBrandId').value;
 
-                        }
+    if(itemType === 'treatment' && !drugId){
+        toast('Treatment items must have a drug selected', true);
+        return;
+    }
 
-                        if(t === "product"){
+    const payload = {
+        name: name,
+        item_type: itemType,
+        billing_type: document.getElementById('newBilling').value,
+        price: document.getElementById('newPrice').value || 0,
+        procedure_price: document.getElementById('newProcedure').value || 0,
+        drug_brand_id: drugId || null,
+        inventory_item_id: document.getElementById('newInventoryItemId').value || null,
+    };
 
-                        procedure.style.display = "none";
-                        drug.style.display = "none";
-                        inventory.style.display = "block";
+    fetch(`${BASE}/price-lists/${LIST_ID}/items`, {
+        method: 'POST',
+        headers: HEADERS,
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(r => {
+        if(r.error){ toast(r.error, true); return; }
+        if(!r.success){ toast('Error adding item', true); return; }
 
-                        billing.value = "per_unit";
+        const item = r.item;
+        const linkedHtml = item.drug_brand_id
+            ? `<span class="linked-label"><span class="dot"></span> ${name}</span>`
+            : (item.inventory_item_id
+                ? `<span class="linked-label"><span class="dot"></span> ${name}</span>`
+                : '<span style="color:#d1d5db;font-size:12px;">--</span>');
 
-                        }
+        const typeLabels = { service:'Service', treatment:'Treatment', product:'Product' };
+        const billingLabels = { fixed:'Fixed', per_ml:'Per ML', per_vial:'Per Vial', per_tablet:'Per Tablet', per_unit:'Per Unit' };
 
-                        }
+        const tr = document.createElement('tr');
+        tr.dataset.id = item.id;
+        tr.innerHTML = `
+            <td>
+                <select class="f-type" disabled>
+                    <option value="service" ${item.item_type==='service'?'selected':''}>Service</option>
+                    <option value="treatment" ${item.item_type==='treatment'?'selected':''}>Treatment</option>
+                    <option value="product" ${item.item_type==='product'?'selected':''}>Product</option>
+                </select>
+            </td>
+            <td><input class="f-name" value="${item.name}" readonly></td>
+            <td>
+                <select class="f-billing" disabled>
+                    <option value="fixed" ${item.billing_type==='fixed'?'selected':''}>Fixed</option>
+                    <option value="per_ml" ${item.billing_type==='per_ml'?'selected':''}>Per ML</option>
+                    <option value="per_vial" ${item.billing_type==='per_vial'?'selected':''}>Per Vial</option>
+                    <option value="per_tablet" ${item.billing_type==='per_tablet'?'selected':''}>Per Tablet</option>
+                    <option value="per_unit" ${item.billing_type==='per_unit'?'selected':''}>Per Unit</option>
+                </select>
+            </td>
+            <td><input class="f-procedure" type="number" step="0.01" value="${item.procedure_price}" readonly></td>
+            <td><input class="f-price" type="number" step="0.01" value="${item.price}" readonly></td>
+            <td>
+                <input type="hidden" class="f-drug-id" value="${item.drug_brand_id || ''}">
+                <input type="hidden" class="f-inv-id" value="${item.inventory_item_id || ''}">
+                <div class="linked-info">${linkedHtml}</div>
+            </td>
+            <td>
+                <div style="display:flex;gap:4px;">
+                    <button type="button" class="btn btn-secondary btn-sm edit-btn" onclick="toggleEdit(this)">Edit</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteItem(this)">x</button>
+                </div>
+            </td>
+        `;
+        document.getElementById('itemsBody').appendChild(tr);
 
-                        type.addEventListener("change", updateUI);
+        // Remove empty message
+        const em = document.getElementById('emptyMsg');
+        if(em) em.remove();
 
-                        updateUI();
+        // Update count
+        updateCount();
 
-                        });
+        // Clear form
+        document.getElementById('newName').value = '';
+        document.getElementById('newPrice').value = '';
+        document.getElementById('newProcedure').value = '';
+        document.getElementById('newDrugBrandId').value = '';
+        document.getElementById('newInventoryItemId').value = '';
+        document.getElementById('newLinked').innerHTML = '';
 
-        </script>
+        toast('Item added');
+    })
+    .catch(() => toast('Error adding item', true));
+}
 
-        @endsection
+// ── Inline edit toggle ──
+function toggleEdit(btn){
+    const row = btn.closest('tr');
+    const id = row.dataset.id;
+
+    if(btn.dataset.mode !== 'editing'){
+        // Enter edit mode
+        row.classList.add('editing');
+        row.querySelectorAll('input:not([type=hidden])').forEach(el => el.removeAttribute('readonly'));
+        row.querySelectorAll('select').forEach(el => el.removeAttribute('disabled'));
+        btn.textContent = 'Save';
+        btn.className = 'btn btn-success btn-sm edit-btn';
+        btn.dataset.mode = 'editing';
+    } else {
+        // Save via AJAX
+        const data = {
+            name: row.querySelector('.f-name').value,
+            item_type: row.querySelector('.f-type').value,
+            billing_type: row.querySelector('.f-billing').value,
+            price: row.querySelector('.f-price').value || 0,
+            procedure_price: row.querySelector('.f-procedure').value || 0,
+            drug_brand_id: row.querySelector('.f-drug-id').value || null,
+            inventory_item_id: row.querySelector('.f-inv-id').value || null,
+        };
+
+        fetch(`${BASE}/price-list-items/${id}`, {
+            method: 'PUT',
+            headers: HEADERS,
+            body: JSON.stringify(data)
+        })
+        .then(r => r.json())
+        .then(r => {
+            if(r.error){ toast(r.error, true); return; }
+
+            row.classList.remove('editing');
+            row.querySelectorAll('input:not([type=hidden])').forEach(el => el.setAttribute('readonly', true));
+            row.querySelectorAll('select').forEach(el => el.setAttribute('disabled', true));
+            btn.textContent = 'Edit';
+            btn.className = 'btn btn-secondary btn-sm edit-btn';
+            btn.dataset.mode = '';
+            toast('Saved');
+        })
+        .catch(() => toast('Error saving', true));
+    }
+}
+
+// ── Delete item ──
+function deleteItem(btn){
+    if(!confirm('Remove this item?')) return;
+
+    const row = btn.closest('tr');
+    const id = row.dataset.id;
+
+    fetch(`${BASE}/price-list-items/${id}`, {
+        method: 'DELETE',
+        headers: HEADERS
+    })
+    .then(r => r.json())
+    .then(r => {
+        if(r.success){
+            row.remove();
+            updateCount();
+            toast('Item removed');
+        } else {
+            toast('Error removing item', true);
+        }
+    })
+    .catch(() => toast('Error removing item', true));
+}
+
+// ── Update item count ──
+function updateCount(){
+    const count = document.querySelectorAll('#itemsBody tr').length;
+    document.getElementById('itemCount').textContent = `(${count})`;
+}
+</script>
+
+@endsection
