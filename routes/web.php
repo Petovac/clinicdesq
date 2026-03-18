@@ -627,12 +627,12 @@ Route::middleware(['auth'])
     /* =========================
      | IPD (In-Patient Department)
      ========================= */
+    Route::get('/ipd/search-parent', [ClinicIpdController::class, 'searchParent'])->name('ipd.search-parent');
+
     Route::middleware('permission:ipd.view')->group(function () {
         Route::get('/ipd', [ClinicIpdController::class, 'index'])->name('ipd.index');
         Route::get('/ipd/{admission}', [ClinicIpdController::class, 'show'])->name('ipd.show');
     });
-
-    Route::get('/ipd/search-parent', [ClinicIpdController::class, 'searchParent'])->name('ipd.search-parent');
 
     Route::middleware('permission:ipd.manage')->group(function () {
         Route::get('/ipd-admit', [ClinicIpdController::class, 'create'])->name('ipd.create');
