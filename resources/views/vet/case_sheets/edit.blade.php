@@ -989,24 +989,39 @@ document.getElementById('lab-test-search').addEventListener('input', function() 
 
     fetch(`{{ route('vet.lab-orders.available-tests') }}?q=${encodeURIComponent(q)}`)
         .then(r => r.json())
-        .then(tests => {
+        .then(data => {
+            // Merge in-house + external into one list
+            const inHouse = (data.in_house || []).map(t => ({ ...t, source: 'In-house' }));
+            const external = (data.external || []).map(t => ({ ...t, source: t.lab_name || 'External' }));
+            const tests = [...inHouse, ...external];
+
             if (!tests.length) {
                 dropdown.innerHTML = `<div style="padding:10px;font-size:13px;color:var(--text-muted);">No tests found. Type a custom name and click "+ Add Test".</div>`;
             } else {
-                dropdown.innerHTML = tests.map(t =>
-                    `<div class="search-dropdown-item" onclick="selectLabTest(${t.id}, '${t.name.replace(/'/g, "\\'")}')">
-                        <span style="font-weight:600;">${t.name}</span>
-                        <span style="font-size:11px;color:var(--text-muted);margin-left:8px;">${t.category} · ${t.sample_type}</span>
-                    </div>`
-                ).join('');
+                dropdown.innerHTML = tests.map(t => {
+                    const unavail = (t.type === 'in_house' && t.available === false) ? ' (Unavailable)' : '';
+                    const params = t.parameters ? (Array.isArray(t.parameters) ? t.parameters.join(', ') : t.parameters) : '';
+                    const priceStr = t.price ? ` · ₹${t.price}` : '';
+                    return `<div class="search-dropdown-item" style="${unavail ? 'opacity:0.5;' : ''}" onclick="selectLabTest(${t.id}, '${t.name.replace(/'/g, "\\'")}', '${t.type}', ${t.lab_id || 'null'}, ${t.price || 0})">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span style="font-weight:600;">${t.name}${unavail}</span>
+                            <span style="font-size:11px;color:var(--primary);font-weight:600;">${t.source}${priceStr}</span>
+                        </div>
+                        ${params ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${params}</div>` : ''}
+                    </div>`;
+                }).join('');
             }
             dropdown.style.display = 'block';
         });
 });
 
-function selectLabTest(catalogId, name) {
-    document.getElementById('lab-test-search').value = name;
-    document.getElementById('lab-test-search').dataset.catalogId = catalogId;
+function selectLabTest(id, name, type, labId, price) {
+    const input = document.getElementById('lab-test-search');
+    input.value = name;
+    input.dataset.testId = id;
+    input.dataset.testType = type || 'in_house';
+    input.dataset.labId = labId || '';
+    input.dataset.price = price || 0;
     document.getElementById('lab-test-dropdown').style.display = 'none';
 }
 
@@ -1015,14 +1030,22 @@ function addLabTest() {
     const name = input.value.trim();
     if (!name) return;
 
-    const catalogId = input.dataset.catalogId || null;
-
     // Check duplicate
     if (labTestPills.some(t => t.name.toLowerCase() === name.toLowerCase())) return;
 
-    labTestPills.push({ name, catalog_id: catalogId });
+    labTestPills.push({
+        name,
+        catalog_id: input.dataset.testType === 'in_house' ? input.dataset.testId : null,
+        external_test_id: input.dataset.testType === 'external' ? input.dataset.testId : null,
+        type: input.dataset.testType || 'in_house',
+        lab_id: input.dataset.labId || null,
+        price: parseFloat(input.dataset.price) || 0,
+    });
     input.value = '';
-    input.dataset.catalogId = '';
+    input.dataset.testId = '';
+    input.dataset.testType = '';
+    input.dataset.labId = '';
+    input.dataset.price = '';
     document.getElementById('lab-test-dropdown').style.display = 'none';
     renderLabTestPills();
 }
