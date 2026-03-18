@@ -84,6 +84,11 @@ input:focus, select:focus { outline:none;border-color:#4f46e5;box-shadow:0 0 0 3
             <div class="scope-hint">Hold Ctrl/Cmd to select multiple clinics</div>
         </div>
 
+        <div class="form-group" style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;">
+            <label>Change Password (leave blank to keep current)</label>
+            <input name="password" type="password" placeholder="Enter new password (min 6 characters)">
+        </div>
+
         <div style="display:flex;gap:12px;margin-top:20px;">
             <button type="submit" class="btn-primary">Update User</button>
             <a href="{{ route('organisation.users.index') }}" class="btn-secondary">Cancel</a>

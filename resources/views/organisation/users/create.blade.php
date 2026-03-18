@@ -82,6 +82,11 @@ input:focus, select:focus { outline:none;border-color:#4f46e5;box-shadow:0 0 0 3
             <div class="scope-hint">Hold Ctrl/Cmd to select multiple clinics</div>
         </div>
 
+        <div class="form-group">
+            <label>Password (optional — auto-generated if left blank)</label>
+            <input name="password" type="password" placeholder="Set a password or leave blank for auto-generated">
+        </div>
+
         <button type="submit" class="btn-primary">Create User</button>
     </form>
 </div>

@@ -54,17 +54,16 @@ class OrganisationUserController extends Controller
             'phone' => 'required|string|max:20|unique:users,phone',
             'email' => 'nullable|email|unique:users,email',
             'role_id' => 'required|exists:organisation_roles,id',
+            'password' => 'nullable|string|min:6',
             'clinic_id' => 'nullable|exists:clinics,id',
             'clinic_ids' => 'nullable|array',
             'clinic_ids.*' => 'exists:clinics,id',
         ]);
 
-        // Verify role belongs to this org
         $role = OrganisationRole::where('id', $request->role_id)
             ->where('organisation_id', $orgId)
             ->firstOrFail();
 
-        // Validate clinic requirement based on scope
         if ($role->clinic_scope === 'single' && !$request->clinic_id) {
             return back()->withErrors(['clinic_id' => 'Please select a clinic for this role.'])->withInput();
         }
@@ -79,18 +78,19 @@ class OrganisationUserController extends Controller
             $clinicId = $clinic->id;
         }
 
-        // Create user
+        // Use provided password or generate random
+        $password = $request->password ?: Str::random(12);
+
         $user = User::create([
             'name' => $request->name,
             'phone' => $request->phone,
             'email' => $request->email,
-            'role' => $role->name, // store role name for display
+            'role' => $role->name,
             'organisation_id' => $orgId,
             'clinic_id' => $clinicId,
-            'password' => Hash::make($tempPassword = Str::random(12)),
+            'password' => Hash::make($password),
         ]);
 
-        // Create the org-user-role assignment (THIS is what powers permissions)
         OrganisationUserRole::create([
             'organisation_id' => $orgId,
             'user_id' => $user->id,
@@ -98,13 +98,15 @@ class OrganisationUserController extends Controller
             'clinic_id' => $clinicId,
         ]);
 
-        // Multi-clinic assignment
         if ($role->clinic_scope === 'multiple' && $request->filled('clinic_ids')) {
             $user->assignedClinics()->sync($request->clinic_ids);
         }
 
-        return redirect()->route('organisation.users.index')
-            ->with('success', "User created. Temporary password: {$tempPassword} — share it securely.");
+        $msg = $request->password
+            ? 'User created successfully.'
+            : "User created. Temporary password: {$password} — share it securely.";
+
+        return redirect()->route('organisation.users.index')->with('success', $msg);
     }
 
     public function edit(User $user)
@@ -119,13 +121,16 @@ class OrganisationUserController extends Controller
 
         $clinics = Clinic::where('organisation_id', $orgId)->get();
 
-        // Get user's current role assignment
         $currentAssignment = OrganisationUserRole::where('user_id', $user->id)
             ->where('organisation_id', $orgId)
             ->first();
 
         $currentRoleId = $currentAssignment ? $currentAssignment->role_id : null;
-        $assignedClinicIds = $user->assignedClinics()->pluck('clinics.id')->toArray();
+
+        $assignedClinicIds = [];
+        if (method_exists($user, 'assignedClinics')) {
+            $assignedClinicIds = $user->assignedClinics()->pluck('clinics.id')->toArray();
+        }
 
         return view('organisation.users.edit', compact('user', 'roles', 'clinics', 'currentRoleId', 'assignedClinicIds'));
     }
@@ -140,6 +145,7 @@ class OrganisationUserController extends Controller
             'phone' => 'required|string|max:20|unique:users,phone,' . $user->id,
             'email' => 'nullable|email|unique:users,email,' . $user->id,
             'role_id' => 'required|exists:organisation_roles,id',
+            'password' => 'nullable|string|min:6',
             'clinic_id' => 'nullable|exists:clinics,id',
             'clinic_ids' => 'nullable|array',
             'clinic_ids.*' => 'exists:clinics,id',
@@ -156,26 +162,32 @@ class OrganisationUserController extends Controller
             $clinicId = $clinic->id;
         }
 
-        // Update user
-        $user->update([
+        $updateData = [
             'name' => $request->name,
             'phone' => $request->phone,
             'email' => $request->email,
             'role' => $role->name,
             'clinic_id' => $clinicId,
-        ]);
+        ];
 
-        // Update role assignment
+        // Only update password if provided
+        if ($request->filled('password')) {
+            $updateData['password'] = Hash::make($request->password);
+        }
+
+        $user->update($updateData);
+
         OrganisationUserRole::updateOrCreate(
             ['user_id' => $user->id, 'organisation_id' => $orgId],
             ['role_id' => $role->id, 'clinic_id' => $clinicId]
         );
 
-        // Handle clinic assignments
         if ($role->clinic_scope === 'multiple' && $request->filled('clinic_ids')) {
             $user->assignedClinics()->sync($request->clinic_ids);
         } elseif ($role->clinic_scope !== 'multiple') {
-            $user->assignedClinics()->detach();
+            if (method_exists($user, 'assignedClinics')) {
+                $user->assignedClinics()->detach();
+            }
         }
 
         return redirect()->route('organisation.users.index')
