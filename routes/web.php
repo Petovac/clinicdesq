@@ -632,9 +632,10 @@ Route::middleware(['auth'])
         Route::get('/ipd/{admission}', [ClinicIpdController::class, 'show'])->name('ipd.show');
     });
 
+    Route::get('/ipd/search-parent', [ClinicIpdController::class, 'searchParent'])->name('ipd.search-parent');
+
     Route::middleware('permission:ipd.manage')->group(function () {
         Route::get('/ipd-admit', [ClinicIpdController::class, 'create'])->name('ipd.create');
-        Route::get('/ipd/search-parent', [ClinicIpdController::class, 'searchParent'])->name('ipd.search-parent');
         Route::post('/ipd', [ClinicIpdController::class, 'store'])->name('ipd.store');
         Route::post('/ipd/{admission}/vitals', [ClinicIpdController::class, 'storeVitals'])->name('ipd.vitals.store');
         Route::post('/ipd/{admission}/notes', [ClinicIpdController::class, 'storeNote'])->name('ipd.notes.store');
