@@ -1101,7 +1101,7 @@ function quickAddBrand(brandId, brandName, strengthValue, strengthUnit, form, pa
         body: JSON.stringify({
             item_type: 'drug',
             name: brandName,
-            generic_id: genericId,
+            generic_id: genericId || null,
             drug_brand_id: brandId,
             strength_value: strengthValue,
             strength_unit: strengthUnit,

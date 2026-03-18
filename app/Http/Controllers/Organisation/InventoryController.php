@@ -35,7 +35,7 @@ InventoryItem::create([
 
 'brand_id' => $request->brand_id,
 
-'drug_generic_id' => $request->generic_id,
+'drug_generic_id' => $request->generic_id ?: null,
 
 'drug_brand_id' => $request->drug_brand_id,
 
