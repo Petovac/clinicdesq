@@ -81,10 +81,14 @@ function searchParent() {
 
     document.getElementById('searchResult').innerHTML = '<div style="color:#6b7280;font-size:13px;">Searching...</div>';
 
-    fetch('/clinic/ipd/search-parent?phone=' + encodeURIComponent(phone), {
+    fetch('{{ route("clinic.ipd.search-parent") }}?phone=' + encodeURIComponent(phone), {
+        credentials: 'same-origin',
         headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
     })
-    .then(r => r.json())
+    .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
     .then(data => {
         if (!data.found) {
             document.getElementById('searchResult').innerHTML = `
@@ -121,8 +125,9 @@ function searchParent() {
         html += '</div>';
         document.getElementById('searchResult').innerHTML = html;
     })
-    .catch(() => {
-        document.getElementById('searchResult').innerHTML = '<div style="color:#dc2626;font-size:13px;">Search failed. Try again.</div>';
+    .catch(err => {
+        document.getElementById('searchResult').innerHTML = '<div style="color:#dc2626;font-size:13px;">Search failed: ' + err.message + '. Check console for details.</div>';
+        console.error('IPD search error:', err);
     });
 }
 
