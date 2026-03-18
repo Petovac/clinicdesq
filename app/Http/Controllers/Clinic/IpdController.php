@@ -54,6 +54,34 @@ class IpdController extends Controller
         return view('clinic.ipd.create');
     }
 
+    public function searchParent(Request $request)
+    {
+        $phone = $request->get('phone');
+        if (!$phone) {
+            return response()->json(['found' => false]);
+        }
+
+        $parent = PetParent::where('phone', 'like', "%{$phone}%")
+            ->first();
+
+        if (!$parent) {
+            return response()->json(['found' => false]);
+        }
+
+        $pets = $parent->pets()->select('id', 'name', 'species', 'breed', 'gender')->get();
+
+        return response()->json([
+            'found' => true,
+            'parent' => [
+                'id' => $parent->id,
+                'name' => $parent->name,
+                'phone' => $parent->phone,
+                'email' => $parent->email,
+            ],
+            'pets' => $pets,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $user = auth()->user();
