@@ -13,9 +13,10 @@ class DrugController extends Controller
 
     public function index()
     {
-        $drugs = DrugGeneric::orderBy('name')->get();
+        $drugs = DrugGeneric::orderBy('drug_class')->orderBy('name')->get();
+        $grouped = $drugs->groupBy('drug_class');
 
-        return view('admin.drugs.index', compact('drugs'));
+        return view('admin.drugs.index', compact('drugs', 'grouped'));
     }
 
     public function create()
