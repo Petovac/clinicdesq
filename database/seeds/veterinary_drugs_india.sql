@@ -59,7 +59,6 @@ INSERT INTO `drug_generics` (`id`, `name`, `drug_class`, `default_dose_unit`, `c
 (152, 'Pantoprazole', 'Proton Pump Inhibitor', 'mg/kg', 1, NOW(), NOW()),
 (153, 'Sucralfate', 'Mucosal Protectant', 'mg/kg', 1, NOW(), NOW()),
 (154, 'Loperamide', 'Antidiarrheal', 'mg/kg', 1, NOW(), NOW()),
-(155, 'Metoclopramide', 'Prokinetic', 'mg/kg', 1, NOW(), NOW()),
 
 -- ANTIPARASITICS
 (160, 'Ivermectin', 'Avermectin', 'mcg/kg', 1, NOW(), NOW()),
