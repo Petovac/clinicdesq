@@ -810,9 +810,19 @@ drug.form + " " +
 drug.strength_value + drug.strength_unit + " " +
 drug.pack_size;
 
+let alreadyExists = existingBrandIds.map(Number).includes(Number(drug.id));
+
+if(alreadyExists){
 html += `
-<div class="drug-option"
-style="padding:6px;border-bottom:1px solid #eee;cursor:pointer"
+<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid #eee;opacity:0.7;">
+<span style="font-size:13px;color:#374151;">${label}</span>
+<span style="background:#dcfce7;color:#166534;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">Added</span>
+</div>
+`;
+}else{
+html += `
+<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid #eee;">
+<span class="drug-option" style="font-size:13px;color:#374151;cursor:pointer;flex:1;"
 data-id="${drug.id}"
 data-generic="${drug.generic}"
 data-brand="${drug.brand}"
@@ -820,13 +830,11 @@ data-strength="${drug.strength_value}"
 data-strengthunit="${drug.strength_unit}"
 data-pack="${drug.pack_size}"
 data-packunit="${drug.pack_unit}"
-data-form="${drug.form}"
->
-
-${label}
-
+data-form="${drug.form}">${label}</span>
+<button type="button" onclick="quickAddBrand(${drug.id}, '${drug.brand.replace(/'/g,"\\'")}', '${drug.strength_value}', '${drug.strength_unit}', '${drug.form}', '${drug.pack_size}', '${drug.pack_unit}', 0)" style="background:#2563eb;color:#fff;border:none;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">+ Add</button>
 </div>
 `;
+}
 
 });
 
@@ -995,23 +1003,28 @@ brand.pack_size + " " + brand.pack_unit;
 
 let alreadyExists = existingBrandIds.map(Number).includes(Number(brand.id));
 
-let badge = alreadyExists
-? '<span style="color:#16a34a;font-weight:800;margin-left:12px;">✓</span>'
-: '';
-
+if(alreadyExists){
 html += `
-<div class="brand-option"
-style="padding:8px;border-bottom:1px solid #eee;cursor:pointer"
+<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid #eee;opacity:0.7;">
+<span style="font-size:13px;color:#374151;">${label}</span>
+<span style="background:#dcfce7;color:#166534;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">Added</span>
+</div>
+`;
+}else{
+html += `
+<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid #eee;">
+<span class="brand-option" style="font-size:13px;color:#374151;cursor:pointer;flex:1;"
 data-id="${brand.id}"
 data-brand="${brand.brand}"
 data-strength="${brand.strength_value}"
 data-strengthunit="${brand.strength_unit}"
 data-form="${brand.form}"
 data-pack="${brand.pack_size}"
-data-packunit="${brand.pack_unit}">
-${label} ${badge}
+data-packunit="${brand.pack_unit}">${label}</span>
+<button type="button" onclick="quickAddBrand(${brand.id}, '${brand.brand.replace(/'/g,"\\'")}', '${brand.strength_value}', '${brand.strength_unit}', '${brand.form}', '${brand.pack_size}', '${brand.pack_unit}', ${genericId})" style="background:#2563eb;color:#fff;border:none;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">+ Add</button>
 </div>
 `;
+}
 
 });
 
@@ -1072,6 +1085,52 @@ document.querySelector('[name="name"]').focus();
 }
 
 });
+
+function quickAddBrand(brandId, brandName, strengthValue, strengthUnit, form, packSize, packUnit, genericId) {
+    let btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Adding...';
+
+    fetch("{{ route('organisation.inventory.store') }}", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+            item_type: 'drug',
+            name: brandName,
+            generic_id: genericId,
+            drug_brand_id: brandId,
+            strength_value: strengthValue,
+            strength_unit: strengthUnit,
+            package_type: form,
+            unit_volume_ml: packSize,
+            pack_unit: packUnit,
+            quick_add: true,
+        })
+    })
+    .then(res => {
+        if (res.ok) {
+            btn.textContent = '✓ Added';
+            btn.style.background = '#16a34a';
+            existingBrandIds.push(Number(brandId));
+            // Reload after brief delay
+            setTimeout(() => location.reload(), 800);
+        } else {
+            btn.textContent = 'Error';
+            btn.style.background = '#ef4444';
+            btn.disabled = false;
+            setTimeout(() => { btn.textContent = '+ Add'; btn.style.background = '#2563eb'; }, 2000);
+        }
+    })
+    .catch(() => {
+        btn.textContent = '+ Add';
+        btn.style.background = '#2563eb';
+        btn.disabled = false;
+    });
+}
 
 </script>
 

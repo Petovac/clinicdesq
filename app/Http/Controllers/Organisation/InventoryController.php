@@ -35,6 +35,8 @@ InventoryItem::create([
 
 'brand_id' => $request->brand_id,
 
+'drug_generic_id' => $request->generic_id,
+
 'drug_brand_id' => $request->drug_brand_id,
 
 'unit' => $request->unit,
@@ -54,6 +56,10 @@ InventoryItem::create([
 'is_multi_use' => $request->is_multi_use ? 1 : 0,
 
 ]);
+
+if ($request->wantsJson() || $request->quick_add) {
+    return response()->json(['success' => true]);
+}
 
 return redirect()->back()->with('success','Inventory item created');
 
