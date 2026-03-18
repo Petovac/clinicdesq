@@ -10,6 +10,7 @@ use App\Models\OrganisationUserRole;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class OrganisationUserController extends Controller
 {
@@ -86,7 +87,7 @@ class OrganisationUserController extends Controller
             'role' => $role->name, // store role name for display
             'organisation_id' => $orgId,
             'clinic_id' => $clinicId,
-            'password' => Hash::make('changeme123'),
+            'password' => Hash::make($tempPassword = Str::random(12)),
         ]);
 
         // Create the org-user-role assignment (THIS is what powers permissions)
@@ -103,7 +104,7 @@ class OrganisationUserController extends Controller
         }
 
         return redirect()->route('organisation.users.index')
-            ->with('success', 'User created successfully.');
+            ->with('success', "User created. Temporary password: {$tempPassword} — share it securely.");
     }
 
     public function edit(User $user)

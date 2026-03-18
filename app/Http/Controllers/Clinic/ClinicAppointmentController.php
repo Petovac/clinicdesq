@@ -143,6 +143,7 @@ class ClinicAppointmentController extends Controller
     public function updateStatus(Request $request, $id)
     {
         $appointment = Appointment::findOrFail($id);
+        abort_if($appointment->clinic_id !== (int) session('active_clinic_id'), 403);
         $status      = $request->status;
 
         if ($status == 'checked_in') {
@@ -163,6 +164,7 @@ class ClinicAppointmentController extends Controller
 
     public function reschedule(Request $request, Appointment $appointment)
     {
+        abort_if($appointment->clinic_id !== (int) session('active_clinic_id'), 403);
         $request->validate(['scheduled_at' => 'required|date']);
         $appointment->update(['scheduled_at' => $request->scheduled_at]);
         return back();

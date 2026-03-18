@@ -23,6 +23,8 @@ class BillingController extends Controller
     */
     public function create(Appointment $appointment)
     {
+        abort_if($appointment->clinic_id !== (int) session('active_clinic_id'), 403);
+
         $appointment->load([
             'pet',
             'clinic',
@@ -86,6 +88,7 @@ class BillingController extends Controller
     public function updateItem(Request $request, BillItem $item)
     {
         $bill = $item->bill;
+        abort_if($bill->clinic_id !== (int) session('active_clinic_id'), 403);
 
         if ($bill->isConfirmed()) {
             return response()->json(['error' => 'Bill already confirmed'], 422);
@@ -122,6 +125,7 @@ class BillingController extends Controller
     */
     public function addItem(Request $request, Bill $bill)
     {
+        abort_if($bill->clinic_id !== (int) session('active_clinic_id'), 403);
         if ($bill->isConfirmed()) {
             return back()->with('error', 'Bill already confirmed.');
         }
@@ -155,6 +159,7 @@ class BillingController extends Controller
     */
     public function confirm(Request $request, Bill $bill)
     {
+        abort_if($bill->clinic_id !== (int) session('active_clinic_id'), 403);
         if ($bill->isConfirmed()) {
             return back()->with('error', 'Bill is already confirmed.');
         }

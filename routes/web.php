@@ -665,7 +665,7 @@ Route::middleware('guest:vet')->group(function () {
     Route::get('/vet/login', [VetLoginController::class, 'showLoginForm'])
         ->name('vet.login');
 
-    Route::post('/vet/login', [VetLoginController::class, 'login']);
+    Route::post('/vet/login', [VetLoginController::class, 'login'])->middleware('throttle:5,1');
 
     Route::get('/vet/register', [VetRegisterController::class, 'showRegistrationForm'])
         ->name('vet.register');
@@ -1027,7 +1027,7 @@ Route::middleware('auth')->prefix('clinic/lab-orders')->name('clinic.lab-orders.
  ========================= */
 Route::middleware('guest:lab')->group(function () {
     Route::get('/lab/login', [LabAuthController::class, 'showLoginForm'])->name('lab.login');
-    Route::post('/lab/login', [LabAuthController::class, 'login']);
+    Route::post('/lab/login', [LabAuthController::class, 'login'])->middleware('throttle:5,1');
     Route::get('/lab/register', [LabAuthController::class, 'showRegisterForm'])->name('lab.register');
     Route::post('/lab/register', [LabAuthController::class, 'register']);
 });
