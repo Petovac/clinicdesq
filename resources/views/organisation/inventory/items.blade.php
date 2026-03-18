@@ -1115,9 +1115,13 @@ function quickAddBrand(brandId, brandName, strengthValue, strengthUnit, form, pa
         if (res.ok) {
             btn.textContent = '✓ Added';
             btn.style.background = '#16a34a';
+            btn.disabled = true;
             existingBrandIds.push(Number(brandId));
-            // Reload after brief delay
-            setTimeout(() => location.reload(), 800);
+            // Update the parent div to show "Added" style
+            let parentDiv = btn.closest('div');
+            if (parentDiv) {
+                parentDiv.style.opacity = '0.7';
+            }
         } else {
             btn.textContent = 'Error';
             btn.style.background = '#ef4444';
