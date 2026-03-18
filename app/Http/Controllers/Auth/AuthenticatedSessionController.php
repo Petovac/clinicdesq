@@ -39,41 +39,53 @@ class AuthenticatedSessionController extends Controller
     }
 
     /*
-|--------------------------------------------------------------------------
-| Organisation panel
-|--------------------------------------------------------------------------
-*/
-if (
-    $user->hasPermission('dashboard.view') ||
-    $user->hasPermission('users.view') ||
-    $user->hasPermission('clinics.view') ||
-    $user->hasPermission('inventory.view') ||
-    $user->hasPermission('appointments.metrics')
-) {
-    // Org-level users with a clinic_id also need it in session for clinic routes
-    if ($user->clinic_id) {
-        session(['active_clinic_id' => $user->clinic_id]);
-    }
-    return redirect('/organisation/dashboard');
-}
+    |--------------------------------------------------------------------------
+    | Determine panel: clinic-scoped users → clinic panel, central → org panel
+    |--------------------------------------------------------------------------
+    */
 
-/*
-|--------------------------------------------------------------------------
-| Clinic panel
-|--------------------------------------------------------------------------
-*/
-if (
-    $user->hasPermission('appointments.view') ||
-    $user->hasPermission('appointments.create') ||
-    $user->hasPermission('billing.create') ||
-    $user->hasPermission('reports.upload')
-) {
-    // Set active_clinic_id for clinic staff so all controllers can use it
+    // Set clinic session for users assigned to a clinic
     if ($user->clinic_id) {
         session(['active_clinic_id' => $user->clinic_id]);
     }
-    return redirect('/clinic/dashboard');
-}
+
+    // Check the user's role scope to decide which panel
+    $roleAssignment = \App\Models\OrganisationUserRole::where('user_id', $user->id)
+        ->where('organisation_id', $user->organisation_id)
+        ->with('role')
+        ->first();
+
+    $clinicScope = $roleAssignment?->role?->clinic_scope ?? 'none';
+
+    // Organisation owner always goes to org panel
+    if ($user->role === 'organisation_owner' || $user->role === 'Organisation Owner') {
+        return redirect('/organisation/dashboard');
+    }
+
+    // Single-clinic users → clinic panel (receptionist, clinic manager, etc.)
+    if ($clinicScope === 'single' && $user->clinic_id) {
+        return redirect('/clinic/dashboard');
+    }
+
+    // Central / multi-clinic users → org panel
+    if ($clinicScope === 'none' || $clinicScope === 'multiple') {
+        if ($user->hasPermission('dashboard.view') ||
+            $user->hasPermission('users.view') ||
+            $user->hasPermission('clinics.view') ||
+            $user->hasPermission('inventory.view')) {
+            return redirect('/organisation/dashboard');
+        }
+    }
+
+    // Fallback: anyone with clinic permissions goes to clinic panel
+    if ($user->hasPermission('appointments.view') ||
+        $user->hasPermission('appointments.create') ||
+        $user->hasPermission('billing.create') ||
+        $user->hasPermission('reports.upload') ||
+        $user->hasPermission('lab_orders.view') ||
+        $user->hasPermission('inventory.view')) {
+        return redirect('/clinic/dashboard');
+    }
 
     /*
     |--------------------------------------------------------------------------
