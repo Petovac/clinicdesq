@@ -11,6 +11,15 @@ SET NAMES utf8mb4;
 SET time_zone = '+05:30';
 
 -- ============================================================
+-- 0. EXPAND form ENUM to support all drug forms
+-- ============================================================
+ALTER TABLE `drug_brands` MODIFY COLUMN `form` ENUM(
+    'tablet', 'capsule', 'injection', 'vial', 'fluid',
+    'oral_suspension', 'syrup', 'chewable_tablet', 'infusion',
+    'ampoule', 'cream', 'ointment', 'drops', 'shampoo', 'spot_on', 'powder'
+) COLLATE utf8mb4_unicode_ci DEFAULT NULL;
+
+-- ============================================================
 -- 1. DRUG GENERICS
 -- ============================================================
 INSERT INTO `drug_generics` (`id`, `name`, `drug_class`, `default_dose_unit`, `created_by`, `created_at`, `updated_at`) VALUES
