@@ -50,6 +50,10 @@ if (
     $user->hasPermission('inventory.view') ||
     $user->hasPermission('appointments.metrics')
 ) {
+    // Org-level users with a clinic_id also need it in session for clinic routes
+    if ($user->clinic_id) {
+        session(['active_clinic_id' => $user->clinic_id]);
+    }
     return redirect('/organisation/dashboard');
 }
 
@@ -64,6 +68,10 @@ if (
     $user->hasPermission('billing.create') ||
     $user->hasPermission('reports.upload')
 ) {
+    // Set active_clinic_id for clinic staff so all controllers can use it
+    if ($user->clinic_id) {
+        session(['active_clinic_id' => $user->clinic_id]);
+    }
     return redirect('/clinic/dashboard');
 }
 

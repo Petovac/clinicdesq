@@ -700,7 +700,12 @@ function addDrugTreatment() {
             route:             route,
         })
     })
-    .then(res => res.json())
+    .then(res => {
+        if (!res.ok) {
+            return res.text().then(t => { throw new Error(`Server error ${res.status}: ${t.substring(0, 200)}`); });
+        }
+        return res.json();
+    })
     .then(data => {
         const drugName = document.getElementById('drug-generic-search').value;
         const strengthSel = document.getElementById('drug-strength-select');
@@ -732,6 +737,10 @@ function addDrugTreatment() {
         document.getElementById('dose-warning').style.display = 'none';
         selectedInventoryItemId = null;
         selectedGenericId = null;
+    })
+    .catch(err => {
+        console.error('Drug treatment add failed:', err);
+        alert('Failed to add drug treatment. ' + err.message);
     });
 }
 
@@ -748,7 +757,12 @@ function addProcedure() {
         },
         body: JSON.stringify({ price_list_item_id: id })
     })
-    .then(res => res.json())
+    .then(res => {
+        if (!res.ok) {
+            return res.text().then(t => { throw new Error(`Server error ${res.status}: ${t.substring(0, 200)}`); });
+        }
+        return res.json();
+    })
     .then(data => {
         const container = document.getElementById('procedure-treatment-pills');
         const pill = document.createElement('span');
@@ -758,6 +772,10 @@ function addProcedure() {
         container.appendChild(pill);
         document.getElementById('procedure-search').value = '';
         document.getElementById('procedure-select').value = '';
+    })
+    .catch(err => {
+        console.error('Procedure add failed:', err);
+        alert('Failed to add procedure. ' + err.message);
     });
 }
 
