@@ -1,163 +1,92 @@
 @extends('organisation.layout')
 
 @section('content')
-
 <style>
-.page-title {
-    font-size: 22px;
-    font-weight: 600;
-    margin-bottom: 20px;
-}
-
-.card {
-    background: #ffffff;
-    max-width: 720px;
-    padding: 24px;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-}
-
-.form-group {
-    margin-bottom: 16px;
-}
-
-.form-group label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: #374151;
-    margin-bottom: 6px;
-}
-
-.form-group input,
-.form-group select {
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: 1px solid #d1d5db;
-    font-size: 14px;
-    background: #fff;
-}
-
-.form-group input:focus,
-.form-group select:focus {
-    outline: none;
-    border-color: #4f46e5;
-    box-shadow: 0 0 0 1px rgba(79,70,229,0.3);
-}
-
-.form-group select[multiple] {
-    height: 120px;
-}
-
-.hidden {
-    display: none;
-}
-
-.actions {
-    margin-top: 24px;
-    display: flex;
-    gap: 12px;
-}
-
-.btn {
-    padding: 10px 16px;
-    border-radius: 8px;
-    font-size: 14px;
-    text-decoration: none;
-    cursor: pointer;
-    border: none;
-}
-
-.btn-primary {
-    background: #4f46e5;
-    color: #fff;
-}
-
-.btn-secondary {
-    background: #e5e7eb;
-    color: #111827;
-}
-
-.btn-secondary:hover {
-    background: #d1d5db;
-}
-
-.hint {
-    font-size: 12px;
-    color: #6b7280;
-    margin-top: 4px;
-}
+.card { background:#fff;border-radius:10px;padding:24px;max-width:700px;box-shadow:0 10px 25px rgba(0,0,0,0.05); }
+.form-group { margin-bottom:16px; }
+label { display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#374151; }
+input, select { width:100%;padding:10px 12px;border-radius:8px;border:1px solid #d1d5db;font-size:14px; }
+input:focus, select:focus { outline:none;border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,0.1); }
+.hidden { display:none; }
+.btn-primary { padding:10px 20px;border-radius:8px;border:none;cursor:pointer;background:#4f46e5;color:#fff;font-size:14px;font-weight:600; }
+.btn-primary:hover { background:#4338ca; }
+.btn-secondary { padding:10px 20px;border-radius:8px;border:none;cursor:pointer;background:#e5e7eb;color:#374151;font-size:14px;font-weight:600;text-decoration:none; }
+.scope-hint { font-size:11px;color:#6b7280;margin-top:4px; }
+.error-box { background:#fee2e2;padding:10px 14px;margin-bottom:16px;border-radius:8px;font-size:13px;color:#991b1b; }
 </style>
 
-<h2 class="page-title">Edit User</h2>
+<h2 style="font-size:22px;font-weight:600;margin-bottom:20px;">Edit User: {{ $user->name }}</h2>
 
 <div class="card">
+    @if($errors->any())
+        <div class="error-box">
+            @foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach
+        </div>
+    @endif
+
     <form method="POST" action="{{ route('organisation.users.update', $user) }}">
         @csrf
         @method('PUT')
 
         <div class="form-group">
-            <label>Name</label>
-            <input name="name" value="{{ $user->name }}" required>
+            <label>Name *</label>
+            <input name="name" value="{{ old('name', $user->name) }}" required>
         </div>
 
         <div class="form-group">
-            <label>Phone</label>
-            <input name="phone" value="{{ $user->phone }}" required>
+            <label>Phone *</label>
+            <input name="phone" value="{{ old('phone', $user->phone) }}" required>
         </div>
 
         <div class="form-group">
             <label>Email (optional)</label>
-            <input name="email" value="{{ $user->email }}">
+            <input name="email" type="email" value="{{ old('email', $user->email) }}">
         </div>
 
         <div class="form-group">
-            <label>Role</label>
-            <select name="role" id="roleSelect" required>
-                @foreach($roles as $roleKey => $level)
-                    <option value="{{ $roleKey }}"
-                        @selected($user->role === $roleKey)>
-                        {{ ucfirst(str_replace('_', ' ', $roleKey)) }}
+            <label>Role *</label>
+            <select name="role_id" id="roleSelect" required>
+                <option value="">Select role</option>
+                @foreach($roles as $role)
+                    <option value="{{ $role->id }}"
+                        data-scope="{{ $role->clinic_scope }}"
+                        {{ old('role_id', $currentRoleId) == $role->id ? 'selected' : '' }}>
+                        {{ $role->name }}
                     </option>
                 @endforeach
             </select>
+            <div class="scope-hint" id="scopeHint"></div>
         </div>
 
         {{-- Single clinic --}}
         <div class="form-group hidden" id="singleClinic">
-            <label>Clinic</label>
+            <label>Assign to Clinic *</label>
             <select name="clinic_id">
                 <option value="">Select clinic</option>
                 @foreach($clinics as $clinic)
-                    <option value="{{ $clinic->id }}"
-                        @selected($user->clinic_id === $clinic->id)>
-                        {{ $clinic->name }}
+                    <option value="{{ $clinic->id }}" {{ old('clinic_id', $user->clinic_id) == $clinic->id ? 'selected' : '' }}>
+                        {{ $clinic->name }}{{ $clinic->city ? " ({$clinic->city})" : '' }}
                     </option>
                 @endforeach
             </select>
-            <div class="hint">Applies to clinic manager, receptionist, sales</div>
         </div>
 
         {{-- Multi clinic --}}
         <div class="form-group hidden" id="multiClinic">
-            <label>Assigned Clinics</label>
-            <select name="clinic_ids[]" multiple>
+            <label>Assign to Clinics *</label>
+            <select name="clinic_ids[]" multiple style="min-height:120px;">
                 @foreach($clinics as $clinic)
-                    <option value="{{ $clinic->id }}"
-                        @selected($user->assignedClinics->contains($clinic->id))>
-                        {{ $clinic->name }}
+                    <option value="{{ $clinic->id }}" {{ in_array($clinic->id, old('clinic_ids', $assignedClinicIds)) ? 'selected' : '' }}>
+                        {{ $clinic->name }}{{ $clinic->city ? " ({$clinic->city})" : '' }}
                     </option>
                 @endforeach
             </select>
-            <div class="hint">Applies to regional & area managers</div>
+            <div class="scope-hint">Hold Ctrl/Cmd to select multiple clinics</div>
         </div>
 
-        <div class="actions">
-            <button class="btn btn-primary">Update User</button>
-            <a href="{{ route('organisation.users.index') }}" class="btn btn-secondary">
-                Cancel
-            </a>
+        <div style="display:flex;gap:12px;margin-top:20px;">
+            <button type="submit" class="btn-primary">Update User</button>
+            <a href="{{ route('organisation.users.index') }}" class="btn-secondary">Cancel</a>
         </div>
     </form>
 </div>
@@ -166,22 +95,30 @@
 const roleSelect = document.getElementById('roleSelect');
 const singleClinic = document.getElementById('singleClinic');
 const multiClinic = document.getElementById('multiClinic');
+const scopeHint = document.getElementById('scopeHint');
 
-function toggleClinicFields() {
+const scopeMessages = {
+    'none': 'Central role — access to all clinics',
+    'single': 'This role is assigned to a single clinic',
+    'multiple': 'This role manages multiple clinics',
+};
+
+function updateClinicFields() {
     singleClinic.classList.add('hidden');
     multiClinic.classList.add('hidden');
+    scopeHint.textContent = '';
 
-    if (['clinic_manager','receptionist','sales'].includes(roleSelect.value)) {
-        singleClinic.classList.remove('hidden');
-    }
+    const selected = roleSelect.options[roleSelect.selectedIndex];
+    if (!selected || !selected.value) return;
 
-    if (['regional_manager','area_manager'].includes(roleSelect.value)) {
-        multiClinic.classList.remove('hidden');
-    }
+    const scope = selected.dataset.scope;
+    scopeHint.textContent = scopeMessages[scope] || '';
+
+    if (scope === 'single') singleClinic.classList.remove('hidden');
+    if (scope === 'multiple') multiClinic.classList.remove('hidden');
 }
 
-roleSelect.addEventListener('change', toggleClinicFields);
-toggleClinicFields();
+roleSelect.addEventListener('change', updateClinicFields);
+updateClinicFields();
 </script>
-
 @endsection

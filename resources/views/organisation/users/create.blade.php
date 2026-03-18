@@ -1,118 +1,88 @@
 @extends('organisation.layout')
 
 @section('content')
-
 <style>
-.card {
-    background: #fff;
-    border-radius: 10px;
-    padding: 24px;
-    max-width: 700px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-}
-
-.form-group {
-    margin-bottom: 16px;
-}
-
-label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 6px;
-}
-
-input, select {
-    width: 100%;
-    padding: 10px;
-    border-radius: 6px;
-    border: 1px solid #d1d5db;
-}
-
-.hidden {
-    display: none;
-}
-
-.btn {
-    padding: 10px 18px;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-}
-
-.btn-primary {
-    background: #4f46e5;
-    color: #fff;
-}
+.card { background:#fff;border-radius:10px;padding:24px;max-width:700px;box-shadow:0 10px 25px rgba(0,0,0,0.05); }
+.form-group { margin-bottom:16px; }
+label { display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#374151; }
+input, select { width:100%;padding:10px 12px;border-radius:8px;border:1px solid #d1d5db;font-size:14px; }
+input:focus, select:focus { outline:none;border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,0.1); }
+.hidden { display:none; }
+.btn-primary { padding:10px 20px;border-radius:8px;border:none;cursor:pointer;background:#4f46e5;color:#fff;font-size:14px;font-weight:600; }
+.btn-primary:hover { background:#4338ca; }
+.scope-hint { font-size:11px;color:#6b7280;margin-top:4px; }
+.error-box { background:#fee2e2;padding:10px 14px;margin-bottom:16px;border-radius:8px;font-size:13px;color:#991b1b; }
 </style>
 
-
-
-<h2>Create User</h2>
+<h2 style="font-size:22px;font-weight:600;margin-bottom:20px;">Create User</h2>
 
 <div class="card">
-
-    @if ($errors->any())
-    <div style="background:#fee2e2;padding:10px;margin-bottom:10px;border-radius:6px">
-    <ul>
-    @foreach ($errors->all() as $error)
-    <li>{{ $error }}</li>
-    @endforeach
-    </ul>
-    </div>
+    @if($errors->any())
+        <div class="error-box">
+            @foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach
+        </div>
     @endif
+
     <form method="POST" action="{{ route('organisation.users.store') }}">
         @csrf
 
         <div class="form-group">
-            <label>Name</label>
-            <input name="name" required>
+            <label>Name *</label>
+            <input name="name" value="{{ old('name') }}" required>
         </div>
 
         <div class="form-group">
-            <label>Phone</label>
-            <input name="phone" required>
+            <label>Phone *</label>
+            <input name="phone" value="{{ old('phone') }}" required>
         </div>
 
         <div class="form-group">
             <label>Email (optional)</label>
-            <input name="email">
+            <input name="email" type="email" value="{{ old('email') }}">
         </div>
 
         <div class="form-group">
-            <label>Role</label>
-            <select name="role" id="roleSelect" required>
+            <label>Role *</label>
+            <select name="role_id" id="roleSelect" required>
                 <option value="">Select role</option>
-                @foreach($roles as $roleKey => $level)
-                    <option value="{{ $roleKey }}">
-                        {{ ucfirst(str_replace('_', ' ', $roleKey)) }}
+                @foreach($roles as $role)
+                    <option value="{{ $role->id }}"
+                        data-scope="{{ $role->clinic_scope }}"
+                        {{ old('role_id') == $role->id ? 'selected' : '' }}>
+                        {{ $role->name }}
                     </option>
                 @endforeach
             </select>
+            <div class="scope-hint" id="scopeHint"></div>
         </div>
 
         {{-- Single clinic --}}
         <div class="form-group hidden" id="singleClinic">
-            <label>Clinic</label>
+            <label>Assign to Clinic *</label>
             <select name="clinic_id">
                 <option value="">Select clinic</option>
                 @foreach($clinics as $clinic)
-                    <option value="{{ $clinic->id }}">{{ $clinic->name }}</option>
+                    <option value="{{ $clinic->id }}" {{ old('clinic_id') == $clinic->id ? 'selected' : '' }}>
+                        {{ $clinic->name }}{{ $clinic->city ? " ({$clinic->city})" : '' }}
+                    </option>
                 @endforeach
             </select>
         </div>
 
         {{-- Multi clinic --}}
         <div class="form-group hidden" id="multiClinic">
-            <label>Clinics</label>
-            <select name="clinic_ids[]" multiple>
+            <label>Assign to Clinics *</label>
+            <select name="clinic_ids[]" multiple style="min-height:120px;">
                 @foreach($clinics as $clinic)
-                    <option value="{{ $clinic->id }}">{{ $clinic->name }}</option>
+                    <option value="{{ $clinic->id }}">
+                        {{ $clinic->name }}{{ $clinic->city ? " ({$clinic->city})" : '' }}
+                    </option>
                 @endforeach
             </select>
+            <div class="scope-hint">Hold Ctrl/Cmd to select multiple clinics</div>
         </div>
 
-        <button class="btn btn-primary">Create User</button>
+        <button type="submit" class="btn-primary">Create User</button>
     </form>
 </div>
 
@@ -120,23 +90,30 @@ input, select {
 const roleSelect = document.getElementById('roleSelect');
 const singleClinic = document.getElementById('singleClinic');
 const multiClinic = document.getElementById('multiClinic');
+const scopeHint = document.getElementById('scopeHint');
+
+const scopeMessages = {
+    'none': 'Central role — access to all clinics',
+    'single': 'This role is assigned to a single clinic',
+    'multiple': 'This role manages multiple clinics',
+};
 
 function updateClinicFields() {
-    const val = roleSelect.value;
-
     singleClinic.classList.add('hidden');
     multiClinic.classList.add('hidden');
+    scopeHint.textContent = '';
 
-    if (['clinic_manager','receptionist','sales'].includes(val)) {
-        singleClinic.classList.remove('hidden');
-    }
+    const selected = roleSelect.options[roleSelect.selectedIndex];
+    if (!selected || !selected.value) return;
 
-    if (['regional_manager','area_manager'].includes(val)) {
-        multiClinic.classList.remove('hidden');
-    }
+    const scope = selected.dataset.scope;
+    scopeHint.textContent = scopeMessages[scope] || '';
+
+    if (scope === 'single') singleClinic.classList.remove('hidden');
+    if (scope === 'multiple') multiClinic.classList.remove('hidden');
 }
 
 roleSelect.addEventListener('change', updateClinicFields);
+updateClinicFields(); // run on page load for old() values
 </script>
-
 @endsection
