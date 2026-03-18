@@ -217,8 +217,8 @@
        @foreach($drug->dosages as $dose)
 
        @php
-       $routes = $dose->routes ? json_decode($dose->routes, true) : [];
-       $freq = $dose->frequencies ? json_decode($dose->frequencies, true) : [];
+       $routes = is_array($dose->routes) ? $dose->routes : (is_string($dose->routes) ? json_decode($dose->routes, true) : []);
+       $freq = is_array($dose->frequencies) ? $dose->frequencies : (is_string($dose->frequencies) ? json_decode($dose->frequencies, true) : []);
        @endphp
 
        <div class="dose-card">
