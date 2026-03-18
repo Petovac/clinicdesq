@@ -373,29 +373,35 @@ Route::middleware(['auth'])
         ->prefix('organisation')
         ->name('organisation.')
         ->group(function () {
-            // Lab Test Catalog
-            Route::get('/lab-catalog', [LabManagementController::class, 'catalogIndex'])->name('lab-catalog.index');
-            Route::get('/lab-catalog/create', [LabManagementController::class, 'catalogCreate'])->name('lab-catalog.create');
-            Route::post('/lab-catalog', [LabManagementController::class, 'catalogStore'])->name('lab-catalog.store');
-            Route::get('/lab-catalog/{test}/edit', [LabManagementController::class, 'catalogEdit'])->name('lab-catalog.edit');
-            Route::put('/lab-catalog/{test}', [LabManagementController::class, 'catalogUpdate'])->name('lab-catalog.update');
-            Route::delete('/lab-catalog/{test}', [LabManagementController::class, 'catalogDestroy'])->name('lab-catalog.destroy');
+            // Lab Test Catalog (requires lab_catalog.manage permission)
+            Route::middleware('permission:lab_catalog.manage')->group(function () {
+                Route::get('/lab-catalog', [LabManagementController::class, 'catalogIndex'])->name('lab-catalog.index');
+                Route::get('/lab-catalog/create', [LabManagementController::class, 'catalogCreate'])->name('lab-catalog.create');
+                Route::post('/lab-catalog', [LabManagementController::class, 'catalogStore'])->name('lab-catalog.store');
+                Route::get('/lab-catalog/{test}/edit', [LabManagementController::class, 'catalogEdit'])->name('lab-catalog.edit');
+                Route::put('/lab-catalog/{test}', [LabManagementController::class, 'catalogUpdate'])->name('lab-catalog.update');
+                Route::delete('/lab-catalog/{test}', [LabManagementController::class, 'catalogDestroy'])->name('lab-catalog.destroy');
+            });
 
-            // External Labs
-            Route::get('/labs', [LabManagementController::class, 'labsIndex'])->name('labs.index');
-            Route::get('/labs/search', [LabManagementController::class, 'labsSearch'])->name('labs.search');
-            Route::post('/labs/onboard', [LabManagementController::class, 'labsOnboard'])->name('labs.onboard');
-            Route::get('/labs/{lab}/edit', [LabManagementController::class, 'labsEdit'])->name('labs.edit');
-            Route::put('/labs/{lab}', [LabManagementController::class, 'labsUpdate'])->name('labs.update');
-            Route::post('/labs/{lab}/tests', [LabManagementController::class, 'labTestStore'])->name('labs.test.store');
-            Route::put('/labs/tests/{test}/price', [LabManagementController::class, 'labTestUpdatePrice'])->name('labs.test.update-price');
-            Route::post('/labs/{lab}/import-tests', [LabManagementController::class, 'labsImportTests'])->name('labs.import-tests');
-            Route::delete('/labs/{lab}/detach', [LabManagementController::class, 'labsDetach'])->name('labs.detach');
+            // External Labs (requires labs.manage permission)
+            Route::middleware('permission:labs.manage')->group(function () {
+                Route::get('/labs', [LabManagementController::class, 'labsIndex'])->name('labs.index');
+                Route::get('/labs/search', [LabManagementController::class, 'labsSearch'])->name('labs.search');
+                Route::post('/labs/onboard', [LabManagementController::class, 'labsOnboard'])->name('labs.onboard');
+                Route::get('/labs/{lab}/edit', [LabManagementController::class, 'labsEdit'])->name('labs.edit');
+                Route::put('/labs/{lab}', [LabManagementController::class, 'labsUpdate'])->name('labs.update');
+                Route::post('/labs/{lab}/tests', [LabManagementController::class, 'labTestStore'])->name('labs.test.store');
+                Route::put('/labs/tests/{test}/price', [LabManagementController::class, 'labTestUpdatePrice'])->name('labs.test.update-price');
+                Route::post('/labs/{lab}/import-tests', [LabManagementController::class, 'labsImportTests'])->name('labs.import-tests');
+                Route::delete('/labs/{lab}/detach', [LabManagementController::class, 'labsDetach'])->name('labs.detach');
+            });
 
-            // Lab Technicians
-            Route::get('/lab-techs', [LabManagementController::class, 'labTechIndex'])->name('lab-techs.index');
-            Route::post('/lab-techs', [LabManagementController::class, 'labTechStore'])->name('lab-techs.store');
-            Route::post('/lab-techs/{labUser}/toggle', [LabManagementController::class, 'labTechToggle'])->name('lab-techs.toggle');
+            // Lab Technicians (requires labs.manage permission)
+            Route::middleware('permission:labs.manage')->group(function () {
+                Route::get('/lab-techs', [LabManagementController::class, 'labTechIndex'])->name('lab-techs.index');
+                Route::post('/lab-techs', [LabManagementController::class, 'labTechStore'])->name('lab-techs.store');
+                Route::post('/lab-techs/{labUser}/toggle', [LabManagementController::class, 'labTechToggle'])->name('lab-techs.toggle');
+            });
         });
 
 
