@@ -213,7 +213,7 @@
     <div class="quick-card">
         <h3>Pricing</h3>
         <p>Price lists and fee configuration</p>
-        <a href="{{ route('organisation.pricelist.index') }}">Manage &rarr;</a>
+        <a href="{{ route('organisation.price-lists.index') }}">Manage &rarr;</a>
     </div>
 
     <div class="quick-card">
