@@ -200,7 +200,7 @@
     <div class="quick-card">
         <h3>Inventory</h3>
         <p>Central stock and clinic transfers</p>
-        <a href="{{ route('organisation.inventory.index') }}">Manage &rarr;</a>
+        <a href="{{ route('organisation.inventory.items') }}">Manage &rarr;</a>
     </div>
     @endif
 
