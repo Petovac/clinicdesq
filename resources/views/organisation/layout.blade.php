@@ -80,18 +80,45 @@ padding-top:12px;
 border-top:1px solid #1f2937;
 }
 
-/* Parent menu */
+/* Parent menu — collapsible toggle */
 
 .nav-parent{
-display:block;
+display:flex;
+align-items:center;
+justify-content:space-between;
 padding:10px 12px;
 font-size:13px;
 font-weight:600;
 color:#d1d5db;
 letter-spacing:0.3px;
+cursor:pointer;
+user-select:none;
+border-radius:6px;
+transition:background 0.15s;
+}
+.nav-parent:hover{
+background:rgba(255,255,255,0.05);
+}
+.nav-parent::after{
+content:'›';
+font-size:16px;
+font-weight:400;
+color:#6b7280;
+transition:transform 0.2s;
+}
+.nav-section.open .nav-parent::after{
+transform:rotate(90deg);
 }
 
-/* Children */
+/* Children — collapsed by default */
+
+.nav-children{
+display:none;
+overflow:hidden;
+}
+.nav-section.open .nav-children{
+display:block;
+}
 
 .nav-children a{
 padding-left:28px;
@@ -354,6 +381,22 @@ Organisation Panel
 </div>
 
 </div>
+
+<script>
+// Collapsible sidebar sections
+document.querySelectorAll('.nav-section .nav-parent').forEach(function(parent) {
+    parent.addEventListener('click', function() {
+        this.closest('.nav-section').classList.toggle('open');
+    });
+});
+
+// Auto-expand sections that have an active link
+document.querySelectorAll('.nav-section').forEach(function(section) {
+    if (section.querySelector('.nav-children a.active')) {
+        section.classList.add('open');
+    }
+});
+</script>
 
 </body>
 </html>
