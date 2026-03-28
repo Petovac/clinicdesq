@@ -78,6 +78,11 @@
 .card { background:#fff; border-radius:12px; padding:20px; border:1px solid #e5e7eb; margin-bottom:20px; }
 .card-title { font-size:15px; font-weight:700; margin:0 0 14px; color:#374151; }
 .success-bar { background:#dcfce7; border:1px solid #bbf7d0; padding:10px 14px; border-radius:6px; margin-bottom:14px; color:#166534; font-size:14px; }
+
+.usage-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:16px; }
+.usage-stat { background:#f0f9ff; border-radius:8px; padding:14px; text-align:center; }
+.usage-stat .num { font-size:22px; font-weight:800; color:#0369a1; }
+.usage-stat .lbl { font-size:11px; color:#6b7280; }
 </style>
 
 <div class="credits-page">
@@ -127,26 +132,22 @@
     </div>
 </div>
 
-{{-- Usage Analytics --}}
+{{-- Usage Summary --}}
 @if($usageStats && $usageStats->total_requests > 0)
 <div class="card">
-    <div class="card-title">Your AI Usage Analytics</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;">
-        <div style="background:#f0f9ff;border-radius:8px;padding:14px;text-align:center;">
-            <div style="font-size:22px;font-weight:800;color:#0369a1;">{{ $usageStats->total_requests }}</div>
-            <div style="font-size:11px;color:#6b7280;">Total AI Requests</div>
+    <div class="card-title">Your AI Usage</div>
+    <div class="usage-grid">
+        <div class="usage-stat">
+            <div class="num">{{ $usageStats->total_requests }}</div>
+            <div class="lbl">Total AI Requests</div>
         </div>
-        <div style="background:#f0fdf4;border-radius:8px;padding:14px;text-align:center;">
-            <div style="font-size:22px;font-weight:800;color:#16a34a;">{{ number_format($usageStats->total_input + $usageStats->total_output) }}</div>
-            <div style="font-size:11px;color:#6b7280;">Total Tokens</div>
+        <div class="usage-stat">
+            <div class="num">{{ $credit->total_used }}</div>
+            <div class="lbl">Credits Used</div>
         </div>
-        <div style="background:#fefce8;border-radius:8px;padding:14px;text-align:center;">
-            <div style="font-size:22px;font-weight:800;color:#ca8a04;">${{ number_format($usageStats->total_cost_usd, 4) }}</div>
-            <div style="font-size:11px;color:#6b7280;">Total Cost (USD)</div>
-        </div>
-        <div style="background:#fdf2f8;border-radius:8px;padding:14px;text-align:center;">
-            <div style="font-size:22px;font-weight:800;color:#db2777;">₹{{ number_format($usageStats->total_cost_usd * 85, 2) }}</div>
-            <div style="font-size:11px;color:#6b7280;">Total Cost (INR)</div>
+        <div class="usage-stat">
+            <div class="num">{{ $credit->balance }}</div>
+            <div class="lbl">Credits Remaining</div>
         </div>
     </div>
     @if($featureBreakdown->isNotEmpty())
@@ -155,9 +156,8 @@
             <tr>
                 <th>Feature</th>
                 <th>Times Used</th>
-                <th>Avg Input Tokens</th>
-                <th>Avg Output Tokens</th>
-                <th>Avg Cost / Request</th>
+                <th>Credits Per Use</th>
+                <th>Total Credits Used</th>
             </tr>
         </thead>
         <tbody>
@@ -165,9 +165,8 @@
             <tr>
                 <td style="font-weight:600;">{{ ucwords(str_replace('_', ' ', $fb->ai_feature)) }}</td>
                 <td>{{ $fb->uses }}</td>
-                <td>{{ $fb->avg_input ? number_format($fb->avg_input) : '—' }}</td>
-                <td>{{ $fb->avg_output ? number_format($fb->avg_output) : '—' }}</td>
-                <td>{{ $fb->avg_cost ? '$' . number_format($fb->avg_cost, 4) . ' (~₹' . number_format($fb->avg_cost * 85, 2) . ')' : '—' }}</td>
+                <td><span class="cost-badge">1 credit</span></td>
+                <td style="font-weight:600;">{{ $fb->uses }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -201,12 +200,12 @@
             <tr>
                 <td style="font-weight:600;">Senior Vet Guidance</td>
                 <td style="color:#6b7280;">Comprehensive case review with history and diagnostics</td>
-                <td><span class="cost-badge">{{ $creditCosts['senior_support'] }} credits</span></td>
+                <td><span class="cost-badge">{{ $creditCosts['senior_support'] }} credit</span></td>
             </tr>
             <tr>
                 <td style="font-weight:600;">Prescription Support</td>
                 <td style="color:#6b7280;">Drug selection and dosage guidance with safety checks</td>
-                <td><span class="cost-badge">{{ $creditCosts['prescription_support'] }} credits</span></td>
+                <td><span class="cost-badge">{{ $creditCosts['prescription_support'] }} credit</span></td>
             </tr>
         </tbody>
     </table>
@@ -225,8 +224,6 @@
                 <th>Type</th>
                 <th>Description</th>
                 <th>Credits</th>
-                <th>Tokens</th>
-                <th>Cost</th>
                 <th>Balance</th>
             </tr>
         </thead>
@@ -249,21 +246,6 @@
                         <span class="tx-deduction">-{{ $tx->credits }}</span>
                     @else
                         <span class="tx-purchase">+{{ $tx->credits }}</span>
-                    @endif
-                </td>
-                <td style="color:#6b7280;font-size:12px;">
-                    @if($tx->input_tokens)
-                        {{ number_format($tx->input_tokens) }} in / {{ number_format($tx->output_tokens) }} out
-                    @else
-                        —
-                    @endif
-                </td>
-                <td style="color:#6b7280;font-size:12px;">
-                    @if($tx->cost_usd)
-                        ${{ number_format($tx->cost_usd, 4) }}
-                        <br><span style="font-size:11px;">~₹{{ number_format($tx->cost_usd * 85, 2) }}</span>
-                    @else
-                        —
                     @endif
                 </td>
                 <td style="font-weight:600;">{{ $tx->balance_after }}</td>
