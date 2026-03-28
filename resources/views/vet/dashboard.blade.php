@@ -34,6 +34,28 @@
 </div>
 @endif
 
+{{-- Vaccination Alerts --}}
+@if(isset($vaccinationAlerts) && count($vaccinationAlerts) > 0)
+<div style="background:#fff;border:1px solid #e5e7eb;border-radius:var(--radius-md);padding:16px;margin-bottom:16px;">
+    <h3 style="font-size:15px;font-weight:700;color:#0d9488;margin:0 0 12px;">💉 Vaccination Alerts</h3>
+    @foreach($vaccinationAlerts as $alert)
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;margin-bottom:6px;border-radius:6px;{{ $alert->isOverdue() ? 'background:#fee2e2;' : 'background:#fef3c7;' }}">
+        <div>
+            <span style="font-weight:600;font-size:13px;">{{ $alert->pet->name }}</span>
+            <span style="font-size:12px;color:#6b7280;"> — {{ $alert->vaccine_name }} ({{ $alert->dose_number }})</span>
+        </div>
+        <div>
+            @if($alert->isOverdue())
+                <span style="font-size:11px;font-weight:600;color:#dc2626;">Overdue since {{ $alert->next_due_date->format('d M') }}</span>
+            @else
+                <span style="font-size:11px;font-weight:600;color:#92400e;">Due {{ $alert->next_due_date->format('d M') }}</span>
+            @endif
+        </div>
+    </div>
+    @endforeach
+</div>
+@endif
+
 @if($activeClinic)
     <div class="v-banner v-banner--info">
         <span class="v-badge v-badge--blue">Active</span>

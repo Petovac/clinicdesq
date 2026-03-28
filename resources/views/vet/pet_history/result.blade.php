@@ -216,6 +216,53 @@
                 </div>
                 @endforeach
             @endif
+
+            {{-- Vaccination Record --}}
+            @if($pet->vaccinations->count())
+            <div style="margin-top:16px;padding-top:14px;border-top:2px solid #e2e8f0;">
+                <h4 style="font-size:15px;font-weight:700;color:#0d9488;margin:0 0 12px;">
+                    💉 Vaccination Record ({{ $pet->vaccinations->count() }})
+                </h4>
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead>
+                        <tr style="background:#f0fdfa;">
+                            <th style="text-align:left;padding:8px 10px;font-size:11px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;">Vaccine</th>
+                            <th style="text-align:left;padding:8px 10px;font-size:11px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;">Brand</th>
+                            <th style="text-align:left;padding:8px 10px;font-size:11px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;">Dose</th>
+                            <th style="text-align:left;padding:8px 10px;font-size:11px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;">Date</th>
+                            <th style="text-align:left;padding:8px 10px;font-size:11px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;">Next Due</th>
+                            <th style="text-align:left;padding:8px 10px;font-size:11px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($pet->vaccinations as $vax)
+                        <tr>
+                            <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;font-weight:600;">{{ $vax->vaccine_name }}</td>
+                            <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;color:#6b7280;">{{ $vax->brand_name ?? '-' }}</td>
+                            <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;">
+                                <span style="background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">{{ $vax->dose_number }}</span>
+                            </td>
+                            <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;">{{ $vax->administered_date->format('d M Y') }}</td>
+                            <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;">
+                                {{ $vax->next_due_date ? $vax->next_due_date->format('d M Y') : '-' }}
+                            </td>
+                            <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;">
+                                @if($vax->isOverdue())
+                                    <span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">Overdue</span>
+                                @elseif($vax->isDueSoon())
+                                    <span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">Due Soon</span>
+                                @elseif($vax->next_due_date && $vax->next_due_date->isFuture())
+                                    <span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">Up to Date</span>
+                                @else
+                                    <span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">Done</span>
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @endif
         </div>
     @empty
         <p style="color:var(--text-muted);">No pets found for this pet parent.</p>

@@ -849,6 +849,77 @@ body { background: var(--bg-page); }
     </div>
     @endif
 
+    {{-- VACCINATION HISTORY --}}
+    @if(!$readOnly)
+    <div class="case-card">
+        <div class="section-title">💉 Vaccination History</div>
+        @php
+            $vaccinations = $appointment->pet->vaccinations ?? collect();
+            $overdueVax = $vaccinations->filter(fn($v) => $v->isOverdue());
+            $dueSoonVax = $vaccinations->filter(fn($v) => $v->isDueSoon());
+        @endphp
+
+        @if($overdueVax->count())
+        <div style="background:#fee2e2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin-bottom:10px;">
+            <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:4px;">⚠️ Overdue Vaccinations</div>
+            @foreach($overdueVax as $v)
+            <div style="font-size:13px;color:#991b1b;">
+                {{ $v->vaccine_name }} ({{ $v->dose_number }}) — was due {{ $v->next_due_date->format('d M Y') }}
+            </div>
+            @endforeach
+        </div>
+        @endif
+
+        @if($dueSoonVax->count())
+        <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:10px;">
+            <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:4px;">🔔 Due Soon</div>
+            @foreach($dueSoonVax as $v)
+            <div style="font-size:13px;color:#78350f;">
+                {{ $v->vaccine_name }} ({{ $v->dose_number }}) — due {{ $v->next_due_date->format('d M Y') }}
+            </div>
+            @endforeach
+        </div>
+        @endif
+
+        @if($vaccinations->isEmpty())
+            <p style="color:var(--text-muted);font-size:13px;">No vaccination records for this pet.</p>
+        @else
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead>
+                    <tr>
+                        <th style="text-align:left;padding:6px 8px;background:#f8fafc;font-size:11px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;">Vaccine</th>
+                        <th style="text-align:left;padding:6px 8px;background:#f8fafc;font-size:11px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;">Dose</th>
+                        <th style="text-align:left;padding:6px 8px;background:#f8fafc;font-size:11px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;">Date</th>
+                        <th style="text-align:left;padding:6px 8px;background:#f8fafc;font-size:11px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;">Next Due</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($vaccinations as $vax)
+                    <tr>
+                        <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;font-weight:600;">{{ $vax->vaccine_name }}</td>
+                        <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;">
+                            <span style="background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;">{{ $vax->dose_number }}</span>
+                        </td>
+                        <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;color:#6b7280;">{{ $vax->administered_date->format('d M y') }}</td>
+                        <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;">
+                            @if($vax->isOverdue())
+                                <span style="color:#dc2626;font-weight:600;">{{ $vax->next_due_date->format('d M y') }}</span>
+                            @elseif($vax->isDueSoon())
+                                <span style="color:#f59e0b;font-weight:600;">{{ $vax->next_due_date->format('d M y') }}</span>
+                            @elseif($vax->next_due_date)
+                                <span style="color:#6b7280;">{{ $vax->next_due_date->format('d M y') }}</span>
+                            @else
+                                -
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+    </div>
+    @endif
+
     {{-- CASE SHEET --}}
     @if($appointment->caseSheet)
     <div class="case-card">

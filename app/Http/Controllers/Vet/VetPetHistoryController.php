@@ -38,6 +38,9 @@ class VetPetHistoryController extends Controller
                 ])
                 ->orderByDesc('scheduled_at');
             },
+            'pets.vaccinations' => function ($q) {
+                $q->orderByDesc('administered_date');
+            },
             'pets.ipdAdmissions' => function ($q) {
                 $q->with(['clinic:id,name', 'treatments', 'notes'])
                   ->orderByDesc('admission_date');

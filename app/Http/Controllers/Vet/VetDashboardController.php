@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Vet;
 use App\Http\Controllers\Controller;
 use App\Models\Clinic;
 use App\Models\Appointment;
+use App\Models\PetVaccination;
 use Illuminate\Support\Carbon;
 
 class VetDashboardController extends Controller
@@ -30,6 +31,25 @@ public function dashboard()
 
     $activeClinic = $clinics->firstWhere('id', $activeClinicId);
 
+    // Get vaccination alerts for today's appointments
+    $vaccinationAlerts = [];
+    if ($activeClinicId) {
+        $todayPetIds = Appointment::where('vet_id', $vet->id)
+            ->where('clinic_id', $activeClinicId)
+            ->whereDate('scheduled_at', $today)
+            ->pluck('pet_id')
+            ->unique();
+
+        $vaccinationAlerts = PetVaccination::whereIn('pet_id', $todayPetIds)
+            ->where(function($q) {
+                $q->where('next_due_date', '<', now()) // overdue
+                  ->orWhereBetween('next_due_date', [now(), now()->addDays(14)]); // due soon
+            })
+            ->with('pet:id,name')
+            ->orderBy('next_due_date')
+            ->get();
+    }
+
     // Pending onboarding requests
     $pendingClinicRequests = \DB::table('clinic_vet')
         ->join('clinics', 'clinics.id', '=', 'clinic_vet.clinic_id')
@@ -43,7 +63,8 @@ public function dashboard()
         'clinics',
         'activeClinic',
         'todayCounts',
-        'pendingClinicRequests'
+        'pendingClinicRequests',
+        'vaccinationAlerts'
     ));
 }
 

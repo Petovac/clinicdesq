@@ -191,6 +191,7 @@ class AppointmentController extends Controller
         // Load active appointment
         $appointment->load([
             'pet.petParent',
+            'pet.vaccinations',
             'caseSheet',
             'prescription.items',
             'treatments.drugGeneric',
