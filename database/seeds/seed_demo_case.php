@@ -21,9 +21,9 @@ $petId = DB::table('pets')->insertGetId([
     'species' => 'Dog',
     'breed' => 'Golden Retriever',
     'gender' => 'Male',
-    'date_of_birth' => '2022-06-15',
-    'color' => 'Golden',
-    'microchip_number' => 'MCH-2024-00981',
+    'age' => 3,
+    'age_months' => 9,
+    'age_recorded_at' => now(),
     'created_at' => now(),
     'updated_at' => now(),
 ]);
