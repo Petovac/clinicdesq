@@ -48,7 +48,7 @@ $brandData = [
     'Albendazole' => [
         ['brand_name' => 'Albomar', 'strength_value' => 400, 'strength_unit' => 'mg', 'form' => 'tablet', 'manufacturer' => 'Intas'],
         ['brand_name' => 'Zentel Vet', 'strength_value' => 200, 'strength_unit' => 'mg', 'form' => 'tablet', 'manufacturer' => 'GSK'],
-        ['brand_name' => 'Albomar Susp', 'strength_value' => 20, 'strength_unit' => 'mg/ml', 'form' => 'suspension', 'manufacturer' => 'Intas'],
+        ['brand_name' => 'Albomar Susp', 'strength_value' => 20, 'strength_unit' => 'mg/ml', 'form' => 'oral_suspension', 'manufacturer' => 'Intas'],
     ],
     'Ampicillin' => [
         ['brand_name' => 'Ampivet', 'strength_value' => 500, 'strength_unit' => 'mg', 'form' => 'injection', 'manufacturer' => 'Vetsfarma'],
@@ -103,8 +103,8 @@ $brandData = [
         ['brand_name' => 'Envas', 'strength_value' => 2.5, 'strength_unit' => 'mg', 'form' => 'tablet', 'manufacturer' => 'Cadila'],
     ],
     'Pimobendan' => [
-        ['brand_name' => 'Vetmedin', 'strength_value' => 1.25, 'strength_unit' => 'mg', 'form' => 'chewable', 'manufacturer' => 'Boehringer Ingelheim'],
-        ['brand_name' => 'Vetmedin', 'strength_value' => 5, 'strength_unit' => 'mg', 'form' => 'chewable', 'manufacturer' => 'Boehringer Ingelheim'],
+        ['brand_name' => 'Vetmedin', 'strength_value' => 1.25, 'strength_unit' => 'mg', 'form' => 'chewable_tablet', 'manufacturer' => 'Boehringer Ingelheim'],
+        ['brand_name' => 'Vetmedin', 'strength_value' => 5, 'strength_unit' => 'mg', 'form' => 'chewable_tablet', 'manufacturer' => 'Boehringer Ingelheim'],
         ['brand_name' => 'Cardisure', 'strength_value' => 2.5, 'strength_unit' => 'mg', 'form' => 'tablet', 'manufacturer' => 'Dechra'],
     ],
     'Sildenafil' => [
@@ -113,8 +113,8 @@ $brandData = [
 
     // ===== NSAIDS / PAIN =====
     'Firocoxib' => [
-        ['brand_name' => 'Previcox', 'strength_value' => 57, 'strength_unit' => 'mg', 'form' => 'chewable', 'manufacturer' => 'Boehringer Ingelheim'],
-        ['brand_name' => 'Previcox', 'strength_value' => 227, 'strength_unit' => 'mg', 'form' => 'chewable', 'manufacturer' => 'Boehringer Ingelheim'],
+        ['brand_name' => 'Previcox', 'strength_value' => 57, 'strength_unit' => 'mg', 'form' => 'chewable_tablet', 'manufacturer' => 'Boehringer Ingelheim'],
+        ['brand_name' => 'Previcox', 'strength_value' => 227, 'strength_unit' => 'mg', 'form' => 'chewable_tablet', 'manufacturer' => 'Boehringer Ingelheim'],
     ],
     'Gabapentin' => [
         ['brand_name' => 'Gabapin', 'strength_value' => 100, 'strength_unit' => 'mg', 'form' => 'capsule', 'manufacturer' => 'Intas'],
@@ -150,7 +150,7 @@ $brandData = [
         ['brand_name' => 'Pan IV', 'strength_value' => 40, 'strength_unit' => 'mg', 'form' => 'injection', 'manufacturer' => 'Alkem'],
     ],
     'Sucralfate' => [
-        ['brand_name' => 'Sucralfate Susp', 'strength_value' => 1, 'strength_unit' => 'g/10ml', 'form' => 'suspension', 'manufacturer' => 'Abbott'],
+        ['brand_name' => 'Sucralfate Susp', 'strength_value' => 1, 'strength_unit' => 'g/10ml', 'form' => 'oral_suspension', 'manufacturer' => 'Abbott'],
         ['brand_name' => 'Sucral', 'strength_value' => 500, 'strength_unit' => 'mg', 'form' => 'tablet', 'manufacturer' => 'Alkem'],
     ],
 
@@ -208,18 +208,18 @@ $brandData = [
 
     // ===== OPHTHALMIC =====
     'Artificial Tears' => [
-        ['brand_name' => 'Refresh Tears', 'strength_value' => 0.5, 'strength_unit' => '%', 'form' => 'eye drops', 'manufacturer' => 'Allergan'],
-        ['brand_name' => 'Systane Ultra', 'strength_value' => 0.4, 'strength_unit' => '%', 'form' => 'eye drops', 'manufacturer' => 'Alcon'],
+        ['brand_name' => 'Refresh Tears', 'strength_value' => 0.5, 'strength_unit' => '%', 'form' => 'eye_drops', 'manufacturer' => 'Allergan'],
+        ['brand_name' => 'Systane Ultra', 'strength_value' => 0.4, 'strength_unit' => '%', 'form' => 'eye_drops', 'manufacturer' => 'Alcon'],
     ],
     'Ciprofloxacin Eye Drops' => [
-        ['brand_name' => 'Ciplox Eye', 'strength_value' => 0.3, 'strength_unit' => '%', 'form' => 'eye drops', 'manufacturer' => 'Cipla'],
+        ['brand_name' => 'Ciplox Eye', 'strength_value' => 0.3, 'strength_unit' => '%', 'form' => 'eye_drops', 'manufacturer' => 'Cipla'],
     ],
     'Clotrimazole Ear Drops' => [
-        ['brand_name' => 'Surolan', 'strength_value' => 1, 'strength_unit' => '%', 'form' => 'ear drops', 'manufacturer' => 'Elanco'],
-        ['brand_name' => 'Otomax', 'strength_value' => 1, 'strength_unit' => '%', 'form' => 'ear drops', 'manufacturer' => 'MSD'],
+        ['brand_name' => 'Surolan', 'strength_value' => 1, 'strength_unit' => '%', 'form' => 'ear_drops', 'manufacturer' => 'Elanco'],
+        ['brand_name' => 'Otomax', 'strength_value' => 1, 'strength_unit' => '%', 'form' => 'ear_drops', 'manufacturer' => 'MSD'],
     ],
     'Tobramycin Eye Drops' => [
-        ['brand_name' => 'Tobrex', 'strength_value' => 0.3, 'strength_unit' => '%', 'form' => 'eye drops', 'manufacturer' => 'Novartis'],
+        ['brand_name' => 'Tobrex', 'strength_value' => 0.3, 'strength_unit' => '%', 'form' => 'eye_drops', 'manufacturer' => 'Novartis'],
     ],
 
     // ===== IV FLUIDS / ELECTROLYTES =====
@@ -254,14 +254,14 @@ $brandData = [
         ['brand_name' => 'Drontal Plus', 'strength_value' => 50, 'strength_unit' => 'mg', 'form' => 'tablet', 'manufacturer' => 'Bayer'],
     ],
     'Pyrantel Pamoate' => [
-        ['brand_name' => 'Drontal Puppy', 'strength_value' => 15, 'strength_unit' => 'mg/ml', 'form' => 'suspension', 'manufacturer' => 'Bayer'],
+        ['brand_name' => 'Drontal Puppy', 'strength_value' => 15, 'strength_unit' => 'mg/ml', 'form' => 'oral_suspension', 'manufacturer' => 'Bayer'],
         ['brand_name' => 'Nemocid', 'strength_value' => 250, 'strength_unit' => 'mg', 'form' => 'tablet', 'manufacturer' => 'Pfizer'],
     ],
 
     // ===== ECTOPARASITICIDES =====
     'Fipronil' => [
-        ['brand_name' => 'Frontline Plus', 'strength_value' => 9.8, 'strength_unit' => '%', 'form' => 'spot-on', 'manufacturer' => 'Boehringer Ingelheim'],
-        ['brand_name' => 'Fiprofort Plus', 'strength_value' => 9.8, 'strength_unit' => '%', 'form' => 'spot-on', 'manufacturer' => 'Savavet'],
+        ['brand_name' => 'Frontline Plus', 'strength_value' => 9.8, 'strength_unit' => '%', 'form' => 'spot_on', 'manufacturer' => 'Boehringer Ingelheim'],
+        ['brand_name' => 'Fiprofort Plus', 'strength_value' => 9.8, 'strength_unit' => '%', 'form' => 'spot_on', 'manufacturer' => 'Savavet'],
     ],
     'Ivermectin' => [
         ['brand_name' => 'Ivermectin Inj', 'strength_value' => 10, 'strength_unit' => 'mg/ml', 'form' => 'injection', 'manufacturer' => 'Indian Immunologicals'],
@@ -364,7 +364,7 @@ $brandData = [
     // ===== BEHAVIOURAL =====
     'Fluoxetine' => [
         ['brand_name' => 'Flunil', 'strength_value' => 20, 'strength_unit' => 'mg', 'form' => 'capsule', 'manufacturer' => 'Intas'],
-        ['brand_name' => 'Reconcile', 'strength_value' => 8, 'strength_unit' => 'mg', 'form' => 'chewable', 'manufacturer' => 'Elanco'],
+        ['brand_name' => 'Reconcile', 'strength_value' => 8, 'strength_unit' => 'mg', 'form' => 'chewable_tablet', 'manufacturer' => 'Elanco'],
     ],
     'Trazodone' => [
         ['brand_name' => 'Trazodone Tab', 'strength_value' => 50, 'strength_unit' => 'mg', 'form' => 'tablet', 'manufacturer' => 'Sun Pharma'],
