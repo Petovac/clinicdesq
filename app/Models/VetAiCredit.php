@@ -68,8 +68,8 @@ class VetAiCredit extends Model
     public static $creditCosts = [
         'refine' => 1,
         'clinical_insights' => 1,
-        'senior_support' => 2,
-        'prescription_support' => 2,
+        'senior_support' => 1,
+        'prescription_support' => 1,
     ];
 
     public static function costFor(string $feature): int

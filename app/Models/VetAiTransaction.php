@@ -26,20 +26,20 @@ class VetAiTransaction extends Model
         'starter' => [
             'name' => 'Starter Pack',
             'credits' => 50,
-            'price' => 199,
-            'per_credit' => '3.98',
+            'price' => 249,
+            'per_credit' => '4.98',
         ],
         'standard' => [
             'name' => 'Standard Pack',
-            'credits' => 150,
-            'price' => 449,
-            'per_credit' => '2.99',
+            'credits' => 200,
+            'price' => 799,
+            'per_credit' => '4.00',
         ],
         'pro' => [
             'name' => 'Pro Pack',
-            'credits' => 600,
+            'credits' => 500,
             'price' => 1499,
-            'per_credit' => '2.50',
+            'per_credit' => '3.00',
         ],
     ];
 }

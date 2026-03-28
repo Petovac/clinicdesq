@@ -369,14 +369,6 @@ class VetAiController extends Controller
             ], 422);
         }
 
-        if (!DiagnosticFile::hasVerifiedFindings($appointment->id)) {
-            return response()->json([
-                'error' =>
-                    'Prescription guidance blocked. ' .
-                    'Human-verified diagnostic findings are required before prescribing.'
-            ], 422);
-        }
-
         if (!$appointment->weight || $appointment->weight <= 0) {
             return response()->json([
                 'error' =>
