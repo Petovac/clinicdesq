@@ -172,7 +172,6 @@
 
     /* AI panel */
     #ai-insights-output {
-        white-space: pre-wrap;
         font-size: 13px;
         background: var(--bg-soft);
         border: 1px solid var(--border);
@@ -180,6 +179,8 @@
         padding: 12px;
         margin-top: 10px;
         min-height: 80px;
+        max-height: 70vh;
+        overflow-y: auto;
     }
 
     /* Readonly inputs */
@@ -985,7 +986,7 @@ function refineField(field) {
 
 <script>
 function getClinicalInsights() {
-    document.getElementById('ai-insights-output').innerText = 'Generating AI clinical insights...';
+    showAiLoading(document.getElementById('ai-insights-output'), 'Generating AI clinical insights...');
 
     fetch('{{ url('/vet/ai/clinical-insights') }}', {
         method: 'POST',
@@ -1033,10 +1034,10 @@ function getClinicalInsights() {
     })
     .then(data => {
         if (data.raw) {
-            document.getElementById('ai-insights-output').innerText = data.raw;
+            setAiOutput(document.getElementById('ai-insights-output'), data.raw);
             updateCreditBalance();
         } else {
-            document.getElementById('ai-insights-output').innerText = 'AI did not return insights.';
+            document.getElementById('ai-insights-output').innerHTML = '<span style="color:var(--text-muted);">AI did not return insights.</span>';
         }
     })
     .catch(err => {
@@ -1044,7 +1045,7 @@ function getClinicalInsights() {
             document.getElementById('ai-insights-output').innerHTML =
                 '<span style="color:#dc2626;">' + err.message + '</span><br><a href="' + err.url + '" style="color:var(--primary);font-size:13px;">Purchase AI Credits</a>';
         } else {
-            document.getElementById('ai-insights-output').innerText = 'Failed to generate AI insights.';
+            document.getElementById('ai-insights-output').innerHTML = '<span style="color:#dc2626;">Failed to generate AI insights.</span>';
         }
     });
 }

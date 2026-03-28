@@ -192,7 +192,7 @@
             AI-assisted suggestions based on the case sheet and diagnostics.
             These are <strong>not</strong> prescriptions and must be reviewed by the veterinarian.
         </p>
-        <div id="ai-prescription-box" style="padding:14px;background:#fff;border:1px solid var(--border);border-radius:var(--radius-md);font-size:14px;white-space:pre-wrap;min-height:120px;">
+        <div id="ai-prescription-box" style="padding:14px;background:#fff;border:1px solid var(--border);border-radius:var(--radius-md);font-size:13px;min-height:120px;max-height:70vh;overflow-y:auto;">
             No prescription suggestions generated yet.
         </div>
         <button type="button" class="v-btn v-btn--primary v-btn--block" style="margin-top:12px;" onclick="generatePrescriptionAI()">
@@ -625,7 +625,7 @@ function closePreview() { document.getElementById('preview-modal').style.display
 
 async function generatePrescriptionAI() {
     const box = document.getElementById('ai-prescription-box');
-    box.innerText = 'Generating suggestions...';
+    showAiLoading(box, 'Generating prescription suggestions...');
     try {
         const res = await fetch(`/vet/ai/prescription-support/{{ $appointment->id }}`, {
             method: 'POST',
@@ -637,9 +637,13 @@ async function generatePrescriptionAI() {
             return;
         }
         const data = await res.json();
-        box.innerText = res.ok ? (data.guidance || 'No guidance returned.') : (data.error || 'Unable to generate.');
+        if (res.ok && data.guidance) {
+            setAiOutput(box, data.guidance);
+        } else {
+            box.innerHTML = '<span style="color:var(--text-muted);">' + (data.error || 'No guidance returned.') + '</span>';
+        }
     } catch (e) {
-        box.innerText = 'Failed to connect to prescription AI.';
+        box.innerHTML = '<span style="color:#dc2626;">Failed to connect to prescription AI.</span>';
     }
 }
 </script>

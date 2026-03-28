@@ -600,5 +600,213 @@
 
 @yield('scripts')
 
+{{-- AI Output Markdown Renderer & Styles --}}
+<style>
+.ai-rendered { font-size: 13px; line-height: 1.7; color: var(--text); }
+.ai-rendered h2 { font-size: 15px; font-weight: 700; color: #1e293b; margin: 18px 0 8px; padding-bottom: 6px; border-bottom: 2px solid #e2e8f0; }
+.ai-rendered h3 { font-size: 14px; font-weight: 700; color: #334155; margin: 14px 0 6px; }
+.ai-rendered h4 { font-size: 13px; font-weight: 600; color: #475569; margin: 10px 0 4px; }
+.ai-rendered p { margin: 4px 0 8px; }
+.ai-rendered ul, .ai-rendered ol { margin: 4px 0 10px; padding-left: 20px; }
+.ai-rendered li { margin-bottom: 3px; }
+.ai-rendered li::marker { color: var(--primary); }
+.ai-rendered strong { color: #1e293b; font-weight: 600; }
+.ai-rendered em { color: #6366f1; font-style: italic; }
+.ai-rendered hr { border: none; border-top: 1px dashed #cbd5e1; margin: 14px 0; }
+.ai-rendered code { background: #f1f5f9; color: #be185d; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+.ai-rendered blockquote { border-left: 3px solid #6366f1; background: #f8fafc; padding: 8px 12px; margin: 8px 0; border-radius: 0 6px 6px 0; font-size: 12px; color: #475569; }
+
+/* Alert-style blocks: lines starting with specific markers */
+.ai-rendered .ai-flag { background: #fef2f2; border: 1px solid #fecaca; border-left: 3px solid #ef4444; padding: 8px 12px; border-radius: 0 6px 6px 0; margin: 8px 0; font-size: 12px; color: #991b1b; }
+.ai-rendered .ai-note { background: #eff6ff; border: 1px solid #bfdbfe; border-left: 3px solid #3b82f6; padding: 8px 12px; border-radius: 0 6px 6px 0; margin: 8px 0; font-size: 12px; color: #1e40af; }
+.ai-rendered .ai-ok { background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 3px solid #22c55e; padding: 8px 12px; border-radius: 0 6px 6px 0; margin: 8px 0; font-size: 12px; color: #166534; }
+.ai-rendered .ai-warn { background: #fffbeb; border: 1px solid #fde68a; border-left: 3px solid #f59e0b; padding: 8px 12px; border-radius: 0 6px 6px 0; margin: 8px 0; font-size: 12px; color: #92400e; }
+
+/* Section cards for numbered headings */
+.ai-rendered .ai-section { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; margin: 10px 0; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+.ai-rendered .ai-section-title { font-size: 14px; font-weight: 700; color: var(--primary); margin: 0 0 6px; display: flex; align-items: center; gap: 6px; }
+.ai-rendered .ai-section-num { background: var(--primary); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+
+.ai-rendered table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+.ai-rendered th { background: #f1f5f9; font-weight: 600; text-align: left; padding: 6px 8px; border: 1px solid #e2e8f0; font-size: 11px; text-transform: uppercase; color: #64748b; }
+.ai-rendered td { padding: 6px 8px; border: 1px solid #e2e8f0; }
+.ai-rendered tr:nth-child(even) td { background: #f9fafb; }
+
+/* Loading animation */
+.ai-loading { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; padding: 16px 0; }
+.ai-loading-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); display: inline-block; animation: aiDotPulse 1.4s infinite ease-in-out; }
+.ai-loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.ai-loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes aiDotPulse { 0%, 80%, 100% { transform: scale(0.4); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+</style>
+
+<script>
+/**
+ * Lightweight Markdown → HTML renderer for AI output.
+ * Handles: headings, bold, italic, lists, tables, blockquotes, hr, code, alerts.
+ */
+function renderAiMarkdown(text) {
+    if (!text) return '<span style="color:var(--text-muted);">No output.</span>';
+
+    // Escape HTML
+    let s = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    // Tables: detect lines with | separators
+    s = s.replace(/((?:^|\n)\|.+\|(?:\n\|[-| :]+\|)?\n(?:\|.+\|\n?)+)/g, function(block) {
+        const rows = block.trim().split('\n').filter(r => r.trim());
+        let html = '<table>';
+        rows.forEach((row, i) => {
+            if (row.match(/^\|[\s\-:|]+\|$/)) return; // skip separator row
+            const cells = row.split('|').filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+            const tag = i === 0 ? 'th' : 'td';
+            html += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+        });
+        html += '</table>';
+        return '\n' + html + '\n';
+    });
+
+    // Split into lines for block-level processing
+    const lines = s.split('\n');
+    let html = '';
+    let inList = false;
+    let listType = '';
+
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+
+        // Skip empty lines
+        if (!line.trim()) {
+            if (inList) { html += `</${listType}>`; inList = false; }
+            continue;
+        }
+
+        // Already processed table HTML
+        if (line.trim().startsWith('<table') || line.trim().startsWith('</table') || line.trim().startsWith('<tr') || line.trim().startsWith('<th') || line.trim().startsWith('<td')) {
+            if (inList) { html += `</${listType}>`; inList = false; }
+            html += line;
+            continue;
+        }
+
+        // Headings
+        if (line.match(/^#{1,4}\s/)) {
+            if (inList) { html += `</${listType}>`; inList = false; }
+            const level = line.match(/^(#+)/)[1].length;
+            const text = line.replace(/^#+\s*/, '');
+            html += `<h${level + 1}>${applyInline(text)}</h${level + 1}>`;
+            continue;
+        }
+
+        // Numbered section headings like "**1. Something**" or "1. **Something**"
+        const sectionMatch = line.match(/^\*\*(\d+)\.\s*(.+?)\*\*$/) || line.match(/^(\d+)\.\s*\*\*(.+?)\*\*$/);
+        if (sectionMatch && !inList) {
+            html += `<div class="ai-section"><div class="ai-section-title"><span class="ai-section-num">${sectionMatch[1]}</span>${applyInline(sectionMatch[2])}</div>`;
+            // Collect content until next section or end
+            let j = i + 1;
+            let sectionContent = '';
+            while (j < lines.length) {
+                const nextSection = lines[j].match(/^\*\*\d+\.\s/) || lines[j].match(/^\d+\.\s*\*\*/);
+                const nextHeading = lines[j].match(/^#{1,4}\s/);
+                if (nextSection || nextHeading) break;
+                sectionContent += lines[j] + '\n';
+                j++;
+            }
+            if (sectionContent.trim()) {
+                html += renderAiMarkdown(sectionContent.trim());
+            }
+            html += '</div>';
+            i = j - 1;
+            continue;
+        }
+
+        // Horizontal rule
+        if (line.match(/^---+$/)) {
+            if (inList) { html += `</${listType}>`; inList = false; }
+            html += '<hr>';
+            continue;
+        }
+
+        // Blockquote
+        if (line.match(/^>\s/)) {
+            if (inList) { html += `</${listType}>`; inList = false; }
+            html += `<blockquote>${applyInline(line.replace(/^>\s*/, ''))}</blockquote>`;
+            continue;
+        }
+
+        // Alert blocks: **Flag:** or **Note:** or **Warning:** at start of line
+        if (line.match(/^\*\*Flag:?\*\*/i) || line.match(/^-\s*\*\*Flag:?\*\*/i)) {
+            if (inList) { html += `</${listType}>`; inList = false; }
+            html += `<div class="ai-flag">${applyInline(line.replace(/^-\s*/, ''))}</div>`;
+            continue;
+        }
+        if (line.match(/^\*\*Note:?\*\*/i) || line.match(/^-\s*\*\*Note:?\*\*/i)) {
+            if (inList) { html += `</${listType}>`; inList = false; }
+            html += `<div class="ai-note">${applyInline(line.replace(/^-\s*/, ''))}</div>`;
+            continue;
+        }
+        if (line.match(/^\*\*Warning:?\*\*/i) || line.match(/^-\s*\*\*Warn/i) || line.match(/^\*\*Caution:?\*\*/i)) {
+            if (inList) { html += `</${listType}>`; inList = false; }
+            html += `<div class="ai-warn">${applyInline(line.replace(/^-\s*/, ''))}</div>`;
+            continue;
+        }
+
+        // Unordered list
+        if (line.match(/^\s*[-*]\s/)) {
+            const indent = line.match(/^(\s*)/)[1].length;
+            const content = line.replace(/^\s*[-*]\s+/, '');
+            if (!inList || listType !== 'ul') {
+                if (inList) html += `</${listType}>`;
+                html += '<ul>';
+                inList = true;
+                listType = 'ul';
+            }
+            html += `<li>${applyInline(content)}</li>`;
+            continue;
+        }
+
+        // Ordered list
+        if (line.match(/^\s*\d+\.\s/)) {
+            const content = line.replace(/^\s*\d+\.\s+/, '');
+            if (!inList || listType !== 'ol') {
+                if (inList) html += `</${listType}>`;
+                html += '<ol>';
+                inList = true;
+                listType = 'ol';
+            }
+            html += `<li>${applyInline(content)}</li>`;
+            continue;
+        }
+
+        // Regular paragraph
+        if (inList) { html += `</${listType}>`; inList = false; }
+        html += `<p>${applyInline(line)}</p>`;
+    }
+
+    if (inList) html += `</${listType}>`;
+    return html;
+}
+
+/** Inline formatting: bold, italic, code, links */
+function applyInline(text) {
+    return text
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/__(.+?)__/g, '<strong>$1</strong>')
+        .replace(/_(.+?)_/g, '<em>$1</em>');
+}
+
+/** Show loading animation in an AI output container */
+function showAiLoading(el, message) {
+    el.innerHTML = `<div class="ai-loading"><div class="ai-loading-dots"><span></span><span></span><span></span></div>${message || 'Generating...'}</div>`;
+    el.classList.add('ai-rendered');
+}
+
+/** Render AI response into container */
+function setAiOutput(el, text) {
+    el.innerHTML = renderAiMarkdown(text);
+    el.classList.add('ai-rendered');
+}
+</script>
+
 </body>
 </html>

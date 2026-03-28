@@ -498,9 +498,10 @@ body { background: var(--bg-page); }
     padding: 14px;
     font-size: 13px;
     line-height: 1.7;
-    white-space: pre-wrap;
     color: var(--text-normal);
     min-height: 60px;
+    max-height: 70vh;
+    overflow-y: auto;
 }
 
 .rx-panel {
@@ -1400,7 +1401,7 @@ window.aiContext = {
 async function generateSeniorVetSupport(appointmentId) {
     const box = document.getElementById('senior-vet-ai');
     if (!box) return;
-    box.innerText = 'Senior vet reviewing the case...';
+    showAiLoading(box, 'Senior vet reviewing the case...');
     try {
         const res = await fetch(`/vet/ai/senior-support/${appointmentId}`, {
             method: 'POST',
@@ -1413,10 +1414,14 @@ async function generateSeniorVetSupport(appointmentId) {
         }
         if (!res.ok) throw new Error('Request failed');
         const data = await res.json();
-        box.innerText = data.guidance || 'No guidance generated.';
+        if (data.guidance) {
+            setAiOutput(box, data.guidance);
+        } else {
+            box.innerHTML = '<span style="color:var(--text-muted);">No guidance generated.</span>';
+        }
         if (data.credits_remaining !== undefined) updateCreditBadge(data.credits_remaining);
     } catch (e) {
-        box.innerText = 'Failed to generate senior vet guidance.';
+        box.innerHTML = '<span style="color:#dc2626;">Failed to generate senior vet guidance.</span>';
     }
 }
 
