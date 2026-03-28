@@ -10,8 +10,21 @@
 
 use Illuminate\Support\Carbon;
 
-// Clean up any partial previous run
-DB::table('pets')->where('name', 'Max')->where('breed', 'Golden Retriever')->delete();
+// Clean up any partial previous runs
+$oldPetIds = DB::table('pets')->where('name', 'Max')->where('breed', 'Golden Retriever')->pluck('id')->toArray();
+if (!empty($oldPetIds)) {
+    $oldApptIds = DB::table('appointments')->whereIn('pet_id', $oldPetIds)->pluck('id')->toArray();
+    if (!empty($oldApptIds)) {
+        $oldRxIds = DB::table('prescriptions')->whereIn('appointment_id', $oldApptIds)->pluck('id')->toArray();
+        DB::table('prescription_items')->whereIn('prescription_id', $oldRxIds)->delete();
+        DB::table('prescriptions')->whereIn('id', $oldRxIds)->delete();
+        DB::table('appointment_treatments')->whereIn('appointment_id', $oldApptIds)->delete();
+        DB::table('case_sheets')->whereIn('appointment_id', $oldApptIds)->delete();
+        DB::table('appointments')->whereIn('id', $oldApptIds)->delete();
+    }
+    DB::table('pets')->whereIn('id', $oldPetIds)->delete();
+    echo "Cleaned up previous Max data\n";
+}
 
 $vetId = 9; // Dr Amit Sharma
 $clinicId = 5;
@@ -70,7 +83,7 @@ DB::table('case_sheets')->insert([
     'procedures_done' => 'IV catheterization, fluid therapy',
     'further_plan' => 'Reassess hydration in 24 hours. If vomiting persists, recommend abdominal ultrasound to rule out foreign body or pancreatitis. Bland diet (boiled chicken + rice) for 5 days.',
     'advice' => 'Strict bland diet for 5 days. No treats, no table scraps. Ensure access to clean water. Monitor stool consistency. Return if vomiting recurs or blood in stool.',
-    'prognosis' => 'Good — expected full recovery in 3-5 days with supportive care',
+    'prognosis' => 'Good',
     'followup_date' => Carbon::now()->subWeeks(5)->toDateString(),
     'followup_reason' => 'Reassess hydration and GI status',
     'created_at' => Carbon::now()->subWeeks(6),
@@ -137,7 +150,7 @@ DB::table('case_sheets')->insert([
     'procedures_done' => 'Otoscopic examination, ear cleaning and flushing (left ear)',
     'further_plan' => 'Continue topical ear treatment for 10 days. If axillary erythema worsens or new lesions appear, recommend skin scraping and allergy workup. Recheck ears in 10 days.',
     'advice' => 'Clean ears gently with prescribed solution before applying drops. Do not use cotton buds deep in the ear. Keep ears dry — use cotton ball during bathing. Monitor for increased scratching or new skin lesions.',
-    'prognosis' => 'Good for otitis. Guarded if underlying atopy — may need long-term management.',
+    'prognosis' => 'Good for otitis, guarded for atopy',
     'followup_date' => Carbon::now()->subWeeks(2)->toDateString(),
     'followup_reason' => 'Ear recheck + assess skin',
     'created_at' => Carbon::now()->subWeeks(4),
@@ -197,7 +210,7 @@ DB::table('case_sheets')->insert([
     'procedures_done' => 'Orthopedic examination of right forelimb. Cold compress therapy.',
     'further_plan' => 'Rest for 7-10 days — no running, jumping, or rough play. If lameness persists beyond 5 days, recommend radiograph of right carpus. Continue monitoring skin — if worsens, schedule allergy panel.',
     'advice' => 'Strict rest — leash walks only for toileting. No stairs if possible. Ice pack on carpus for 10 min twice daily for 3 days. Give pain medication with food. Return immediately if lameness worsens or swelling increases.',
-    'prognosis' => 'Good for sprain with rest. Monitor skin long-term.',
+    'prognosis' => 'Good for sprain, monitor skin',
     'followup_date' => Carbon::now()->subDays(3)->toDateString(),
     'followup_reason' => 'Lameness recheck',
     'created_at' => Carbon::now()->subWeeks(2),
