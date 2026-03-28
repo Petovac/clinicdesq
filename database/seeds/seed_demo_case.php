@@ -10,6 +10,9 @@
 
 use Illuminate\Support\Carbon;
 
+// Clean up any partial previous run
+DB::table('pets')->where('name', 'Max')->where('breed', 'Golden Retriever')->delete();
+
 $vetId = 9; // Dr Amit Sharma
 $clinicId = 5;
 $petParentId = 1; // Harshit
@@ -37,7 +40,7 @@ $appt1Id = DB::table('appointments')->insertGetId([
     'pet_parent_id' => $petParentId,
     'pet_id' => $petId,
     'weight' => 28.5,
-    'pet_age_at_visit' => '3y 6m',
+    'pet_age_at_visit' => 42,
     'scheduled_at' => Carbon::now()->subWeeks(6),
     'status' => 'completed',
     'checked_in_at' => Carbon::now()->subWeeks(6),
@@ -104,7 +107,7 @@ $appt2Id = DB::table('appointments')->insertGetId([
     'pet_parent_id' => $petParentId,
     'pet_id' => $petId,
     'weight' => 29.0,
-    'pet_age_at_visit' => '3y 7m',
+    'pet_age_at_visit' => 43,
     'scheduled_at' => Carbon::now()->subWeeks(4),
     'status' => 'completed',
     'checked_in_at' => Carbon::now()->subWeeks(4),
@@ -164,7 +167,7 @@ $appt3Id = DB::table('appointments')->insertGetId([
     'pet_parent_id' => $petParentId,
     'pet_id' => $petId,
     'weight' => 29.2,
-    'pet_age_at_visit' => '3y 8m',
+    'pet_age_at_visit' => 44,
     'scheduled_at' => Carbon::now()->subWeeks(2),
     'status' => 'completed',
     'checked_in_at' => Carbon::now()->subWeeks(2),
@@ -229,7 +232,7 @@ $appt4Id = DB::table('appointments')->insertGetId([
     'pet_parent_id' => $petParentId,
     'pet_id' => $petId,
     'weight' => 28.0,
-    'pet_age_at_visit' => '3y 9m',
+    'pet_age_at_visit' => 45,
     'scheduled_at' => Carbon::now(),
     'status' => 'in_consultation',
     'checked_in_at' => Carbon::now()->subMinutes(10),
