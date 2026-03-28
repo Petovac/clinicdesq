@@ -190,19 +190,8 @@
        @section('content')
 
        @php
-       $dose = $drug->dosages->first();
-
-       $selectedRoutes = $dose->routes ?? [];
-       $selectedFrequencies = $dose->frequencies ?? [];
-
-       /* ensure arrays */
-       if(!is_array($selectedRoutes)) {
-       $selectedRoutes = [$selectedRoutes];
-       }
-
-       if(!is_array($selectedFrequencies)) {
-       $selectedFrequencies = [$selectedFrequencies];
-       }
+       $selectedRoutes = [];
+       $selectedFrequencies = [];
        @endphp
 
        <h2>{{ $drug->name }}</h2>
@@ -221,7 +210,9 @@
        $freq = is_array($dose->frequencies) ? $dose->frequencies : (is_string($dose->frequencies) ? json_decode($dose->frequencies, true) : []);
        @endphp
 
-       <div class="dose-card">
+       <div class="dose-card" style="justify-content:space-between">
+
+       <div style="display:flex;align-items:center;gap:14px">
 
        <div class="dose-species">
        {{ ucfirst($dose->species) }}
@@ -232,9 +223,9 @@
        <span class="dose-value">
 
        @if($dose->dose_max)
-       {{ $dose->dose_min }} – {{ $dose->dose_max }} mg/kg
+       {{ $dose->dose_min }} – {{ $dose->dose_max }} {{ $dose->dose_unit ?? 'mg/kg' }}
        @else
-       {{ $dose->dose_min }} mg/kg
+       {{ $dose->dose_min }} {{ $dose->dose_unit ?? 'mg/kg' }}
        @endif
 
        </span>
@@ -255,17 +246,43 @@
 
        </div>
 
+       <div style="display:flex;gap:8px;align-items:center">
+
+       <a href="#dosage-form" onclick="editDosage({{ $dose->id }}, '{{ $dose->species }}', {{ $dose->dose_min }}, {{ $dose->dose_max ?? 'null' }}, '{{ $dose->dose_unit ?? 'mg/kg' }}', {{ json_encode($routes) }}, {{ json_encode($freq) }})"
+          style="font-size:12px;padding:4px 10px;background:#3b82f6;color:white;border-radius:4px;text-decoration:none">
+       Edit
+       </a>
+
+       <form method="POST" action="/admin/drugs/{{ $drug->id }}/dosage/{{ $dose->id }}/delete"
+             style="margin:0;padding:0;background:none;box-shadow:none;display:inline">
+       @csrf
+       <button type="submit" onclick="return confirm('Delete {{ ucfirst($dose->species) }} dosage?')"
+               style="font-size:12px;padding:4px 10px;background:#ef4444;color:white;border-radius:4px">
+       Delete
+       </button>
+       </form>
+
+       </div>
+
+       </div>
+
        @endforeach
 
-       <form method="POST" action="/admin/drugs/{{ $drug->id }}/dosage" style="margin-bottom:15px">
+       <form method="POST" action="/admin/drugs/{{ $drug->id }}/dosage" style="margin-bottom:15px" id="dosage-form">
 
        @csrf
+       <input type="hidden" name="dosage_id" id="dosage_id" value="">
+
+       <div id="editing-banner" style="display:none;background:#dbeafe;border:1px solid #93c5fd;padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:13px;color:#1e40af">
+       <strong>Editing:</strong> <span id="editing-label"></span>
+       <a href="#" onclick="cancelEdit(); return false;" style="margin-left:12px;color:#dc2626;font-weight:600">Cancel</a>
+       </div>
 
        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
 
        <label style="margin:0">Species</label>
 
-       <select name="species"
+       <select name="species" id="dose_species"
        style="padding:6px;border:1px solid #ccc;border-radius:4px">
 
        <option value="dog">Dog</option>
@@ -279,8 +296,8 @@
        <input type="number"
        step="0.01"
        name="dose_min"
+       id="dose_min"
        placeholder="Dose Min"
-       value="{{ $dose->dose_min ?? '' }}"
        style="width:120px;padding:6px;border:1px solid #ccc;border-radius:4px">
 
        <span>-</span>
@@ -288,11 +305,16 @@
        <input type="number"
        step="0.01"
        name="dose_max"
+       id="dose_max"
        placeholder="Dose Max"
-       value="{{ $dose->dose_max ?? '' }}"
        style="width:120px;padding:6px;border:1px solid #ccc;border-radius:4px">
 
-       <span style="color:#6b7280">mg/kg</span>
+       <input type="text"
+       name="dose_unit"
+       id="dose_unit"
+       value="mg/kg"
+       placeholder="Unit"
+       style="width:80px;padding:6px;border:1px solid #ccc;border-radius:4px">
 
        </div>
 
@@ -505,6 +527,42 @@
 
        function clearFrequency(){
        document.querySelectorAll('input[name="frequencies[]"]').forEach(cb => cb.checked = false);
+       }
+
+       function editDosage(id, species, doseMin, doseMax, doseUnit, routes, freq) {
+           document.getElementById('dosage_id').value = id;
+           document.getElementById('dose_species').value = species;
+           document.getElementById('dose_min').value = doseMin;
+           document.getElementById('dose_max').value = doseMax || '';
+           document.getElementById('dose_unit').value = doseUnit || 'mg/kg';
+
+           // Set routes
+           document.querySelectorAll('input[name="routes[]"]').forEach(cb => {
+               cb.checked = routes && routes.includes(cb.value);
+           });
+
+           // Set frequencies
+           document.querySelectorAll('input[name="frequencies[]"]').forEach(cb => {
+               cb.checked = freq && freq.includes(cb.value);
+           });
+
+           // Show editing banner
+           document.getElementById('editing-banner').style.display = 'block';
+           document.getElementById('editing-label').textContent = species.charAt(0).toUpperCase() + species.slice(1) + ' — ' + doseMin + (doseMax ? '–' + doseMax : '') + ' ' + (doseUnit || 'mg/kg');
+
+           // Scroll to form
+           document.getElementById('dosage-form').scrollIntoView({behavior: 'smooth'});
+       }
+
+       function cancelEdit() {
+           document.getElementById('dosage_id').value = '';
+           document.getElementById('dose_min').value = '';
+           document.getElementById('dose_max').value = '';
+           document.getElementById('dose_unit').value = 'mg/kg';
+           document.getElementById('dose_species').value = 'dog';
+           document.querySelectorAll('input[name="routes[]"]').forEach(cb => cb.checked = false);
+           document.querySelectorAll('input[name="frequencies[]"]').forEach(cb => cb.checked = false);
+           document.getElementById('editing-banner').style.display = 'none';
        }
 
        </script>

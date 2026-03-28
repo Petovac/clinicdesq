@@ -176,6 +176,7 @@ Route::middleware(['auth', 'role:superadmin'])
     Route::post('/drugs/{id}/update', [DrugController::class, 'update']);
     
     Route::post('/drugs/{id}/dosage', [DrugController::class, 'storeDosage']);
+    Route::post('/drugs/{id}/dosage/{dosageId}/delete', [DrugController::class, 'deleteDosage']);
     Route::post('/drugs/{id}/product', [DrugController::class, 'storeProduct']);
     
     Route::post('/drugs/{id}/delete', [DrugController::class, 'destroy']);

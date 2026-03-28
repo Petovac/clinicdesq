@@ -54,23 +54,36 @@ class DrugController extends Controller
             'dose_min' => 'required'
         ]);
 
-        DrugDosage::updateOrCreate(
-            [
-                'generic_id' => $id,
-                'species' => $request->species
-            ],
-            [
-                'dose_min' => $request->dose_min,
-                'dose_max' => $request->dose_max ?: null,
-                'dose_unit' => 'mg/kg',
-                'routes' => $request->routes ? json_encode($request->routes) : null,
-                'frequencies' => $request->frequencies ? json_encode($request->frequencies) : null
-            ]
-        );
+        $data = [
+            'dose_min' => $request->dose_min,
+            'dose_max' => $request->dose_max ?: null,
+            'dose_unit' => $request->dose_unit ?: 'mg/kg',
+            'routes' => $request->routes ? json_encode($request->routes) : null,
+            'frequencies' => $request->frequencies ? json_encode($request->frequencies) : null,
+        ];
+
+        if ($request->dosage_id) {
+            // Editing existing dosage
+            DrugDosage::where('id', $request->dosage_id)
+                ->where('generic_id', $id)
+                ->update(array_merge($data, ['species' => $request->species]));
+        } else {
+            // Creating new or updating by species
+            DrugDosage::updateOrCreate(
+                ['generic_id' => $id, 'species' => $request->species],
+                $data
+            );
+        }
 
         return redirect('/admin/drugs/'.$id.'/edit');
     }
 
+
+    public function deleteDosage($id, $dosageId)
+    {
+        DrugDosage::where('id', $dosageId)->where('generic_id', $id)->delete();
+        return redirect('/admin/drugs/'.$id.'/edit');
+    }
 
     public function storeProduct(Request $request, $id)
     {
