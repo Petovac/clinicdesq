@@ -233,8 +233,20 @@ tr.editing td{
 
 <div class="page-header">
     <h2 class="page-title">Edit Price List</h2>
-    <a href="{{ route('organisation.price-lists.index') }}" class="btn btn-secondary">Back to Lists</a>
+    <div style="display:flex;gap:8px;">
+        <form method="POST" action="{{ route('organisation.price-lists.import-inventory', $priceList) }}">
+            @csrf
+            <button type="submit" class="btn btn-primary" onclick="return confirm('Import all inventory items not yet in this price list?')">Import from Inventory</button>
+        </form>
+        <a href="{{ route('organisation.price-lists.index') }}" class="btn btn-secondary">Back to Lists</a>
+    </div>
 </div>
+
+@if(session('success'))
+<div style="background:#dcfce7;border:1px solid #bbf7d0;color:#166534;padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;">
+    {{ session('success') }}
+</div>
+@endif
 
 {{-- Price List Name --}}
 <div class="card">
@@ -253,7 +265,10 @@ tr.editing td{
             <label>Type</label>
             <select id="newType" onchange="onNewTypeChange()">
                 <option value="service">Service</option>
-                <option value="treatment">Treatment</option>
+                <option value="drug">Drug</option>
+                <option value="vaccine">Vaccine</option>
+                <option value="consumable">Consumable</option>
+                <option value="surgical">Surgical</option>
                 <option value="product">Product</option>
             </select>
         </div>
@@ -275,6 +290,11 @@ tr.editing td{
                 <option value="per_vial">Per Vial</option>
                 <option value="per_tablet">Per Tablet</option>
                 <option value="per_unit">Per Unit</option>
+                <option value="per_strip">Per Strip</option>
+                <option value="per_piece">Per Piece</option>
+                <option value="per_sachet">Per Sachet</option>
+                <option value="per_tube">Per Tube</option>
+                <option value="per_dose">Per Dose</option>
             </select>
         </div>
 
@@ -294,82 +314,86 @@ tr.editing td{
     </div>
 </div>
 
-{{-- Existing Items --}}
-<div class="card">
-    <div style="font-weight:600;font-size:15px;color:#374151;margin-bottom:4px;">
-        Items <span id="itemCount" style="color:#9ca3af;font-weight:400;">({{ $priceList->items->count() }})</span>
-    </div>
+{{-- Existing Items grouped by type --}}
+@php
+    $typeGroups = $priceList->items->groupBy('item_type');
+    $typeLabels = ['drug' => 'Drugs', 'vaccine' => 'Vaccines', 'service' => 'Services', 'consumable' => 'Consumables', 'surgical' => 'Surgical', 'product' => 'Products'];
+    $typeColors = ['drug' => ['#dbeafe','#1d4ed8'], 'vaccine' => ['#fef3c7','#b45309'], 'service' => ['#f3e8ff','#7c3aed'], 'consumable' => ['#fef3c7','#92400e'], 'surgical' => ['#fce7f3','#9d174d'], 'product' => ['#d1fae5','#065f46']];
+@endphp
 
-    <table class="items-table" id="itemsTable">
-        <thead>
-            <tr>
-                <th style="width:100px;">Type</th>
-                <th>Name</th>
-                <th style="width:110px;">Billing</th>
-                <th style="width:100px;">Proc. Fee</th>
-                <th style="width:100px;">Unit Price</th>
-                <th style="width:160px;">Linked Drug / Inventory</th>
-                <th style="width:100px;">Actions</th>
-            </tr>
-        </thead>
-        <tbody id="itemsBody">
-            @foreach($priceList->items as $item)
-            <tr data-id="{{ $item->id }}">
-                <td>
-                    <select class="f-type" disabled>
-                        <option value="service" {{ $item->item_type=='service'?'selected':'' }}>Service</option>
-                        <option value="treatment" {{ $item->item_type=='treatment'?'selected':'' }}>Treatment</option>
-                        <option value="product" {{ $item->item_type=='product'?'selected':'' }}>Product</option>
-                    </select>
-                </td>
-                <td>
-                    <input class="f-name" value="{{ $item->name }}" readonly>
-                </td>
-                <td>
-                    <select class="f-billing" disabled>
-                        <option value="fixed" {{ $item->billing_type=='fixed'?'selected':'' }}>Fixed</option>
-                        <option value="per_ml" {{ $item->billing_type=='per_ml'?'selected':'' }}>Per ML</option>
-                        <option value="per_vial" {{ $item->billing_type=='per_vial'?'selected':'' }}>Per Vial</option>
-                        <option value="per_tablet" {{ $item->billing_type=='per_tablet'?'selected':'' }}>Per Tablet</option>
-                        <option value="per_unit" {{ $item->billing_type=='per_unit'?'selected':'' }}>Per Unit</option>
-                    </select>
-                </td>
-                <td>
-                    <input class="f-procedure" type="number" step="0.01" value="{{ $item->procedure_price }}" readonly>
-                </td>
-                <td>
-                    <input class="f-price" type="number" step="0.01" value="{{ $item->price }}" readonly>
-                </td>
-                <td>
-                    <input type="hidden" class="f-drug-id" value="{{ $item->drug_brand_id }}">
-                    <input type="hidden" class="f-inv-id" value="{{ $item->inventory_item_id }}">
-                    <div class="linked-info">
-                        @if($item->drugBrand)
-                            <span class="linked-label"><span class="dot"></span> {{ $item->drugBrand->brand_name }}@if($item->drugBrand->generic) ({{ $item->drugBrand->generic->name }})@endif</span>
-                        @elseif($item->inventoryItem)
-                            <span class="linked-label"><span class="dot"></span> {{ $item->inventoryItem->name }}</span>
-                        @else
-                            <span style="color:#d1d5db;font-size:12px;">--</span>
-                        @endif
-                    </div>
-                </td>
-                <td>
-                    <div style="display:flex;gap:4px;">
-                        <button type="button" class="btn btn-secondary btn-sm edit-btn" onclick="toggleEdit(this)">Edit</button>
-                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteItem(this)">x</button>
-                    </div>
-                </td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
-
-    @if($priceList->items->isEmpty())
-    <div id="emptyMsg" style="text-align:center;padding:40px 20px;color:#9ca3af;font-size:14px;">
-        No items yet. Use the form above to add your first item.
-    </div>
-    @endif
+<div style="font-weight:600;font-size:15px;color:#374151;margin-bottom:12px;">
+    Items <span id="itemCount" style="color:#9ca3af;font-weight:400;">({{ $priceList->items->count() }})</span>
 </div>
+
+@forelse($typeGroups as $type => $groupItems)
+<div class="card" style="margin-bottom:12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding-bottom:10px;border-bottom:1px solid #e5e7eb;margin-bottom:10px;" onclick="let t=this.nextElementSibling;t.style.display=t.style.display==='none'?'block':'none';this.querySelector('.arrow').textContent=t.style.display==='none'?'▸':'▾';">
+        <div>
+            <span style="background:{{ $typeColors[$type][0] ?? '#f3f4f6' }};color:{{ $typeColors[$type][1] ?? '#374151' }};padding:3px 12px;border-radius:12px;font-size:12px;font-weight:700;">{{ $typeLabels[$type] ?? ucfirst($type) }}</span>
+            <span style="font-size:13px;color:#6b7280;margin-left:8px;">({{ $groupItems->count() }} items)</span>
+        </div>
+        <span class="arrow" style="font-size:14px;color:#9ca3af;">▾</span>
+    </div>
+    <div>
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th style="width:110px;">Billing</th>
+                    @if($type === 'drug')<th style="width:90px;">Proc. Fee</th>@endif
+                    <th style="width:90px;">Unit Price</th>
+                    <th style="width:150px;">Linked</th>
+                    <th style="width:100px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="items-body">
+                @foreach($groupItems as $item)
+                <tr data-id="{{ $item->id }}">
+                    <td>
+                        <input class="f-name" value="{{ $item->name }}" readonly>
+                        <input type="hidden" class="f-type" value="{{ $item->item_type }}">
+                    </td>
+                    <td>
+                        <select class="f-billing" disabled>
+                            @foreach(['fixed'=>'Fixed','per_ml'=>'Per ML','per_vial'=>'Per Vial','per_tablet'=>'Per Tab','per_unit'=>'Per Unit','per_strip'=>'Per Strip','per_piece'=>'Per Pc','per_sachet'=>'Per Sachet','per_tube'=>'Per Tube'] as $bk => $bl)
+                                <option value="{{ $bk }}" {{ $item->billing_type==$bk?'selected':'' }}>{{ $bl }}</option>
+                            @endforeach
+                        </select>
+                    </td>
+                    @if($type === 'drug')
+                    <td><input class="f-procedure" type="number" step="0.01" value="{{ $item->procedure_price }}" readonly></td>
+                    @endif
+                    <td><input class="f-price" type="number" step="0.01" value="{{ $item->price }}" readonly></td>
+                    <td>
+                        <input type="hidden" class="f-drug-id" value="{{ $item->drug_brand_id }}">
+                        <input type="hidden" class="f-inv-id" value="{{ $item->inventory_item_id }}">
+                        <div class="linked-info">
+                            @if($item->inventoryItem)
+                                <span class="linked-label"><span class="dot"></span> {{ $item->inventoryItem->name }}</span>
+                            @elseif($item->drugBrand)
+                                <span class="linked-label"><span class="dot"></span> {{ $item->drugBrand->brand_name ?? '' }}</span>
+                            @else
+                                <span style="color:#d1d5db;font-size:12px;">--</span>
+                            @endif
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display:flex;gap:4px;">
+                            <button type="button" class="btn btn-secondary btn-sm edit-btn" onclick="toggleEdit(this)">Edit</button>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="deleteItem(this)">x</button>
+                        </div>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@empty
+<div class="card" id="emptyMsg" style="text-align:center;padding:40px 20px;color:#9ca3af;font-size:14px;">
+    No items yet. Use the form above or "Import from Inventory" to add items.
+</div>
+@endforelse
 
 {{-- Toast --}}
 <div class="toast" id="toast"></div>
@@ -406,12 +430,16 @@ function saveName(){
 // ── New item type change ──
 function onNewTypeChange(){
     const t = document.getElementById('newType').value;
-    document.getElementById('newProcedureWrap').style.display = (t === 'treatment') ? 'block' : 'none';
+    document.getElementById('newProcedureWrap').style.display = (t === 'drug') ? 'block' : 'none';
 
     if(t === 'service'){
         document.getElementById('newBilling').value = 'fixed';
-    } else if(t === 'treatment'){
+    } else if(t === 'drug'){
         document.getElementById('newBilling').value = 'per_ml';
+    } else if(t === 'vaccine'){
+        document.getElementById('newBilling').value = 'per_dose';
+    } else if(t === 'consumable' || t === 'surgical'){
+        document.getElementById('newBilling').value = 'fixed';
     } else {
         document.getElementById('newBilling').value = 'per_unit';
     }
@@ -439,10 +467,10 @@ onNewTypeChange();
             const type = document.getElementById('newType').value;
             let url;
 
-            if(type === 'treatment'){
+            if(type === 'drug'){
                 url = `${BASE}/drug-search?q=${encodeURIComponent(q)}`;
-            } else if(type === 'product'){
-                url = `${BASE}/inventory-search?q=${encodeURIComponent(q)}`;
+            } else if(['consumable','surgical','product'].includes(type)){
+                url = `${BASE}/price-lists/search-inventory?q=${encodeURIComponent(q)}`;
             } else {
                 dd.style.display = 'none';
                 return;
@@ -453,7 +481,7 @@ onNewTypeChange();
             .then(data => {
                 if(!data.length){ dd.style.display = 'none'; return; }
 
-                if(type === 'treatment'){
+                if(type === 'drug'){
                     dd.innerHTML = data.map(d =>
                         `<div class="ac-item"
                               data-id="${d.id}"
@@ -514,8 +542,8 @@ function addItem(){
     const itemType = document.getElementById('newType').value;
     const drugId = document.getElementById('newDrugBrandId').value;
 
-    if(itemType === 'treatment' && !drugId){
-        toast('Treatment items must have a drug selected', true);
+    if(itemType === 'drug' && !drugId){
+        toast('Drug items must have a drug selected from the dropdown', true);
         return;
     }
 
@@ -546,16 +574,15 @@ function addItem(){
                 ? `<span class="linked-label"><span class="dot"></span> ${name}</span>`
                 : '<span style="color:#d1d5db;font-size:12px;">--</span>');
 
-        const typeLabels = { service:'Service', treatment:'Treatment', product:'Product' };
-        const billingLabels = { fixed:'Fixed', per_ml:'Per ML', per_vial:'Per Vial', per_tablet:'Per Tablet', per_unit:'Per Unit' };
-
         const tr = document.createElement('tr');
         tr.dataset.id = item.id;
         tr.innerHTML = `
             <td>
                 <select class="f-type" disabled>
                     <option value="service" ${item.item_type==='service'?'selected':''}>Service</option>
-                    <option value="treatment" ${item.item_type==='treatment'?'selected':''}>Treatment</option>
+                    <option value="drug" ${item.item_type==='drug'?'selected':''}>Drug</option>
+                    <option value="consumable" ${item.item_type==='consumable'?'selected':''}>Consumable</option>
+                    <option value="surgical" ${item.item_type==='surgical'?'selected':''}>Surgical</option>
                     <option value="product" ${item.item_type==='product'?'selected':''}>Product</option>
                 </select>
             </td>
@@ -567,6 +594,10 @@ function addItem(){
                     <option value="per_vial" ${item.billing_type==='per_vial'?'selected':''}>Per Vial</option>
                     <option value="per_tablet" ${item.billing_type==='per_tablet'?'selected':''}>Per Tablet</option>
                     <option value="per_unit" ${item.billing_type==='per_unit'?'selected':''}>Per Unit</option>
+                    <option value="per_strip" ${item.billing_type==='per_strip'?'selected':''}>Per Strip</option>
+                    <option value="per_piece" ${item.billing_type==='per_piece'?'selected':''}>Per Piece</option>
+                    <option value="per_sachet" ${item.billing_type==='per_sachet'?'selected':''}>Per Sachet</option>
+                    <option value="per_tube" ${item.billing_type==='per_tube'?'selected':''}>Per Tube</option>
                 </select>
             </td>
             <td><input class="f-procedure" type="number" step="0.01" value="${item.procedure_price}" readonly></td>

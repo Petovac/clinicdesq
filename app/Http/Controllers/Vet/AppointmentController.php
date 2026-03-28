@@ -14,6 +14,11 @@ use App\Models\PrescriptionItem;
 use App\Models\CaseSheet;
 use App\Models\PriceListItem;
 use App\Models\InjectionRouteFee;
+use App\Services\WhatsappService;
+use App\Services\PdfService;
+use App\Services\WebhookService;
+use App\Models\WhatsappConfig;
+use App\Models\WhatsappMessage;
 
 class AppointmentController extends Controller
 {
@@ -82,6 +87,24 @@ class AppointmentController extends Controller
         ]);
     }
 
+
+    /**
+     * AJAX: Get available time slots for a date
+     */
+    public function availableSlots(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date',
+        ]);
+
+        $vetId = $request->vet_id ?? auth('vet')->id();
+        $clinicId = session('active_clinic_id');
+        $date = \Carbon\Carbon::parse($request->date);
+
+        $slots = \App\Models\VetSchedule::generateSlots($date, $vetId, $clinicId);
+
+        return response()->json($slots);
+    }
 
     public function store(Request $request)
     {
@@ -176,16 +199,22 @@ class AppointmentController extends Controller
             'labOrders.tests',
         ]);
     
-        // Load pet history (read-only)
+        // Load pet history (read-only) — OPD appointments + IPD admissions
         $petHistory = Appointment::where('pet_id', $appointment->pet_id)
             ->where('id', '!=', $appointment->id)
             ->orderByDesc('scheduled_at')
             ->with(['caseSheet', 'prescription.items', 'treatments.drugGeneric', 'treatments.priceItem'])
             ->get();
-    
+
+        $ipdHistory = \App\Models\IpdAdmission::where('pet_id', $appointment->pet_id)
+            ->with(['clinic:id,name', 'treatments', 'notes'])
+            ->orderByDesc('admission_date')
+            ->get();
+
             return view('vet.appointments.case', [
                 'appointment' => $appointment,
                 'petHistory'  => $petHistory,
+                'ipdHistory'  => $ipdHistory,
                 'readOnly'    => false,
                 'priceListItems' => PriceListItem::where('is_active',1)->get(),
                 'drugGenerics' => \App\Models\DrugGeneric::orderBy('name')->get()
@@ -391,6 +420,55 @@ class AppointmentController extends Controller
             }
         }
     
+        // Auto-send prescription via WhatsApp if configured
+        try {
+            $appointment->load(['pet.petParent', 'clinic.organisation', 'prescription.items', 'vet']);
+            $orgId = $appointment->clinic->organisation_id;
+            $waConfig = WhatsappConfig::where('organisation_id', $orgId)->first();
+
+            if ($waConfig && $waConfig->isConfigured() && $waConfig->send_prescription) {
+                $parent = $appointment->pet->petParent ?? null;
+                if ($parent && $parent->phone) {
+                    $pdfPath = PdfService::generatePrescription($appointment);
+
+                    WhatsappService::sendDocument(
+                        organisationId: $orgId,
+                        recipientPhone: $parent->phone,
+                        recipientName: $parent->name,
+                        templateName: 'clinicdesq_prescription',
+                        messageType: 'prescription',
+                        filePath: $pdfPath,
+                        templateVariables: [
+                            'filename' => 'Prescription_' . $appointment->pet->name . '.pdf',
+                            'body' => [
+                                $parent->name,
+                                $appointment->pet->name,
+                                $appointment->vet->name ?? 'Doctor',
+                                $appointment->clinic->name,
+                            ],
+                        ],
+                        clinicId: $appointment->clinic_id,
+                        referenceType: Appointment::class,
+                        referenceId: $appointment->id,
+                        sentBy: auth('vet')->id(),
+                    );
+                }
+            }
+
+            // Fire webhook
+            WebhookService::dispatch($orgId, 'prescription.created', [
+                'appointment_id' => $appointment->id,
+                'pet' => $appointment->pet->toArray(),
+                'pet_parent' => $appointment->pet->petParent?->toArray(),
+                'prescription' => $appointment->prescription->toArray(),
+                'items' => $appointment->prescription->items->toArray(),
+                'vet' => $appointment->vet?->only(['id', 'name', 'degree', 'registration_number']),
+                'clinic' => $appointment->clinic->only(['id', 'name', 'city']),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Auto-send/webhook failed after prescription save', ['error' => $e->getMessage()]);
+        }
+
         return redirect()
             ->route('vet.appointments.case', $appointment->id)
             ->with('success', 'Prescription saved successfully');
@@ -419,12 +497,20 @@ class AppointmentController extends Controller
                 ->get()
             : collect();
 
+        // Check if WhatsApp was already sent for this case sheet
+        $waAlreadySent = WhatsappMessage::where('reference_type', Appointment::class)
+            ->where('reference_id', $appointment->id)
+            ->where('message_type', 'case_sheet')
+            ->whereIn('status', ['sent', 'delivered', 'read'])
+            ->exists();
+
         return view('vet.case_sheets.edit', [
             'appointment' => $appointment,
             'caseSheet'   => $appointment->caseSheet,
             'priceListItems' => $priceListItems,
             'drugGenerics' => $drugGenerics,
             'injectionRoutes' => $injectionRoutes,
+            'waAlreadySent' => $waAlreadySent,
         ]);
     }
 
@@ -458,9 +544,59 @@ class AppointmentController extends Controller
             ])
         );
 
+        // Auto-send case sheet via WhatsApp (if configured)
+        try {
+            $appointment->load(['pet.petParent', 'clinic.organisation', 'caseSheet', 'vet', 'treatments']);
+            $orgId = $appointment->clinic->organisation_id;
+            $waConfig = WhatsappConfig::where('organisation_id', $orgId)->first();
+
+            if ($waConfig && $waConfig->isConfigured() && $waConfig->send_case_sheet) {
+                $parent = $appointment->pet->petParent ?? null;
+                if ($parent && $parent->phone) {
+                    $pdfPath = PdfService::generateCaseSheet($appointment);
+
+                    WhatsappService::sendDocument(
+                        organisationId: $orgId,
+                        recipientPhone: $parent->phone,
+                        recipientName: $parent->name,
+                        templateName: 'clinicdesq_case_sheet',
+                        messageType: 'case_sheet',
+                        filePath: $pdfPath,
+                        templateVariables: [
+                            'filename' => 'CaseSheet_' . $appointment->pet->name . '.pdf',
+                            'body' => [
+                                $parent->name,
+                                $appointment->pet->name,
+                                $appointment->clinic->name,
+                                \Carbon\Carbon::parse($appointment->scheduled_at)->format('d M Y'),
+                            ],
+                        ],
+                        clinicId: $appointment->clinic_id,
+                        referenceType: Appointment::class,
+                        referenceId: $appointment->id,
+                        sentBy: auth('vet')->id(),
+                    );
+                }
+            }
+
+            // Fire webhook if configured
+            WebhookService::dispatch($orgId, 'case_sheet.saved', [
+                'appointment_id' => $appointment->id,
+                'pet' => $appointment->pet->toArray(),
+                'pet_parent' => $appointment->pet->petParent?->toArray(),
+                'case_sheet' => $appointment->caseSheet->toArray(),
+                'vet' => $appointment->vet?->only(['id', 'name', 'degree', 'registration_number']),
+                'clinic' => $appointment->clinic->only(['id', 'name', 'city']),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Auto-send failed after case sheet save', ['error' => $e->getMessage()]);
+        }
+
+        $wasSent = isset($pdfPath);
+
         return redirect()
             ->route('vet.appointments.case', $appointment->id)
-            ->with('success', 'Case sheet saved successfully');
+            ->with('success', 'Case sheet saved successfully' . ($wasSent ? ' & sent via WhatsApp' : ''));
     }
 
 
@@ -733,5 +869,47 @@ class AppointmentController extends Controller
         usort($all, fn($a, $b) => $b['in_inventory'] <=> $a['in_inventory']);
 
         return response()->json(array_values($all));
+    }
+
+    /**
+     * Store vaccination record for a pet via appointment.
+     */
+    public function storeVaccination(Request $request, Appointment $appointment)
+    {
+        $vet = auth('vet')->user();
+        abort_if(!$vet, 401);
+
+        $request->validate([
+            'vaccine_generic_id' => 'required|exists:drug_generics,id',
+            'brand_id' => 'nullable|exists:drug_brands,id',
+            'dose_number' => 'required|string|max:20',
+            'batch_number' => 'nullable|string|max:100',
+            'route' => 'required|string|max:20',
+            'administered_date' => 'required|date',
+            'next_due_date' => 'nullable|date|after:administered_date',
+        ]);
+
+        // Get vaccine and brand names for record
+        $generic = \App\Models\DrugGeneric::find($request->vaccine_generic_id);
+        $brand = $request->brand_id ? \App\Models\DrugBrand::find($request->brand_id) : null;
+
+        \DB::table('pet_vaccinations')->insert([
+            'pet_id' => $appointment->pet_id,
+            'appointment_id' => $appointment->id,
+            'clinic_id' => $appointment->clinic_id,
+            'vet_id' => $vet->id,
+            'vaccine_name' => $generic->name ?? 'Unknown',
+            'brand_name' => $brand->brand_name ?? null,
+            'manufacturer' => $brand->manufacturer ?? null,
+            'batch_number' => $request->batch_number,
+            'dose_number' => $request->dose_number,
+            'administered_date' => $request->administered_date,
+            'next_due_date' => $request->next_due_date,
+            'route' => $request->route,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return back()->with('success', 'Vaccination recorded successfully.');
     }
 }

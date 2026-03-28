@@ -106,16 +106,33 @@
     <form method="POST" action="{{ route('organisation.lab-catalog.store') }}">
         @csrf
 
+        <div class="form-group" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px;margin-bottom:16px;">
+            <label style="color:#0c4a6e;">Quick Select — Standard Test</label>
+            <select id="std-test-select" style="width:100%;padding:9px 12px;border:1px solid #7dd3fc;border-radius:8px;font-size:13px;">
+                <option value="">-- Select from standard directory (or type manually below) --</option>
+                @php $stdTests = \DB::table('lab_test_directory')->orderBy('name')->get(); @endphp
+                @foreach($stdTests as $st)
+                <option value="{{ $st->code }}"
+                    data-name="{{ $st->name }}"
+                    data-category="{{ $st->category }}"
+                    data-sample="{{ $st->sample_type }}">
+                    {{ $st->code }} — {{ $st->name }}
+                </option>
+                @endforeach
+            </select>
+            <div style="font-size:11px;color:#0369a1;margin-top:3px;">Selecting from the directory ensures test name uniformity across in-house and external labs.</div>
+        </div>
+
         <div class="form-group">
             <label>Test Name *</label>
-            <input type="text" name="name" value="{{ old('name') }}" required>
+            <input type="text" name="name" id="f-name" value="{{ old('name') }}" required>
             @error('name') <div class="error-text">{{ $message }}</div> @enderror
         </div>
 
         <div class="form-row">
             <div class="form-group">
                 <label>Code</label>
-                <input type="text" name="code" value="{{ old('code') }}">
+                <input type="text" name="code" id="f-code" value="{{ old('code') }}">
                 @error('code') <div class="error-text">{{ $message }}</div> @enderror
             </div>
             <div class="form-group">
@@ -174,4 +191,18 @@
     </form>
 </div>
 
+<script>
+document.getElementById('std-test-select').addEventListener('change', function() {
+    const opt = this.selectedOptions[0];
+    if (!opt.value) return;
+    document.getElementById('f-name').value = opt.dataset.name;
+    document.getElementById('f-code').value = opt.value;
+    // Set category dropdown
+    const catSel = document.querySelector('select[name="category"]');
+    if (catSel) { for (let o of catSel.options) { if (o.value === opt.dataset.category) { o.selected = true; break; } } }
+    // Set sample_type dropdown
+    const samSel = document.querySelector('select[name="sample_type"]');
+    if (samSel) { for (let o of samSel.options) { if (o.value === opt.dataset.sample) { o.selected = true; break; } } }
+});
+</script>
 @endsection

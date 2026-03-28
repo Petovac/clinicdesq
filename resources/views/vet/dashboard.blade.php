@@ -7,6 +7,33 @@
     <p>Select a clinic to continue working</p>
 </div>
 
+{{-- Pending Onboarding Requests --}}
+@if(isset($pendingClinicRequests) && $pendingClinicRequests->count())
+<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:var(--radius-md);padding:16px;margin-bottom:16px;">
+    <h3 style="font-size:15px;font-weight:700;color:#92400e;margin:0 0 10px;">🔔 Clinic Onboarding Requests</h3>
+    @foreach($pendingClinicRequests as $req)
+    <div style="display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #fde68a;border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;">
+        <div>
+            <div style="font-weight:700;font-size:14px;color:var(--text-dark);">{{ $req->clinic_name }}</div>
+            <div style="font-size:12px;color:var(--text-muted);">{{ $req->org_name }} · {{ $req->city ?? '' }}</div>
+        </div>
+        <div style="display:flex;gap:6px;">
+            <form method="POST" action="{{ route('vet.accept-clinic') }}" style="display:inline;">
+                @csrf
+                <input type="hidden" name="clinic_id" value="{{ $req->clinic_id }}">
+                <button type="submit" style="background:#16a34a;color:#fff;border:none;padding:6px 14px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;">Accept</button>
+            </form>
+            <form method="POST" action="{{ route('vet.reject-clinic') }}" style="display:inline;">
+                @csrf
+                <input type="hidden" name="clinic_id" value="{{ $req->clinic_id }}">
+                <button type="submit" style="background:#ef4444;color:#fff;border:none;padding:6px 14px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;">Decline</button>
+            </form>
+        </div>
+    </div>
+    @endforeach
+</div>
+@endif
+
 @if($activeClinic)
     <div class="v-banner v-banner--info">
         <span class="v-badge v-badge--blue">Active</span>

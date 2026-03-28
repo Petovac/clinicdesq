@@ -144,4 +144,33 @@
         </div>
     </form>
 </div>
+
+{{-- Lab Settings --}}
+<div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:24px;margin-top:16px;">
+    <form method="POST" action="{{ route('organisation.settings.lab') }}">
+        @csrf
+        <h3 style="font-size:16px;font-weight:600;color:#111827;margin:0 0 6px;">Lab Order Settings</h3>
+        <p style="font-size:13px;color:#6b7280;margin:0 0 14px;">
+            Control how lab test ordering works for veterinarians.
+        </p>
+
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">
+            <input type="checkbox" name="vet_can_select_lab" value="1" {{ $org->vet_can_select_lab ? 'checked' : '' }}
+                style="width:18px;height:18px;accent-color:#2563eb;">
+            <div>
+                <div style="font-weight:600;font-size:14px;color:#111827;">Allow vets to select lab when ordering tests</div>
+                <div style="font-size:12px;color:#6b7280;">
+                    When enabled, vets can choose in-house or a specific external lab per test.
+                    When disabled, vets just select the tests and clinic manager routes them to the appropriate lab.
+                </div>
+            </div>
+        </label>
+
+        <div style="margin-top:12px;">
+            <button type="submit" style="background:#2563eb;color:#fff;padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">
+                Save Lab Settings
+            </button>
+        </div>
+    </form>
+</div>
 @endsection

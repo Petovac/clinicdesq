@@ -153,6 +153,12 @@ textarea {
             <input type="text" name="gst_number">
         </div>
 
+        <div class="form-group">
+            <label>Google Reviews URL</label>
+            <input type="url" name="gmb_review_url" placeholder="https://g.page/r/your-clinic/review">
+            <small style="color:#6b7280;font-size:11px;">Paste your Google My Business review link. Happy clients will be prompted to leave a Google review.</small>
+        </div>
+
         <div class="form-actions">
             <button class="btn btn-primary">Create Clinic</button>
             <a href="{{ route('organisation.clinics.index') }}" class="btn btn-secondary">

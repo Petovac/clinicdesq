@@ -2,224 +2,394 @@
 
 @section('content')
 <style>
-    .dash-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:24px; }
-    .dash-header h2 { font-size:24px;font-weight:700;color:#111827;margin:0; }
-    .dash-header .org-info { font-size:13px;color:#6b7280;margin-top:4px; }
-    .dash-header .org-info strong { color:#374151; }
+/* ═══ Dashboard Layout ═══ */
+.dash-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px; }
+.dash-header h2 { font-size:22px;font-weight:700;color:#111827;margin:0; }
+.dash-header .org-badge { font-size:12px;color:#6b7280;margin-top:2px; }
 
-    .metrics-row { display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:28px; }
-    .metric { background:#fff;padding:16px 18px;border-radius:10px;border:1px solid #f3f4f6;box-shadow:0 1px 4px rgba(0,0,0,0.03); }
-    .metric .label { font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#6b7280;margin-bottom:4px; }
-    .metric .value { font-size:26px;font-weight:700;color:#111827; }
-    .metric .sub { font-size:11px;color:#9ca3af;margin-top:2px; }
-    .metric--highlight { background:linear-gradient(135deg,#eff6ff,#dbeafe);border-color:#bfdbfe; }
-    .metric--highlight .value { color:#1d4ed8; }
-    .metric--green { background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-color:#bbf7d0; }
-    .metric--green .value { color:#16a34a; }
+/* Period selector */
+.period-bar { display:flex;gap:6px;background:#f3f4f6;padding:4px;border-radius:8px; }
+.period-btn { padding:6px 14px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:#6b7280;transition:all .15s; }
+.period-btn:hover { color:#111827; }
+.period-btn.active { background:#fff;color:#111827;box-shadow:0 1px 3px rgba(0,0,0,0.1); }
 
-    .section-title { font-size:16px;font-weight:700;color:#111827;margin-bottom:14px;margin-top:8px; }
-    .section-sub { font-size:12px;color:#6b7280;margin-bottom:16px; }
+/* KPI Cards */
+.kpi-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:24px; }
+.kpi { background:#fff;padding:16px 18px;border-radius:10px;border:1px solid #f0f0f0;position:relative; }
+.kpi .label { font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;margin-bottom:4px; }
+.kpi .value { font-size:24px;font-weight:700;color:#111827; }
+.kpi .trend { font-size:11px;font-weight:600;margin-top:4px; }
+.kpi .trend.up { color:#16a34a; }
+.kpi .trend.down { color:#ef4444; }
+.kpi .trend.flat { color:#6b7280; }
+.kpi--blue { border-left:3px solid #2563eb; }
+.kpi--green { border-left:3px solid #16a34a; }
+.kpi--purple { border-left:3px solid #7c3aed; }
+.kpi--amber { border-left:3px solid #f59e0b; }
+.kpi--teal { border-left:3px solid #0d9488; }
+.kpi--red { border-left:3px solid #ef4444; }
 
-    .rank-table { width:100%;border-collapse:collapse;font-size:13px; }
-    .rank-table th { text-align:left;padding:10px 14px;font-weight:600;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;background:#f9fafb;border-bottom:1px solid #e5e7eb; }
-    .rank-table td { padding:10px 14px;border-bottom:1px solid #f3f4f6;color:#374151; }
-    .rank-table tr:hover td { background:#f9fafb; }
-    .rank-badge { display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:11px;font-weight:700; }
-    .rank-1 { background:#fef3c7;color:#92400e; }
-    .rank-2 { background:#e5e7eb;color:#374151; }
-    .rank-3 { background:#fed7aa;color:#9a3412; }
-    .rank-other { background:#f3f4f6;color:#6b7280; }
-    .money { font-weight:600;color:#16a34a; }
-    .pct-badge { display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600; }
-    .pct-high { background:#dcfce7;color:#166534; }
-    .pct-med { background:#fef3c7;color:#92400e; }
-    .pct-low { background:#fee2e2;color:#991b1b; }
+/* Chart cards */
+.chart-grid { display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px; }
+.chart-card { background:#fff;border-radius:10px;border:1px solid #f0f0f0;padding:18px; }
+.chart-card.full { grid-column:1/-1; }
+.chart-card h3 { font-size:14px;font-weight:700;color:#111827;margin:0 0 12px; }
+.chart-card .chart-sub { font-size:11px;color:#9ca3af;margin:-8px 0 12px; }
 
-    .card { background:#fff;border-radius:10px;border:1px solid #f3f4f6;box-shadow:0 1px 4px rgba(0,0,0,0.03);padding:0;overflow:hidden;margin-bottom:24px; }
-    .card-header { padding:16px 20px;border-bottom:1px solid #f3f4f6; }
+/* Table */
+.lb-table { width:100%;border-collapse:collapse;font-size:13px; }
+.lb-table th { text-align:left;padding:8px 12px;font-weight:600;color:#6b7280;font-size:10px;text-transform:uppercase;letter-spacing:.5px;background:#f9fafb;border-bottom:1px solid #e5e7eb; }
+.lb-table td { padding:8px 12px;border-bottom:1px solid #f3f4f6;color:#374151; }
+.lb-table tr:hover td { background:#f9fafb; }
+.rank-badge { display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:10px;font-weight:700; }
+.rank-1 { background:#fef3c7;color:#92400e; }
+.rank-2 { background:#e5e7eb;color:#374151; }
+.rank-3 { background:#fed7aa;color:#9a3412; }
+.rank-n { background:#f3f4f6;color:#9ca3af; }
+.money { font-weight:600;color:#16a34a; }
+.pct-pill { display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600; }
+.pct-high { background:#dcfce7;color:#166534; }
+.pct-mid { background:#fef3c7;color:#92400e; }
+.pct-low { background:#fee2e2;color:#991b1b; }
 
-    .quick-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:28px; }
-    .quick-card { background:#fff;padding:18px;border-radius:10px;border:1px solid #f3f4f6;box-shadow:0 1px 4px rgba(0,0,0,0.03);transition:all 0.15s; }
-    .quick-card:hover { box-shadow:0 4px 16px rgba(0,0,0,0.06);border-color:#e0e7ff; }
-    .quick-card h3 { margin:0 0 4px;font-size:14px;font-weight:700;color:#111827; }
-    .quick-card p { margin:0 0 10px;font-size:11px;color:#6b7280; }
-    .quick-card a { text-decoration:none;color:#4f46e5;font-weight:600;font-size:12px; }
-    .quick-card a:hover { text-decoration:underline; }
+/* Insights */
+.insights-grid { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px; }
+.insight { padding:12px 14px;border-radius:8px;font-size:13px;display:flex;gap:10px;align-items:flex-start; }
+.insight .icon { font-size:18px;flex-shrink:0;margin-top:1px; }
+.insight-success { background:#f0fdf4;border:1px solid #bbf7d0;color:#166534; }
+.insight-danger { background:#fef2f2;border:1px solid #fecaca;color:#991b1b; }
+.insight-warning { background:#fffbeb;border:1px solid #fde68a;color:#92400e; }
+.insight-info { background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af; }
+
+/* Inventory alerts */
+.alert-list { font-size:13px; }
+.alert-item { padding:6px 0;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between; }
+.alert-item:last-child { border-bottom:none; }
+.stock-low { color:#f59e0b;font-weight:600; }
+.stock-out { color:#ef4444;font-weight:600; }
+.expiry-warn { color:#f59e0b;font-size:11px; }
+
+@media (max-width:768px) {
+    .chart-grid { grid-template-columns:1fr; }
+    .insights-grid { grid-template-columns:1fr; }
+    .kpi-grid { grid-template-columns:repeat(2,1fr); }
+}
 </style>
 
+{{-- HEADER --}}
 <div class="dash-header">
     <div>
-        <h2>Organisation Dashboard</h2>
-        <div class="org-info"><strong>{{ $organisation->name }}</strong> &middot; {{ ucfirst(str_replace('_', ' ', $user->role)) }}</div>
+        <h2>{{ $organisation->name }} Dashboard</h2>
+        <div class="org-badge">{{ ucfirst(str_replace('_', ' ', $user->role)) }} &middot; {{ $days == 365 ? '12 months' : $days . ' days' }}</div>
+    </div>
+    <div class="period-bar">
+        <a href="?period=7" class="period-btn {{ $days==7 ? 'active' : '' }}">7 Days</a>
+        <a href="?period=30" class="period-btn {{ $days==30 ? 'active' : '' }}">30 Days</a>
+        <a href="?period=90" class="period-btn {{ $days==90 ? 'active' : '' }}">90 Days</a>
+        <a href="?period=365" class="period-btn {{ $days==365 ? 'active' : '' }}">12 Months</a>
     </div>
 </div>
 
-{{-- ═══════ TOP METRICS ═══════ --}}
-<div class="metrics-row">
-    <div class="metric metric--highlight">
-        <div class="label">Total Revenue</div>
-        <div class="value">₹{{ number_format($totalRevenue) }}</div>
-        <div class="sub">₹{{ number_format($monthRevenue) }} this month</div>
+{{-- KPI CARDS --}}
+<div class="kpi-grid">
+    <div class="kpi kpi--green">
+        <div class="label">Revenue</div>
+        <div class="value">₹{{ number_format($kpis->revenue) }}</div>
+        <div class="trend {{ $kpis->revTrend >= 0 ? 'up' : 'down' }}">
+            {{ $kpis->revTrend >= 0 ? '↑' : '↓' }} {{ abs($kpis->revTrend) }}% vs prev period
+        </div>
     </div>
-    <div class="metric">
+    <div class="kpi kpi--blue">
         <div class="label">Appointments</div>
-        <div class="value">{{ number_format($totalAppointments) }}</div>
-        <div class="sub">{{ $monthAppointments }} this month · {{ $completedAppointments }} completed</div>
+        <div class="value">{{ number_format($kpis->appointments) }}</div>
+        <div class="trend {{ $kpis->apptTrend >= 0 ? 'up' : 'down' }}">
+            {{ $kpis->apptTrend >= 0 ? '↑' : '↓' }} {{ abs($kpis->apptTrend) }}% vs prev
+        </div>
     </div>
-    <div class="metric metric--green">
+    <div class="kpi kpi--purple">
         <div class="label">Clients</div>
-        <div class="value">{{ number_format($totalClients) }}</div>
-        <div class="sub">{{ $repeatClients }} repeat ({{ $repeatPercentage }}%)</div>
+        <div class="value">{{ number_format($kpis->newClients) }}</div>
+        <div class="trend {{ $kpis->clientTrend >= 0 ? 'up' : 'down' }}">
+            {{ $kpis->clientTrend >= 0 ? '↑' : '↓' }} {{ abs($kpis->clientTrend) }}%
+        </div>
     </div>
-    <div class="metric">
-        <div class="label">Clinics</div>
-        <div class="value">{{ $totalClinics }}</div>
+    <div class="kpi kpi--teal">
+        <div class="label">Repeat Rate</div>
+        <div class="value">{{ $kpis->repeatRate }}%</div>
+        <div class="trend flat">Returning clients</div>
     </div>
-    <div class="metric">
-        <div class="label">Doctors</div>
-        <div class="value">{{ $totalVets }}</div>
+    <div class="kpi kpi--amber">
+        <div class="label">Avg/Appointment</div>
+        <div class="value">₹{{ number_format($kpis->avgRevenuePerAppt) }}</div>
+        <div class="trend flat">Revenue per visit</div>
     </div>
-    <div class="metric">
-        <div class="label">Staff</div>
-        <div class="value">{{ $totalUsers }}</div>
+    <div class="kpi kpi--red">
+        <div class="label">Cancellations</div>
+        <div class="value">{{ $kpis->cancelRate }}%</div>
+        <div class="trend {{ $kpis->cancelRate > 15 ? 'down' : 'up' }}">
+            {{ $kpis->cancellations }} cancelled
+        </div>
     </div>
 </div>
 
-{{-- ═══════ CLINIC RANKING ═══════ --}}
-<div class="section-title">Clinic Performance</div>
-<div class="section-sub">Ranked by total revenue — all time</div>
+{{-- INSIGHTS --}}
+@if(count($insights))
+<div class="insights-grid">
+    @foreach($insights as $ins)
+    <div class="insight insight-{{ $ins['type'] }}">
+        <span class="icon">{{ $ins['icon'] }}</span>
+        <span>{{ $ins['text'] }}</span>
+    </div>
+    @endforeach
+</div>
+@endif
 
-<div class="card">
-    <table class="rank-table">
-        <thead>
-            <tr>
-                <th>Rank</th>
-                <th>Clinic</th>
-                <th>City</th>
-                <th>Revenue (Total)</th>
-                <th>Revenue (Month)</th>
-                <th>Appointments</th>
-                <th>This Month</th>
-                <th>Doctors</th>
-                <th>Clients</th>
-                <th>Inventory Used</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($clinicPerformance as $i => $cp)
-                <tr>
-                    <td>
-                        <span class="rank-badge {{ $i === 0 ? 'rank-1' : ($i === 1 ? 'rank-2' : ($i === 2 ? 'rank-3' : 'rank-other')) }}">
-                            {{ $i + 1 }}
-                        </span>
-                    </td>
-                    <td style="font-weight:600;">{{ $cp['clinic']->name }}</td>
-                    <td>{{ $cp['clinic']->city ?? '—' }}</td>
-                    <td class="money">₹{{ number_format($cp['revenue']) }}</td>
-                    <td class="money">₹{{ number_format($cp['month_revenue']) }}</td>
-                    <td>{{ $cp['appointments'] }}</td>
-                    <td>{{ $cp['month_appointments'] }}</td>
-                    <td>{{ $cp['doctors'] }}</td>
-                    <td>{{ $cp['clients'] }}</td>
-                    <td>{{ number_format($cp['inventory_used']) }} units</td>
-                </tr>
-            @empty
-                <tr><td colspan="10" style="text-align:center;color:#9ca3af;padding:20px;">No clinic data yet.</td></tr>
-            @endforelse
-        </tbody>
-    </table>
+{{-- CHARTS ROW 1: Revenue + Appointments Trend --}}
+<div class="chart-grid">
+    <div class="chart-card">
+        <h3>Revenue Trend</h3>
+        <canvas id="revenueChart" height="200"></canvas>
+    </div>
+    <div class="chart-card">
+        <h3>Appointment Trend</h3>
+        <canvas id="appointmentChart" height="200"></canvas>
+    </div>
 </div>
 
-{{-- ═══════ VET RANKING ═══════ --}}
-<div class="section-title">Vet Performance</div>
-<div class="section-sub">Ranked by revenue generated — repeat % shows client retention</div>
+{{-- CHARTS ROW 2: Revenue Source + Clinic Comparison --}}
+<div class="chart-grid">
+    <div class="chart-card">
+        <h3>Revenue Breakdown</h3>
+        <p class="chart-sub">By billing source</p>
+        <canvas id="revenueSourceChart" height="220"></canvas>
+    </div>
+    <div class="chart-card">
+        <h3>Clinic Comparison</h3>
+        <p class="chart-sub">Revenue by clinic</p>
+        <canvas id="clinicCompChart" height="220"></canvas>
+    </div>
+</div>
 
-<div class="card">
-    <table class="rank-table">
+{{-- CHARTS ROW 3: Species + Top Diagnoses --}}
+<div class="chart-grid">
+    <div class="chart-card">
+        <h3>Patient Species</h3>
+        <canvas id="speciesChart" height="200"></canvas>
+    </div>
+    <div class="chart-card">
+        <h3>Top Diagnoses</h3>
+        <canvas id="diagnosisChart" height="200"></canvas>
+    </div>
+</div>
+
+{{-- VET LEADERBOARD --}}
+<div class="chart-card full" style="margin-bottom:20px;">
+    <h3>Vet Performance Leaderboard</h3>
+    @if(count($vetLeaderboard))
+    <table class="lb-table">
         <thead>
             <tr>
-                <th>Rank</th>
+                <th>#</th>
                 <th>Doctor</th>
-                <th>Specialization</th>
-                <th>Revenue</th>
                 <th>Appointments</th>
-                <th>Completed</th>
-                <th>Unique Clients</th>
-                <th>Repeat Clients</th>
+                <th>Revenue</th>
+                <th>Clients</th>
                 <th>Repeat %</th>
+                <th>Avg Consult</th>
             </tr>
         </thead>
         <tbody>
-            @forelse($vetPerformance as $i => $vet)
-                <tr>
-                    <td>
-                        <span class="rank-badge {{ $i === 0 ? 'rank-1' : ($i === 1 ? 'rank-2' : ($i === 2 ? 'rank-3' : 'rank-other')) }}">
-                            {{ $i + 1 }}
-                        </span>
-                    </td>
-                    <td style="font-weight:600;">{{ $vet->name }}</td>
-                    <td>{{ $vet->specialization ?? '—' }}</td>
-                    <td class="money">₹{{ number_format($vet->revenue) }}</td>
-                    <td>{{ $vet->total_appointments }}</td>
-                    <td>{{ $vet->completed }}</td>
-                    <td>{{ $vet->unique_clients }}</td>
-                    <td>{{ $vet->repeat_clients }}</td>
-                    <td>
-                        <span class="pct-badge {{ $vet->repeat_pct >= 40 ? 'pct-high' : ($vet->repeat_pct >= 20 ? 'pct-med' : 'pct-low') }}">
-                            {{ $vet->repeat_pct }}%
-                        </span>
-                    </td>
-                </tr>
-            @empty
-                <tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:20px;">No vet data yet.</td></tr>
-            @endforelse
+            @foreach($vetLeaderboard as $i => $vet)
+            <tr>
+                <td><span class="rank-badge {{ $i < 3 ? 'rank-'.($i+1) : 'rank-n' }}">{{ $i+1 }}</span></td>
+                <td>
+                    <strong>{{ str_starts_with($vet->name, 'Dr') ? $vet->name : 'Dr. ' . $vet->name }}</strong>
+                    @if($vet->specialization)<br><span style="font-size:11px;color:#9ca3af;">{{ $vet->specialization }}</span>@endif
+                </td>
+                <td>{{ $vet->appointments }} <span style="color:#9ca3af;font-size:11px;">({{ $vet->completed }} done)</span></td>
+                <td class="money">₹{{ number_format($vet->revenue) }}</td>
+                <td>{{ $vet->unique_clients }}</td>
+                <td>
+                    <span class="pct-pill {{ $vet->repeat_pct >= 50 ? 'pct-high' : ($vet->repeat_pct >= 25 ? 'pct-mid' : 'pct-low') }}">
+                        {{ $vet->repeat_pct }}%
+                    </span>
+                </td>
+                <td>{{ $vet->avg_consult_min ? $vet->avg_consult_min . ' min' : '—' }}</td>
+            </tr>
+            @endforeach
         </tbody>
     </table>
+    @else
+    <p style="color:#9ca3af;font-size:13px;padding:20px 0;text-align:center;">No vet data for this period.</p>
+    @endif
 </div>
 
-{{-- ═══════ QUICK ACCESS ═══════ --}}
-<div class="section-title">Quick Access</div>
-<div class="quick-grid">
-    @if($showClinics)
-    <div class="quick-card">
-        <h3>Clinics</h3>
-        <p>Manage your clinic locations</p>
-        <a href="{{ route('organisation.clinics.index') }}">Manage &rarr;</a>
-    </div>
-    @endif
-
-    @if($showUsers)
-    <div class="quick-card">
-        <h3>Users & Roles</h3>
-        <p>Staff accounts and permissions</p>
-        <a href="{{ route('organisation.users.index') }}">Manage &rarr;</a>
-    </div>
-    @endif
-
-    @if($showInventory)
-    <div class="quick-card">
-        <h3>Inventory</h3>
-        <p>Central stock and clinic transfers</p>
-        <a href="{{ route('organisation.inventory.items') }}">Manage &rarr;</a>
-    </div>
-    @endif
-
-    <div class="quick-card">
-        <h3>Lab Management</h3>
-        <p>Test catalog and external labs</p>
-        <a href="{{ route('organisation.lab-catalog.index') }}">Open &rarr;</a>
+{{-- CLIENT RETENTION + INVENTORY ALERTS --}}
+<div class="chart-grid">
+    <div class="chart-card">
+        <h3>Client Retention</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">
+            <div style="text-align:center;padding:14px;background:#f0fdf4;border-radius:8px;">
+                <div style="font-size:28px;font-weight:700;color:#16a34a;">{{ $clientRetention->returning_clients }}</div>
+                <div style="font-size:11px;color:#6b7280;">Returning</div>
+            </div>
+            <div style="text-align:center;padding:14px;background:#eff6ff;border-radius:8px;">
+                <div style="font-size:28px;font-weight:700;color:#2563eb;">{{ $clientRetention->new_clients }}</div>
+                <div style="font-size:11px;color:#6b7280;">New Clients</div>
+            </div>
+        </div>
+        <div style="text-align:center;margin-top:12px;padding:12px;background:#f8fafc;border-radius:8px;">
+            <div style="font-size:32px;font-weight:700;color:#111827;">{{ $clientRetention->retention_rate }}%</div>
+            <div style="font-size:12px;color:#6b7280;">Retention Rate</div>
+            @if($clientRetention->growth != 0)
+            <div style="font-size:11px;font-weight:600;color:{{ $clientRetention->growth >= 0 ? '#16a34a' : '#ef4444' }};margin-top:4px;">
+                {{ $clientRetention->growth >= 0 ? '↑' : '↓' }} {{ abs($clientRetention->growth) }}% client growth
+            </div>
+            @endif
+        </div>
     </div>
 
-    <div class="quick-card">
-        <h3>Pricing</h3>
-        <p>Price lists and fee configuration</p>
-        <a href="{{ route('organisation.price-lists.index') }}">Manage &rarr;</a>
-    </div>
+    <div class="chart-card">
+        <h3>Inventory Alerts</h3>
+        @if($inventoryAlerts->out_of_stock_count > 0)
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:10px;margin-bottom:10px;font-size:13px;">
+            <span class="stock-out">{{ $inventoryAlerts->out_of_stock_count }} items out of stock</span>
+        </div>
+        @endif
 
-    <div class="quick-card">
-        <h3>Branding</h3>
-        <p>Logo, templates, documents</p>
-        <a href="{{ route('organisation.settings.branding') }}">Customize &rarr;</a>
+        @if($inventoryAlerts->low_stock->count())
+        <div style="font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px;">LOW STOCK</div>
+        <div class="alert-list">
+            @foreach($inventoryAlerts->low_stock as $item)
+            <div class="alert-item">
+                <span>{{ $item->name }}</span>
+                <span class="stock-low">{{ $item->stock }} left</span>
+            </div>
+            @endforeach
+        </div>
+        @endif
+
+        @if($inventoryAlerts->expiring_soon->count())
+        <div style="font-size:12px;font-weight:600;color:#6b7280;margin:10px 0 6px;">EXPIRING SOON</div>
+        <div class="alert-list">
+            @foreach($inventoryAlerts->expiring_soon as $item)
+            <div class="alert-item">
+                <span>{{ $item->name }}</span>
+                <span class="expiry-warn">{{ \Carbon\Carbon::parse($item->expiry_date)->format('d M') }}</span>
+            </div>
+            @endforeach
+        </div>
+        @endif
+
+        @if($inventoryAlerts->out_of_stock_count == 0 && $inventoryAlerts->low_stock->isEmpty() && $inventoryAlerts->expiring_soon->isEmpty())
+        <p style="color:#16a34a;font-size:13px;text-align:center;padding:30px 0;">✓ All inventory levels healthy</p>
+        @endif
     </div>
 </div>
+
+{{-- CHART.JS --}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+<script>
+const colors = {
+    blue: '#2563eb', green: '#16a34a', red: '#ef4444', amber: '#f59e0b',
+    purple: '#7c3aed', teal: '#0d9488', pink: '#ec4899', indigo: '#4f46e5',
+    blueBg: 'rgba(37,99,235,0.1)', greenBg: 'rgba(22,163,74,0.1)',
+};
+
+Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+Chart.defaults.font.size = 11;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.pointStyleWidth = 8;
+
+// ═══ Revenue Trend ═══
+new Chart(document.getElementById('revenueChart'), {
+    type: 'line',
+    data: {
+        labels: {!! json_encode(array_map(fn($r) => \Carbon\Carbon::parse($r->date)->format('d M'), $revenueTrend)) !!},
+        datasets: [{
+            label: 'Revenue',
+            data: {!! json_encode(array_map(fn($r) => (float)$r->amount, $revenueTrend)) !!},
+            borderColor: colors.green,
+            backgroundColor: colors.greenBg,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 2,
+            borderWidth: 2,
+        }]
+    },
+    options: { scales: { y: { beginAtZero: true, ticks: { callback: v => '₹' + v.toLocaleString() } } }, plugins: { legend: { display: false } } }
+});
+
+// ═══ Appointment Trend ═══
+new Chart(document.getElementById('appointmentChart'), {
+    type: 'bar',
+    data: {
+        labels: {!! json_encode(array_map(fn($a) => \Carbon\Carbon::parse($a->date)->format('d M'), $appointmentTrend)) !!},
+        datasets: [
+            { label: 'Completed', data: {!! json_encode(array_map(fn($a) => $a->completed, $appointmentTrend)) !!}, backgroundColor: colors.green, borderRadius: 3 },
+            { label: 'Cancelled', data: {!! json_encode(array_map(fn($a) => $a->cancelled, $appointmentTrend)) !!}, backgroundColor: colors.red, borderRadius: 3 },
+            { label: 'Other', data: {!! json_encode(array_map(fn($a) => $a->other, $appointmentTrend)) !!}, backgroundColor: '#d1d5db', borderRadius: 3 },
+        ]
+    },
+    options: { scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }, plugins: { legend: { position: 'bottom' } } }
+});
+
+// ═══ Revenue Source Doughnut ═══
+new Chart(document.getElementById('revenueSourceChart'), {
+    type: 'doughnut',
+    data: {
+        labels: {!! json_encode(array_map(fn($s) => ucfirst(str_replace('_',' ',$s->source ?? 'Other')), $revenueBySource)) !!},
+        datasets: [{
+            data: {!! json_encode(array_map(fn($s) => (float)$s->amount, $revenueBySource)) !!},
+            backgroundColor: [colors.blue, colors.green, colors.purple, colors.amber, colors.teal, colors.pink],
+            borderWidth: 0,
+        }]
+    },
+    options: { cutout: '60%', plugins: { legend: { position: 'bottom' } } }
+});
+
+// ═══ Clinic Comparison ═══
+new Chart(document.getElementById('clinicCompChart'), {
+    type: 'bar',
+    data: {
+        labels: {!! json_encode(array_map(fn($c) => $c->name, $clinicComparison)) !!},
+        datasets: [{
+            label: 'Revenue',
+            data: {!! json_encode(array_map(fn($c) => $c->revenue, $clinicComparison)) !!},
+            backgroundColor: {!! json_encode(array_map(fn($i) => ['#2563eb','#16a34a','#7c3aed','#f59e0b','#0d9488','#ec4899','#4f46e5'][$i % 7], array_keys($clinicComparison))) !!},
+            borderRadius: 4,
+        }]
+    },
+    options: { indexAxis: 'y', scales: { x: { beginAtZero: true, ticks: { callback: v => '₹' + v.toLocaleString() } } }, plugins: { legend: { display: false } } }
+});
+
+// ═══ Species Pie ═══
+new Chart(document.getElementById('speciesChart'), {
+    type: 'pie',
+    data: {
+        labels: {!! json_encode(array_map(fn($s) => ucfirst($s->species ?? 'Unknown'), $speciesBreakdown)) !!},
+        datasets: [{
+            data: {!! json_encode(array_map(fn($s) => $s->count, $speciesBreakdown)) !!},
+            backgroundColor: [colors.blue, colors.amber, colors.purple, colors.teal, colors.pink],
+            borderWidth: 0,
+        }]
+    },
+    options: { plugins: { legend: { position: 'bottom' } } }
+});
+
+// ═══ Top Diagnoses ═══
+new Chart(document.getElementById('diagnosisChart'), {
+    type: 'bar',
+    data: {
+        labels: {!! json_encode(array_map(fn($d) => strlen($d->diagnosis) > 25 ? substr($d->diagnosis,0,25).'...' : $d->diagnosis, $topDiagnoses)) !!},
+        datasets: [{
+            label: 'Cases',
+            data: {!! json_encode(array_map(fn($d) => $d->count, $topDiagnoses)) !!},
+            backgroundColor: colors.blue,
+            borderRadius: 4,
+        }]
+    },
+    options: { indexAxis: 'y', scales: { x: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+});
+</script>
 @endsection

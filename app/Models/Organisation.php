@@ -25,11 +25,13 @@ class Organisation extends Model
         'gst_number',
         'package_id',
         'trial_ends_at',
+        'vet_can_select_lab',
     ];
 
     protected $casts = [
-        'trial_ends_at' => 'datetime',
+        'vet_can_select_lab' => 'boolean',
         'is_active' => 'boolean',
+        'trial_ends_at' => 'datetime',
     ];
 
     public function clinics()
@@ -86,5 +88,10 @@ class Organisation extends Model
     public function labUsers()
     {
         return $this->hasMany(LabUser::class);
+    }
+
+    public function whatsappConfig()
+    {
+        return $this->hasOne(WhatsappConfig::class);
     }
 }

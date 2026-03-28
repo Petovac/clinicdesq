@@ -84,9 +84,9 @@ class Appointment extends Model
             return "{$baseYears}y {$baseMonths}m";
         }
 
-        $diffMonths = $recordedAt->diffInMonths($visitDate);
+        $diffMonths = (int) $recordedAt->diffInMonths($visitDate);
 
-        $totalMonths = ($baseYears * 12) + $baseMonths + $diffMonths;
+        $totalMonths = (int) (($baseYears * 12) + $baseMonths + $diffMonths);
 
         $years  = intdiv($totalMonths, 12);
         $months = $totalMonths % 12;

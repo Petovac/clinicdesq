@@ -1,133 +1,150 @@
 @extends('organisation.layout')
 
 @section('content')
-
 <style>
-.page-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:24px; }
-.page-header h2 { font-size:22px;font-weight:600;margin:0;color:#111827; }
-.card { background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.06);margin-bottom:16px; }
-.labs-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:16px; }
-.lab-card { background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.06); }
-.lab-card h3 { font-size:15px;font-weight:600;color:#111827;margin:0 0 8px 0; }
-.lab-meta { font-size:13px;color:#6b7280;line-height:1.7; }
-.lab-meta span { display:block; }
-.lab-card-footer { margin-top:14px;padding-top:12px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center; }
-.test-count { font-size:12px;font-weight:500;color:#2563eb;background:#eff6ff;padding:2px 10px;border-radius:12px; }
-.btn-sm { padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;border:none;cursor:pointer;text-decoration:none; }
-.btn-primary-sm { background:#2563eb;color:#fff; }
-.btn-primary-sm:hover { background:#1d4ed8; }
-.btn-outline-sm { background:#fff;color:#374151;border:1px solid #e5e7eb; }
-.btn-outline-sm:hover { background:#f9fafb; }
-.btn-danger-sm { background:#fee2e2;color:#991b1b; }
-.btn-danger-sm:hover { background:#fecaca; }
-.search-box { position:relative; }
-.search-box input { width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px; }
-.search-box input:focus { outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
-.search-results { position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,0.12);max-height:300px;overflow-y:auto;z-index:50;margin-top:4px;display:none; }
-.search-results.active { display:block; }
-.search-result-item { padding:12px 16px;cursor:pointer;border-bottom:1px solid #f3f4f6;transition:background 0.1s; }
-.search-result-item:hover { background:#f0f9ff; }
-.search-result-item:last-child { border-bottom:none; }
-.search-result-item .lab-name { font-weight:600;font-size:14px;color:#111827; }
-.search-result-item .lab-info { font-size:12px;color:#6b7280;margin-top:2px; }
-.empty-state { text-align:center;padding:40px 0;color:#6b7280;font-size:14px;background:#fff;border:1px solid #e5e7eb;border-radius:10px; }
+.page-title { font-size:22px; font-weight:700; margin-bottom:20px; }
+.card { background:#fff; border-radius:10px; padding:20px; border:1px solid #e5e7eb; margin-bottom:16px; }
+.search-bar { display:flex; gap:10px; margin-bottom:16px; }
+.search-bar input { flex:1; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; }
+.search-bar input:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,0.12); }
+.search-bar button { padding:10px 18px; background:#2563eb; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer; }
+.lab-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:12px; }
+.lab-card { border:1px solid #e5e7eb; border-radius:10px; padding:16px; background:#fff; transition:border-color .15s; }
+.lab-card:hover { border-color:#2563eb; }
+.lab-name { font-size:15px; font-weight:700; color:#111827; }
+.lab-city { font-size:12px; color:#6b7280; margin-top:2px; }
+.lab-meta { font-size:12px; color:#6b7280; margin-top:6px; }
+.lab-tests { font-size:11px; color:#2563eb; margin-top:4px; }
+.badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:600; }
+.badge-pending { background:#fef3c7; color:#92400e; }
+.btn { padding:8px 14px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; border:none; text-decoration:none; display:inline-flex; align-items:center; gap:4px; }
+.btn-primary { background:#2563eb; color:#fff; }
+.btn-outline { background:#fff; color:#374151; border:1px solid #d1d5db; }
+.btn-sm { padding:5px 10px; font-size:11px; }
+.btn-request { background:#f59e0b; color:#fff; }
+.section-title { font-size:14px; font-weight:700; color:#374151; margin:0 0 10px; }
+.empty { text-align:center; padding:24px; color:#9ca3af; font-size:13px; }
+.success-bar { background:#dcfce7; border:1px solid #bbf7d0; padding:10px 14px; border-radius:6px; margin-bottom:14px; color:#166534; font-size:14px; }
+.error-bar { background:#fee2e2; border:1px solid #fca5a5; padding:10px 14px; border-radius:6px; margin-bottom:14px; color:#991b1b; font-size:14px; }
+.test-list { margin-top:8px; max-height:0; overflow:hidden; transition:max-height .3s ease; }
+.test-list.open { max-height:500px; overflow-y:auto; }
+.test-row { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #f3f4f6; font-size:12px; }
+.test-row:last-child { border-bottom:none; }
+.test-toggle { cursor:pointer; color:#2563eb; font-size:11px; font-weight:600; background:none; border:none; padding:0; margin-top:4px; }
 </style>
 
-<div class="page-header">
-    <h2>External Labs</h2>
-</div>
+<h2 class="page-title">External Labs</h2>
 
-@if(session('success'))
-    <div style="background:#dcfce7;color:#166534;padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;">{{ session('success') }}</div>
-@endif
-@if(session('error'))
-    <div style="background:#fee2e2;color:#991b1b;padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;">{{ session('error') }}</div>
-@endif
+@if(session('success'))<div class="success-bar">✓ {{ session('success') }}</div>@endif
+@if(session('error'))<div class="error-bar">{{ session('error') }}</div>@endif
 
-{{-- Search & Onboard --}}
-<div class="card">
-    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:#111827;">Search & Onboard a Lab</h3>
-    <p style="font-size:13px;color:#6b7280;margin-bottom:12px;">Search for registered labs by name or city. Labs register on ClinicDesq independently — you link them to your organisation.</p>
-    <div class="search-box">
-        <input type="text" id="lab-search" placeholder="Search labs by name or city..." autocomplete="off">
-        <div class="search-results" id="search-results"></div>
-    </div>
-</div>
-
-{{-- Onboard confirmation form (hidden) --}}
-<form method="POST" action="{{ route('organisation.labs.onboard') }}" id="onboard-form" style="display:none;">
-    @csrf
-    <input type="hidden" name="lab_id" id="onboard-lab-id">
-</form>
-
-{{-- Tied-up Labs --}}
-<h3 style="font-size:16px;font-weight:700;margin-bottom:12px;margin-top:28px;">Your Labs ({{ $tiedUpLabs->count() }})</h3>
-
+{{-- Connected Labs --}}
 @if($tiedUpLabs->count())
-    <div class="labs-grid">
+<div class="card">
+    <div class="section-title">✅ Connected Labs ({{ $tiedUpLabs->count() }})</div>
+    <div class="lab-grid">
         @foreach($tiedUpLabs as $lab)
-            <div class="lab-card">
-                <h3>{{ $lab->name }}</h3>
-                <div class="lab-meta">
-                    @if($lab->city)<span>{{ $lab->city }}{{ $lab->state ? ", {$lab->state}" : '' }}</span>@endif
-                    @if($lab->phone)<span>{{ $lab->phone }}</span>@endif
-                    @if($lab->email)<span>{{ $lab->email }}</span>@endif
+        @php
+            $masterTests = \App\Models\ExternalLabTest::where('external_lab_id', $lab->id)->whereNull('organisation_id')->orderBy('test_name')->get();
+            $importedCount = $lab->testOfferings->count();
+        @endphp
+        <div class="lab-card" style="border-left:3px solid #16a34a;">
+            <div class="lab-name">{{ $lab->name }}</div>
+            <div class="lab-city">📍 {{ $lab->city ?? '—' }}{{ $lab->state ? ', '.$lab->state : '' }}</div>
+            <div class="lab-meta">{{ $lab->phone ?? '' }} {{ $lab->email ? '· '.$lab->email : '' }}</div>
+            <div class="lab-tests">{{ $importedCount }} imported · {{ $masterTests->count() }} total tests</div>
+
+            @if($masterTests->count())
+            <button class="test-toggle" onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? '▲ Hide tests' : '▼ View tests & pricing'">▼ View tests & pricing</button>
+            <div class="test-list">
+                @foreach($masterTests as $mt)
+                <div class="test-row">
+                    <span>{{ $mt->test_name }} <span style="color:#9ca3af;">({{ $mt->test_code }})</span></span>
+                    <span style="font-weight:600;color:#111;">₹{{ number_format($mt->b2b_price) }}</span>
                 </div>
-                <div class="lab-card-footer">
-                    <span class="test-count">{{ $lab->testOfferings->count() }} tests</span>
-                    <div style="display:flex;gap:6px;">
-                        <a href="{{ route('organisation.labs.edit', $lab) }}" class="btn-sm btn-outline-sm">Manage</a>
-                        <form method="POST" action="{{ route('organisation.labs.detach', $lab) }}" onsubmit="return confirm('Remove this lab from your organisation?')">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="btn-sm btn-danger-sm">Remove</button>
-                        </form>
-                    </div>
-                </div>
+                @endforeach
             </div>
+            @endif
+
+            <div style="margin-top:8px;">
+                <a href="{{ route('organisation.labs.edit', $lab) }}" class="btn btn-sm btn-primary">Manage & Import Tests</a>
+            </div>
+        </div>
         @endforeach
     </div>
-@else
-    <div class="empty-state">No external labs onboarded yet. Search above to find and link labs.</div>
+</div>
 @endif
 
-<script>
-const searchInput = document.getElementById('lab-search');
-const resultsBox = document.getElementById('search-results');
-let debounce;
+{{-- Pending Requests --}}
+@if($pendingLabs->count())
+<div class="card" style="border-left:3px solid #f59e0b;">
+    <div class="section-title">⏳ Pending Requests ({{ $pendingLabs->count() }})</div>
+    <div class="lab-grid">
+        @foreach($pendingLabs as $lab)
+        <div class="lab-card" style="background:#fffbeb;">
+            <div style="display:flex;justify-content:space-between;align-items:start;">
+                <div>
+                    <div class="lab-name">{{ $lab->name }}</div>
+                    <div class="lab-city">📍 {{ $lab->city ?? '—' }}</div>
+                </div>
+                <span class="badge badge-pending">Pending</span>
+            </div>
+            <div class="lab-meta">Waiting for lab to accept your request.</div>
+        </div>
+        @endforeach
+    </div>
+</div>
+@endif
 
-searchInput.addEventListener('input', function() {
-    clearTimeout(debounce);
-    const q = this.value.trim();
-    if (q.length < 2) { resultsBox.classList.remove('active'); return; }
+{{-- Browse Available Labs --}}
+<div class="card">
+    <div class="section-title">🔍 Browse Labs {{ $orgCities->isNotEmpty() && !$search ? 'in '.implode(', ', $orgCities->toArray()) : '' }}</div>
+    <p style="font-size:13px;color:#6b7280;margin:0 0 12px;">Browse lab catalogs and send connection requests. Labs must accept before you can order tests.</p>
 
-    debounce = setTimeout(() => {
-        fetch(`{{ route('organisation.labs.search') }}?q=${encodeURIComponent(q)}`)
-            .then(r => r.json())
-            .then(labs => {
-                if (labs.length === 0) {
-                    resultsBox.innerHTML = '<div style="padding:16px;text-align:center;color:#6b7280;font-size:13px;">No labs found for "' + q + '"</div>';
-                } else {
-                    resultsBox.innerHTML = labs.map(lab => `
-                        <div class="search-result-item" onclick="onboardLab(${lab.id}, '${lab.name.replace(/'/g, "\\'")}')">
-                            <div class="lab-name">${lab.name}</div>
-                            <div class="lab-info">${lab.city || ''}${lab.state ? ', ' + lab.state : ''} ${lab.phone ? '&middot; ' + lab.phone : ''}</div>
-                        </div>
-                    `).join('');
-                }
-                resultsBox.classList.add('active');
-            });
-    }, 300);
-});
+    <form method="GET" class="search-bar">
+        <input type="text" name="q" value="{{ $search }}" placeholder="Search labs by name or city...">
+        <button type="submit">Search</button>
+        @if($search)<a href="{{ route('organisation.labs.index') }}" class="btn btn-outline">Clear</a>@endif
+    </form>
 
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('.search-box')) resultsBox.classList.remove('active');
-});
+    @if($availableLabs->count())
+    <div class="lab-grid">
+        @foreach($availableLabs as $lab)
+        @php $labTests = \App\Models\ExternalLabTest::where('external_lab_id', $lab->id)->whereNull('organisation_id')->orderBy('test_name')->get(); @endphp
+        <div class="lab-card">
+            <div class="lab-name">{{ $lab->name }}</div>
+            <div class="lab-city">📍 {{ $lab->city ?? 'City not set' }}{{ $lab->state ? ', '.$lab->state : '' }}</div>
+            @if($lab->description)<div class="lab-meta">{{ Str::limit($lab->description, 80) }}</div>@endif
+            <div class="lab-meta">{{ $lab->phone ?? '' }} {{ $lab->email ? '· '.$lab->email : '' }}</div>
+            <div class="lab-tests" style="color:#16a34a;">{{ $labTests->count() }} tests available</div>
 
-function onboardLab(id, name) {
-    if (!confirm(`Onboard "${name}" to your organisation?`)) return;
-    document.getElementById('onboard-lab-id').value = id;
-    document.getElementById('onboard-form').submit();
-}
-</script>
+            @if($labTests->count())
+            <button class="test-toggle" onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? '▲ Hide catalog' : '▼ View test catalog & pricing'">▼ View test catalog & pricing</button>
+            <div class="test-list">
+                @foreach($labTests as $lt)
+                <div class="test-row">
+                    <span>{{ $lt->test_name }} <span style="color:#9ca3af;">({{ $lt->test_code }})</span></span>
+                    <span style="font-weight:600;color:#111;">₹{{ number_format($lt->b2b_price) }}</span>
+                </div>
+                @endforeach
+            </div>
+            @endif
 
+            <div style="margin-top:8px;">
+                <form method="POST" action="{{ route('organisation.labs.onboard') }}" style="display:inline;">
+                    @csrf
+                    <input type="hidden" name="lab_id" value="{{ $lab->id }}">
+                    <button type="submit" class="btn btn-sm btn-request">Send Request</button>
+                </form>
+            </div>
+        </div>
+        @endforeach
+    </div>
+    @else
+    <div class="empty">
+        @if($search) No labs found matching "{{ $search }}".
+        @else No available labs found in your clinic cities. Try searching by name or city. @endif
+    </div>
+    @endif
+</div>
 @endsection

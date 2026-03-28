@@ -129,6 +129,33 @@
             @endif
         </div>
 
+        {{-- Clinic Assignment --}}
+        <div class="card" style="margin-top:16px;border-left:3px solid #8b5cf6;">
+            <h3 style="font-size:14px;font-weight:700;margin-bottom:4px;">🏥 Assign to Clinics</h3>
+            <p style="font-size:12px;color:#6b7280;margin:0 0 12px;">Select which clinics can use this lab. Only doctors at assigned clinics will see these tests.</p>
+            <form method="POST" action="{{ route('organisation.labs.assign-clinics', $lab) }}">
+                @csrf
+                <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:8px;">
+                    @foreach($clinics as $clinic)
+                    <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:13px;transition:all .15s;{{ in_array($clinic->id, $assignedClinicIds) ? 'background:#f0fdf4;border-color:#86efac;' : '' }}">
+                        <input type="checkbox" name="clinic_ids[]" value="{{ $clinic->id }}"
+                            {{ in_array($clinic->id, $assignedClinicIds) ? 'checked' : '' }}
+                            style="width:16px;height:16px;accent-color:#16a34a;">
+                        <div>
+                            <div style="font-weight:600;">{{ $clinic->name }}</div>
+                            @if($clinic->city)<div style="font-size:11px;color:#6b7280;">{{ $clinic->city }}</div>@endif
+                        </div>
+                    </label>
+                    @endforeach
+                </div>
+                <div style="margin-top:12px;display:flex;gap:8px;">
+                    <button type="submit" style="background:#8b5cf6;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;border:none;cursor:pointer;">Save Clinic Assignments</button>
+                    <button type="button" onclick="document.querySelectorAll('input[name=\'clinic_ids[]\']').forEach(c=>c.checked=true)" style="background:#f3f4f6;color:#374151;padding:8px 12px;border-radius:8px;font-size:12px;border:none;cursor:pointer;">Select All</button>
+                    <button type="button" onclick="document.querySelectorAll('input[name=\'clinic_ids[]\']').forEach(c=>c.checked=false)" style="background:#f3f4f6;color:#374151;padding:8px 12px;border-radius:8px;font-size:12px;border:none;cursor:pointer;">Clear All</button>
+                </div>
+            </form>
+        </div>
+
         @if($lab->users->count())
         <div class="card" style="margin-top:16px;">
             <h3 style="font-size:14px;font-weight:700;margin-bottom:14px;">Lab Staff ({{ $lab->users->count() }})</h3>

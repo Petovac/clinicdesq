@@ -8,7 +8,7 @@ class LabOrderTest extends Model
 {
     protected $fillable = [
         'lab_order_id', 'lab_test_catalog_id', 'external_lab_test_id',
-        'test_name', 'parameters', 'price', 'status', 'notes',
+        'external_lab_id', 'test_name', 'parameters', 'price', 'status', 'notes',
     ];
 
     protected $casts = [
@@ -29,6 +29,16 @@ class LabOrderTest extends Model
     public function externalLabTest()
     {
         return $this->belongsTo(ExternalLabTest::class, 'external_lab_test_id');
+    }
+
+    public function externalLab()
+    {
+        return $this->belongsTo(ExternalLab::class, 'external_lab_id');
+    }
+
+    public function isExternal(): bool
+    {
+        return !is_null($this->external_lab_id) || !is_null($this->external_lab_test_id);
     }
 
     public function results()

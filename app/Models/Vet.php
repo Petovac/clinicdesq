@@ -21,6 +21,7 @@ class Vet extends Authenticatable
         'experience',
 
         'is_active',
+        'linked_user_id',
         'role',
 
         // Auth & files
@@ -55,6 +56,22 @@ class Vet extends Authenticatable
             'clinic_vet',
             'vet_id',
             'clinic_id'
-        )->withPivot('role')->withTimestamps();
+        )->withPivot('role', 'can_manage_clinic')->withTimestamps();
+    }
+
+    public function linkedUser()
+    {
+        return $this->belongsTo(User::class, 'linked_user_id');
+    }
+
+    /**
+     * Check if vet can manage the given clinic
+     */
+    public function canManageClinic(int $clinicId): bool
+    {
+        return $this->clinics()
+            ->where('clinics.id', $clinicId)
+            ->wherePivot('can_manage_clinic', true)
+            ->exists();
     }
 }

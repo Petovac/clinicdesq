@@ -18,12 +18,12 @@ public function store(Request $request)
 {
 
 $request->validate([
-    'item_type' => 'required|in:drug,consumable,product,surgical',
+    'item_type' => 'required|in:drug,consumable,product,surgical,vaccine',
     'name' => 'required|string|max:255',
     'drug_brand_id' => 'nullable|unique:inventory_items,drug_brand_id,NULL,id,organisation_id,'.auth()->user()->organisation_id
 ]);
 
-InventoryItem::create([
+$item = InventoryItem::create([
 
 'organisation_id' => Auth::user()->organisation_id,
 
@@ -37,7 +37,7 @@ InventoryItem::create([
 
 'drug_generic_id' => $request->generic_id ?: null,
 
-'drug_brand_id' => $request->drug_brand_id,
+'drug_brand_id' => $request->drug_brand_id ?: null,
 
 'unit' => $request->unit,
 
@@ -56,6 +56,25 @@ InventoryItem::create([
 'is_multi_use' => $request->is_multi_use ? 1 : 0,
 
 ]);
+
+// Auto-submit to KB if this is a drug/vaccine without a KB link (new brand)
+if (in_array($request->item_type, ['drug', 'vaccine']) && !$request->drug_brand_id) {
+    \App\Models\DrugSubmission::create([
+        'organisation_id' => Auth::user()->organisation_id,
+        'submitted_by' => Auth::id(),
+        'type' => 'brand',
+        'generic_name' => $request->generic_name,
+        'drug_generic_id' => $request->generic_id ?: null,
+        'submitted_generic_name' => !$request->generic_id ? $request->generic_name : null,
+        'brand_name' => $request->name,
+        'form' => $request->package_type,
+        'strength_value' => $request->strength_value,
+        'strength_unit' => $request->strength_unit,
+        'pack_size' => $request->unit_volume_ml,
+        'pack_unit' => $request->pack_unit,
+        'status' => 'pending',
+    ]);
+}
 
 if ($request->wantsJson() || $request->quick_add) {
     return response()->json(['success' => true]);
@@ -235,17 +254,47 @@ public function searchInventoryItems(Request $request)
 public function searchGenerics(Request $request)
 {
     $term = $request->q;
+    $clinicId = session('active_clinic_id');
 
     $generics = \App\Models\DrugGeneric::where('name','like',"%{$term}%")
+        ->with(['dosages', 'brands'])
         ->orderBy('name')
-        ->limit(10)
+        ->limit(15)
         ->get();
 
     return response()->json(
-        $generics->map(function($g){
+        $generics->map(function($g) use ($clinicId) {
+            $dosage = $g->dosages->first();
+            $doseInfo = $dosage ? ($dosage->dose_min . ($dosage->dose_max ? '-' . $dosage->dose_max : '') . ' ' . ($dosage->dose_unit ?? 'mg/kg')) : null;
+            $freq = $dosage && $dosage->frequencies ? implode(', ', json_decode($dosage->frequencies, true) ?? []) : null;
+            $routes = $dosage && $dosage->routes ? implode(', ', json_decode($dosage->routes, true) ?? []) : null;
+
+            // Inventory strengths
+            $strengths = [];
+            if ($clinicId) {
+                $orgId = \App\Models\Clinic::find($clinicId)?->organisation_id;
+                $invItems = \App\Models\InventoryItem::where('drug_generic_id', $g->id)
+                    ->where('organisation_id', $orgId)
+                    ->get();
+                foreach ($invItems as $inv) {
+                    $strengths[] = [
+                        'inventory_item_id' => $inv->id,
+                        'brand_name' => $inv->name,
+                        'strength_value' => $inv->strength_value,
+                        'strength_unit' => $inv->strength_unit ?? 'mg/ml',
+                        'form' => $inv->package_type ?? 'injection',
+                    ];
+                }
+            }
+
             return [
-                'id' => $g->id,
-                'name' => $g->name
+                'generic_id' => $g->id,
+                'generic_name' => $g->name,
+                'dose_info' => $doseInfo,
+                'frequency' => $freq,
+                'routes' => $routes,
+                'in_inventory' => count($strengths) > 0,
+                'strengths' => $strengths,
             ];
         })
     );

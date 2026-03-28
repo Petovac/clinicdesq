@@ -307,6 +307,11 @@ text-decoration:underline;
 <span>Surgical</span>
 </label>
 
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+<input type="radio" name="item_type" value="vaccine">
+<span>Vaccine</span>
+</label>
+
 </div>
 
 </div>
@@ -435,6 +440,7 @@ z-index:1000;
 <option value="fluid">Fluid</option>
 <option value="bottle">Bottle</option>
 <option value="strip">Strip</option>
+<option value="dose">Dose</option>
 
 </select>
 
@@ -455,6 +461,7 @@ z-index:1000;
 <option value="mg/ml">mg/ml</option>
 <option value="mg">mg</option>
 <option value="IU">IU</option>
+<option value="dose">dose</option>
 <option value="%">%</option>
 
 </select>
@@ -567,102 +574,85 @@ Add Item
 
 
 
-<h3>Existing Items</h3>
+<h3>Existing Items ({{ $items->count() }})</h3>
 
-<table class="table">
+@php
+    $grouped = $items->groupBy(function($item) {
+        return $item->package_type ?: 'other';
+    })->sortKeys();
+    $groupLabels = [
+        'injection' => 'Injections',
+        'tablet' => 'Tablets',
+        'capsule' => 'Capsules',
+        'vial' => 'Vials',
+        'dose' => 'Vaccines (Doses)',
+        'fluid' => 'Fluids',
+        'bottle' => 'Bottles',
+        'strip' => 'Strips',
+        'packet' => 'Packets',
+        'tube' => 'Tubes',
+        'piece' => 'Pieces',
+        'sachet' => 'Sachets',
+        'other' => 'Other',
+    ];
+@endphp
 
-<tr>
-<th>Name</th>
-<th>Type</th>
-<th>Package</th>
-<th>Strength</th>
-<th>Pack Size</th>
-<th>Action</th>
-</tr>
-
-@foreach($items as $item)
-
-<tr>
-
-<td>
-
-<input class="edit-field input-medium"
-name="name"
-value="{{ $item->name }}"
-data-id="{{ $item->id }}"
-readonly>
-
-</td>
-
-<td>{{ $item->item_type }}</td>
-
-<td>
-
-<input class="edit-field input-medium"
-name="package_type"
-value="{{ $item->package_type }}"
-data-id="{{ $item->id }}"
-readonly>
-
-</td>
-
-<td>
-
-<div class="flex-small">
-
-<input class="edit-field input-small"
-name="strength_value"
-value="{{ $item->strength_value }}"
-data-id="{{ $item->id }}"
-readonly>
-
-<input class="edit-field input-medium"
-name="strength_unit"
-value="{{ $item->strength_unit }}"
-data-id="{{ $item->id }}"
-readonly>
-
+@foreach($grouped as $packageType => $groupItems)
+<div class="card" style="margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding-bottom:10px;border-bottom:1px solid #e5e7eb;margin-bottom:10px;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.querySelector('.arrow').textContent = this.nextElementSibling.style.display === 'none' ? '▸' : '▾';">
+        <div>
+            <span style="font-size:16px;font-weight:700;color:#111827;">{{ $groupLabels[$packageType] ?? ucfirst($packageType) }}</span>
+            <span style="font-size:13px;color:#6b7280;margin-left:8px;">({{ $groupItems->count() }})</span>
+        </div>
+        <span class="arrow" style="font-size:14px;color:#9ca3af;">▾</span>
+    </div>
+    <div>
+        <table class="table" style="margin-top:0;">
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Strength</th>
+                <th>Pack Size</th>
+                <th>Action</th>
+            </tr>
+            @foreach($groupItems as $item)
+            <tr>
+                <td>
+                    <input class="edit-field input-medium" name="name" value="{{ $item->name }}" data-id="{{ $item->id }}" readonly>
+                </td>
+                <td>
+                    @php
+                        $typeBg = match($item->item_type) { 'drug'=>'#dbeafe','consumable'=>'#fef3c7','surgical'=>'#fce7f3','vaccine'=>'#ede9fe', default=>'#d1fae5' };
+                        $typeColor = match($item->item_type) { 'drug'=>'#1d4ed8','consumable'=>'#92400e','surgical'=>'#9d174d','vaccine'=>'#6d28d9', default=>'#065f46' };
+                    @endphp
+                    <span style="background:{{ $typeBg }};color:{{ $typeColor }};padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">{{ ucfirst($item->item_type) }}</span>
+                </td>
+                <td>
+                    <div class="flex-small">
+                        <input class="edit-field input-small" name="strength_value" value="{{ $item->strength_value }}" data-id="{{ $item->id }}" readonly>
+                        <input class="edit-field input-medium" name="strength_unit" value="{{ $item->strength_unit }}" data-id="{{ $item->id }}" readonly>
+                    </div>
+                </td>
+                <td>
+                    <div class="flex-small">
+                        <input class="edit-field input-small" name="unit_volume_ml" value="{{ $item->unit_volume_ml }}" data-id="{{ $item->id }}" readonly>
+                        <input class="edit-field input-medium" name="pack_unit" value="{{ $item->pack_unit }}" data-id="{{ $item->id }}" readonly>
+                    </div>
+                </td>
+                <td>
+                    <button onclick="editRow(this, {{ $item->id }})" class="btn-edit">Edit</button>
+                    <button onclick="deleteItem({{ $item->id }})" class="btn-delete">Delete</button>
+                </td>
+            </tr>
+            @endforeach
+        </table>
+    </div>
 </div>
-
-</td>
-
-<td>
-
-<div class="flex-small">
-
-<input class="edit-field input-small"
-name="unit_volume_ml"
-value="{{ $item->unit_volume_ml }}"
-data-id="{{ $item->id }}"
-readonly>
-
-<input class="edit-field input-medium"
-name="pack_unit"
-value="{{ $item->pack_unit }}"
-data-id="{{ $item->id }}"
-readonly>
-
-</div>
-
-</td>
-
-<td>
-
-<button onclick="editRow(this, {{ $item->id }})" class="btn-edit">
-Edit
-</button>
-
-<button onclick="deleteItem({{ $item->id }})" class="btn-delete">
-Delete
-</button>
-
-</td>
-
-</tr>
-
 @endforeach
 
-</table>
+@if($items->isEmpty())
+<div style="text-align:center;padding:40px;color:#9ca3af;">No inventory items yet.</div>
+@endif
 
 </div>
 
@@ -683,7 +673,7 @@ let drugFields=document.getElementById("drugFields")
 let consumableFields=document.getElementById("consumableFields")
 let nameLabel=document.getElementById("consumableNameLabel")
 
-if(type==="drug"){
+if(type==="drug" || type==="vaccine"){
 
 drugFlow.style.display="block"
 consumableFields.style.display="none"
@@ -1099,7 +1089,7 @@ function quickAddBrand(brandId, brandName, strengthValue, strengthUnit, form, pa
             'Accept': 'application/json',
         },
         body: JSON.stringify({
-            item_type: 'drug',
+            item_type: document.querySelector('input[name="item_type"]:checked').value,
             name: brandName,
             generic_id: genericId || null,
             drug_brand_id: brandId,

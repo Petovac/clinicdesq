@@ -56,10 +56,19 @@ class OrganisationVetController extends Controller
             ->pluck('clinic_id')
             ->toArray();
 
+        $manageClinicIds = DB::table('clinic_vet')
+            ->where('vet_id', $vet->id)
+            ->whereIn('clinic_id', $clinics->pluck('id'))
+            ->where('is_active', 1)
+            ->where('can_manage_clinic', 1)
+            ->pluck('clinic_id')
+            ->toArray();
+
         return view('organisation.vets.show', compact(
             'vet',
             'clinics',
-            'assignedClinicIds'
+            'assignedClinicIds',
+            'manageClinicIds'
         ));
     }
 
@@ -71,33 +80,64 @@ class OrganisationVetController extends Controller
         $request->validate([
             'clinic_ids' => 'nullable|array',
             'clinic_ids.*' => 'exists:clinics,id',
+            'manage_clinic_ids' => 'nullable|array',
+            'manage_clinic_ids.*' => 'exists:clinics,id',
         ]);
 
         $clinicIds = $request->clinic_ids ?? [];
+        $manageClinicIds = $request->manage_clinic_ids ?? [];
+        $orgId = auth()->user()->organisation_id;
 
-        $orgClinicIds = Clinic::where('organisation_id', auth()->user()->organisation_id)
+        $orgClinicIds = Clinic::where('organisation_id', $orgId)
             ->pluck('id')
             ->toArray();
 
         foreach ($orgClinicIds as $clinicId) {
 
             if (in_array($clinicId, $clinicIds)) {
-                DB::table('clinic_vet')->updateOrInsert(
-                    [
+                $canManage = in_array($clinicId, $manageClinicIds);
+
+                // Check if already exists
+                $existing = DB::table('clinic_vet')
+                    ->where('clinic_id', $clinicId)
+                    ->where('vet_id', $vet->id)
+                    ->first();
+
+                if ($existing) {
+                    // Update existing record
+                    DB::table('clinic_vet')
+                        ->where('id', $existing->id)
+                        ->update([
+                            'is_active' => 1,
+                            'can_manage_clinic' => $canManage,
+                            'updated_at' => now(),
+                        ]);
+                } else {
+                    // New assignment — send as pending request
+                    DB::table('clinic_vet')->insert([
                         'clinic_id' => $clinicId,
-                        'vet_id'    => $vet->id,
-                    ],
-                    [
-                        'is_active'  => 1,
-                        'updated_at'=> now(),
-                    ]
-                );
+                        'vet_id' => $vet->id,
+                        'is_active' => 0,
+                        'status' => 'pending',
+                        'can_manage_clinic' => $canManage,
+                        'role' => 'vet',
+                        'created_by' => auth()->id(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+
+                // Auto-create linked user account if can_manage_clinic enabled
+                if ($canManage) {
+                    \App\Http\Controllers\RoleSwitchController::createLinkedUser($vet, $orgId, $clinicId);
+                }
             } else {
                 DB::table('clinic_vet')
                     ->where('clinic_id', $clinicId)
                     ->where('vet_id', $vet->id)
                     ->update([
                         'is_active' => 0,
+                        'can_manage_clinic' => false,
                         'updated_at'=> now(),
                     ]);
             }

@@ -25,10 +25,24 @@ class Pet extends Model
         return $this->belongsTo(PetParent::class);
     }
 
-    // 🔑 REQUIRED for appointment history
     public function appointments()
     {
         return $this->hasMany(Appointment::class);
+    }
+
+    public function vaccinations()
+    {
+        return $this->hasMany(PetVaccination::class)->orderByDesc('administered_date');
+    }
+
+    public function certificates()
+    {
+        return $this->hasMany(VetCertificate::class)->orderByDesc('issued_date');
+    }
+
+    public function ipdAdmissions()
+    {
+        return $this->hasMany(IpdAdmission::class)->orderByDesc('admission_date');
     }
 
     

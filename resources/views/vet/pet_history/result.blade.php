@@ -106,45 +106,116 @@
                 @if($pet->gender) &middot; Gender: {{ ucfirst($pet->gender) }} @endif
             </p>
 
+            {{-- OPD Visits --}}
             @forelse($pet->appointments as $appointment)
                 <div class="appt {{ $appointment->status }}">
                     <p style="font-size:14px;margin:0;">
+                        <span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:4px;font-weight:600;">OPD</span>
                         <strong>Date:</strong>
                         {{ \Carbon\Carbon::parse($appointment->scheduled_at)->format('d M Y') }}
-                        &middot; <strong>Status:</strong> {{ ucfirst($appointment->status) }}
-
-                        @if($appointment->pet_age_at_visit)
-                            &middot; <strong>Age:</strong> {{ $appointment->pet_age_at_visit }}
-                        @endif
-
-                        @if($appointment->weight)
-                            &middot; <strong>Wt:</strong> {{ $appointment->weight }} kg
-                        @endif
+                        &middot; <strong>Status:</strong> {{ ucfirst(str_replace('_', ' ', $appointment->status)) }}
+                        @if($appointment->pet_age_at_visit) &middot; <strong>Age:</strong> {{ $appointment->pet_age_at_visit }} @endif
+                        @if($appointment->weight) &middot; <strong>Wt:</strong> {{ $appointment->weight }} kg @endif
+                        @if($appointment->treatments->count()) &middot; {{ $appointment->treatments->count() }} treatment(s) @endif
                     </p>
 
-                    <button
-                        class="view-btn"
-                        onclick="openHistoryModal(this)"
+                    <button class="view-btn" onclick="openHistoryModal(this)"
                         data-pet-name="{{ $pet->name }}"
                         data-species="{{ ucfirst($pet->species) }}"
                         data-breed="{{ $pet->breed ?? '-' }}"
                         data-gender="{{ ucfirst($pet->gender ?? '-') }}"
                         data-date="{{ \Carbon\Carbon::parse($appointment->scheduled_at)->format('d M Y') }}"
                         data-age="{{ $appointment->pet_age_at_visit ?? '-' }}"
-                        data-weight="{{ $appointment->weight ?? '-' }}"
-                    >
+                        data-weight="{{ $appointment->weight ?? '-' }}">
                         View Details
                     </button>
 
                     <div class="case-template" style="display:none;">
-                        @include('vet.appointments.partials.history_case', [
-                            'appointment' => $appointment
-                        ])
+                        @include('vet.appointments.partials.history_case', ['appointment' => $appointment])
                     </div>
                 </div>
             @empty
-                <p style="color:var(--text-muted);font-size:13px;margin-left:14px;">No appointments found for this pet.</p>
+                <p style="color:var(--text-muted);font-size:13px;margin-left:14px;">No OPD appointments found.</p>
             @endforelse
+
+            {{-- IPD Admissions --}}
+            @if($pet->ipdAdmissions->count())
+                @foreach($pet->ipdAdmissions as $ipd)
+                <div class="appt" style="border-color:#f59e0b;">
+                    <p style="font-size:14px;margin:0;">
+                        <span style="font-size:11px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px;font-weight:600;">IPD</span>
+                        <strong>Admitted:</strong> {{ \Carbon\Carbon::parse($ipd->admission_date)->format('d M Y') }}
+                        &middot; <strong>Status:</strong> {{ ucfirst(str_replace('_', ' ', $ipd->status)) }}
+                        @if($ipd->discharged_at) &middot; <strong>Discharged:</strong> {{ \Carbon\Carbon::parse($ipd->discharged_at)->format('d M Y') }} @endif
+                    </p>
+                    @if($ipd->tentative_diagnosis)
+                        <p style="font-size:13px;margin:4px 0 0;"><strong>Diagnosis:</strong> {{ $ipd->tentative_diagnosis }}</p>
+                    @endif
+                    @if($ipd->admission_reason)
+                        <p style="font-size:12px;color:var(--text-muted);margin:2px 0 0;">Reason: {{ Str::limit($ipd->admission_reason, 80) }}</p>
+                    @endif
+                    <p style="font-size:12px;color:var(--text-muted);margin:4px 0 0;">
+                        {{ $ipd->treatments->count() }} treatment(s) · {{ $ipd->notes->count() }} note(s)
+                    </p>
+
+                    <button class="view-btn" onclick="openHistoryModal(this)"
+                        data-pet-name="{{ $pet->name }}"
+                        data-species="{{ ucfirst($pet->species) }}"
+                        data-breed="{{ $pet->breed ?? '-' }}"
+                        data-gender="{{ ucfirst($pet->gender ?? '-') }}"
+                        data-date="IPD: {{ \Carbon\Carbon::parse($ipd->admission_date)->format('d M Y') }}"
+                        data-age="-"
+                        data-weight="{{ $pet->weight ?? '-' }}">
+                        View Details
+                    </button>
+
+                    <div class="case-template" style="display:none;">
+                        <div style="padding:8px 0;">
+                            <h4 style="margin:0 0 8px;color:#92400e;">IPD Admission</h4>
+                            <p><strong>Admitted:</strong> {{ \Carbon\Carbon::parse($ipd->admission_date)->format('d M Y, h:i A') }}</p>
+                            @if($ipd->discharged_at)<p><strong>Discharged:</strong> {{ \Carbon\Carbon::parse($ipd->discharged_at)->format('d M Y, h:i A') }}</p>@endif
+                            @if($ipd->admission_reason)<p><strong>Reason:</strong> {{ $ipd->admission_reason }}</p>@endif
+                            @if($ipd->tentative_diagnosis)<p><strong>Tentative Diagnosis:</strong> {{ $ipd->tentative_diagnosis }}</p>@endif
+                            @if($ipd->cage_number)<p><strong>Cage:</strong> {{ $ipd->cage_number }} · Ward: {{ $ipd->ward ?? '-' }}</p>@endif
+
+                            @if($ipd->treatments->count())
+                            <hr style="border:none;border-top:1px solid #f3f4f6;margin:10px 0;">
+                            <h4 style="margin:0 0 6px;">Treatments ({{ $ipd->treatments->count() }})</h4>
+                            <ul style="margin:0;padding-left:18px;font-size:13px;">
+                                @foreach($ipd->treatments as $tx)
+                                <li style="margin-bottom:4px;">
+                                    <strong>{{ ucfirst($tx->treatment_type) }}</strong>
+                                    @if($tx->drug_name) — {{ $tx->drug_name }} @endif
+                                    @if($tx->dose_mg) {{ $tx->dose_mg }}mg @endif
+                                    @if($tx->dose_volume_ml) ({{ $tx->dose_volume_ml }}ml) @endif
+                                    @if($tx->route) · {{ $tx->route }} @endif
+                                    <span style="color:#9ca3af;font-size:11px;">{{ $tx->administered_at ? \Carbon\Carbon::parse($tx->administered_at)->format('d/m H:i') : '' }}</span>
+                                </li>
+                                @endforeach
+                            </ul>
+                            @endif
+
+                            @if($ipd->notes->count())
+                            <hr style="border:none;border-top:1px solid #f3f4f6;margin:10px 0;">
+                            <h4 style="margin:0 0 6px;">Clinical Notes ({{ $ipd->notes->count() }})</h4>
+                            @foreach($ipd->notes as $note)
+                            <div style="background:#f9fafb;border-radius:6px;padding:8px 10px;margin-bottom:6px;font-size:13px;">
+                                <strong>{{ ucfirst($note->note_type ?? 'Note') }}</strong>: {{ $note->content }}
+                                <div style="font-size:11px;color:#9ca3af;">{{ $note->created_at->format('d M Y, h:i A') }}</div>
+                            </div>
+                            @endforeach
+                            @endif
+
+                            @if($ipd->discharge_summary)
+                            <hr style="border:none;border-top:1px solid #f3f4f6;margin:10px 0;">
+                            <h4 style="margin:0 0 6px;">Discharge Summary</h4>
+                            <p style="font-size:13px;">{{ $ipd->discharge_summary }}</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            @endif
         </div>
     @empty
         <p style="color:var(--text-muted);">No pets found for this pet parent.</p>

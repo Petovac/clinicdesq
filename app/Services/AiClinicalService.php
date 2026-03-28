@@ -9,20 +9,46 @@ use Illuminate\Support\Facades\Log;
 
 class AiClinicalService
 {
+    protected array $lastUsage = [];
+
     protected function callOpenAi(array $messages, float $temperature = 0.2): string
     {
         $response = Http::withToken(config('services.openai.key'))
+            ->timeout(60)
             ->post('https://api.openai.com/v1/chat/completions', [
-                'model' => 'gpt-4.1', // clinical reasoning model
+                'model' => 'gpt-4.1',
                 'messages' => $messages,
                 'temperature' => $temperature,
             ]);
 
         if (!$response->successful()) {
+            Log::error('OpenAI API error', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
             return '';
         }
 
-        return $response->json('choices.0.message.content') ?? '';
+        $data = $response->json();
+
+        // Track token usage
+        $this->lastUsage = [
+            'input_tokens' => $data['usage']['prompt_tokens'] ?? 0,
+            'output_tokens' => $data['usage']['completion_tokens'] ?? 0,
+            'total_tokens' => $data['usage']['total_tokens'] ?? 0,
+        ];
+
+        // Calculate cost (GPT-4.1: $2/1M input, $8/1M output)
+        $inputCost = ($this->lastUsage['input_tokens'] / 1_000_000) * 2.0;
+        $outputCost = ($this->lastUsage['output_tokens'] / 1_000_000) * 8.0;
+        $this->lastUsage['cost_usd'] = round($inputCost + $outputCost, 6);
+
+        return $data['choices'][0]['message']['content'] ?? '';
+    }
+
+    public function getLastUsage(): array
+    {
+        return $this->lastUsage;
     }
 
     /**

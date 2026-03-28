@@ -18,6 +18,7 @@ class Clinic extends Model
         'state',
         'pincode',
         'gst_number',
+        'gmb_review_url',
     ];    
 
 

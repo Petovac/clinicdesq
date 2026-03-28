@@ -7,9 +7,49 @@ use App\Services\AiClinicalService;
 use Illuminate\Http\Request;
 use App\Models\Appointment;
 use App\Models\DiagnosticFile;
+use App\Models\VetAiCredit;
 
 class VetAiController extends Controller
 {
+    private function checkCredits(string $feature): VetAiCredit
+    {
+        $vet = auth('vet')->user();
+        $credit = VetAiCredit::getOrCreate($vet->id);
+        $cost = VetAiCredit::costFor($feature);
+
+        if (!$credit->hasCredits($cost)) {
+            abort(response()->json([
+                'error' => "Insufficient AI credits. This feature requires {$cost} credit(s). You have {$credit->balance} remaining.",
+                'credits_required' => $cost,
+                'credits_balance' => $credit->balance,
+                'purchase_url' => route('vet.credits.index'),
+            ], 402));
+        }
+
+        return $credit;
+    }
+
+    private function deductWithUsage(VetAiCredit $credit, string $feature, AiClinicalService $ai, ?int $appointmentId = null): void
+    {
+        $featureLabels = [
+            'refine' => 'Text Refinement',
+            'clinical_insights' => 'Clinical Insights',
+            'senior_support' => 'Senior Vet Guidance',
+            'prescription_support' => 'Prescription Support',
+        ];
+
+        $cost = VetAiCredit::costFor($feature);
+        $usage = $ai->getLastUsage();
+
+        $credit->deductCredits(
+            $cost,
+            ($featureLabels[$feature] ?? $feature),
+            $feature,
+            $appointmentId,
+            $usage
+        );
+    }
+
     public function refine(Request $request, AiClinicalService $ai)
     {
         $request->validate([
@@ -17,13 +57,18 @@ class VetAiController extends Controller
             'text'  => 'required|string',
         ]);
 
+        $credit = $this->checkCredits('refine');
+
         $refined = $ai->refine(
             $request->field,
             $request->text
         );
 
+        $this->deductWithUsage($credit, 'refine', $ai);
+
         return response()->json([
-            'refined' => $refined
+            'refined' => $refined,
+            'credits_remaining' => $credit->fresh()->balance,
         ]);
     }
 
@@ -63,8 +108,13 @@ class VetAiController extends Controller
             'procedures'           => 'nullable|string',
         ]);
 
+        $credit = $this->checkCredits('clinical_insights');
+
         $insights = $ai->clinicalInsights($caseData);
 
+        $this->deductWithUsage($credit, 'clinical_insights', $ai);
+
+        $insights['credits_remaining'] = $credit->fresh()->balance;
         return response()->json($insights);
     }
 
@@ -85,6 +135,8 @@ class VetAiController extends Controller
         abort_if(!$clinicId, 403);
         abort_if($appointment->clinic_id !== $clinicId, 403);
         abort_if($appointment->vet_id !== $vetId, 403);
+
+        $credit = $this->checkCredits('senior_support');
 
         $appointment->load([
             'pet',
@@ -251,9 +303,11 @@ class VetAiController extends Controller
 
         $guidance = trim($ai->seniorVetGuidance($context));
 
+        $this->deductWithUsage($credit, 'senior_support', $ai, $appointment->id);
+
         if ($guidance === '') {
             $guidance =
-                "⚠️ Senior Vet Guidance (Limited)\n\n" .
+                "Senior Vet Guidance (Limited)\n\n" .
                 "The AI could not generate a full response with the current data.\n\n" .
                 "Based on available information:\n" .
                 "- Review the case sheet for completeness\n" .
@@ -264,6 +318,7 @@ class VetAiController extends Controller
 
         return response()->json([
             'guidance' => $guidance,
+            'credits_remaining' => $credit->fresh()->balance,
         ]);
     }
 
@@ -295,7 +350,9 @@ class VetAiController extends Controller
         abort_if(!$clinicId, 403);
         abort_if($appointment->clinic_id !== $clinicId, 403);
         abort_if($appointment->vet_id !== $vetId, 403);
-    
+
+        $credit = $this->checkCredits('prescription_support');
+
         // Load all relevant clinical data
         $appointment->load([
             'pet',
@@ -403,9 +460,12 @@ class VetAiController extends Controller
          * -----------------------------------
          */
         $guidance = $ai->prescriptionDecisionSupport($context);
-    
+
+        $this->deductWithUsage($credit, 'prescription_support', $ai, $appointment->id);
+
         return response()->json([
-            'guidance' => $guidance
+            'guidance' => $guidance,
+            'credits_remaining' => $credit->fresh()->balance,
         ]);
     }
 

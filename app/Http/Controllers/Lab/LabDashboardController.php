@@ -39,7 +39,15 @@ class LabDashboardController extends Controller
             ->limit(20)
             ->get();
 
-        return view('lab.dashboard', compact('counts', 'recentOrders'));
+        // Pending connection requests from orgs
+        $pendingRequests = \DB::table('organisation_lab')
+            ->join('organisations', 'organisations.id', '=', 'organisation_lab.organisation_id')
+            ->where('organisation_lab.external_lab_id', $labId)
+            ->where('organisation_lab.status', 'pending')
+            ->select('organisation_lab.*', 'organisations.name as org_name', 'organisations.primary_phone', 'organisations.primary_email')
+            ->get();
+
+        return view('lab.dashboard', compact('counts', 'recentOrders', 'pendingRequests'));
     }
 
     private function inHouseLabDashboard($user)
@@ -62,18 +70,18 @@ class LabDashboardController extends Controller
             ->limit(20)
             ->get();
 
-        // Test availability management for lab tech
-        $orgId = $user->organisation_id;
-        $allTests = LabTestCatalog::where('organisation_id', $orgId)
-            ->where('is_active', true)
+        // Test availability — lab tech picks from master directory
+        $clinicTests = \DB::table('clinic_lab_tests')
+            ->where('clinic_id', $clinicId)
+            ->get()
+            ->keyBy('test_code');
+
+        $allDirectoryTests = \DB::table('lab_test_directory')
             ->orderBy('category')
             ->orderBy('name')
             ->get();
 
-        $availability = LabTestAvailability::where('clinic_id', $clinicId)
-            ->pluck('is_available', 'lab_test_catalog_id');
-
-        return view('lab.dashboard', compact('counts', 'recentOrders', 'allTests', 'availability'));
+        return view('lab.dashboard', compact('counts', 'recentOrders', 'clinicTests', 'allDirectoryTests'));
     }
 
     /**
@@ -84,24 +92,143 @@ class LabDashboardController extends Controller
         $user = auth('lab')->user();
         abort_if(!$user->isInHouse(), 403);
 
+        $clinicId = $user->clinic_id;
+
+        // Handle custom test
+        if ($request->action === 'custom') {
+            $request->validate([
+                'custom_name' => 'required|string|max:255',
+                'price' => 'required|numeric|min:0',
+                'custom_category' => 'nullable|string',
+                'custom_sample' => 'nullable|string',
+                'parameters' => 'nullable|string|max:2000',
+            ]);
+
+            $code = 'CUST-' . strtoupper(substr(md5($request->custom_name . $clinicId), 0, 6));
+
+            \DB::table('lab_test_directory')->insertOrIgnore([
+                'code' => $code,
+                'name' => $request->custom_name,
+                'category' => $request->custom_category ?? 'other',
+                'sample_type' => $request->custom_sample ?? 'other',
+                'aliases' => json_encode([$request->custom_name]),
+                'default_parameters' => $request->parameters ? json_encode(array_map('trim', explode(',', $request->parameters))) : null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            \DB::table('clinic_lab_tests')->insertOrIgnore([
+                'clinic_id' => $clinicId,
+                'test_code' => $code,
+                'price' => $request->price,
+                'parameters' => $request->parameters ? json_encode(array_map('trim', explode(',', $request->parameters))) : null,
+                'is_available' => true,
+                'updated_by' => $user->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return back()->with('success', "Custom test '{$request->custom_name}' added.");
+        }
+
         $request->validate([
-            'test_id' => 'required|integer|exists:lab_test_catalog,id',
-            'is_available' => 'required|boolean',
+            'test_code' => 'required|string|exists:lab_test_directory,code',
+            'action' => 'required|in:enable,disable,set_price,set_params',
+            'price' => 'nullable|numeric|min:0',
             'reason' => 'nullable|string|max:255',
+            'parameters' => 'nullable|string|max:2000',
         ]);
 
-        LabTestAvailability::updateOrCreate(
-            [
-                'lab_test_catalog_id' => $request->test_id,
-                'clinic_id' => $user->clinic_id,
-            ],
-            [
-                'is_available' => $request->is_available,
-                'unavailable_reason' => $request->is_available ? null : $request->reason,
-                'updated_by' => $user->id,
-            ]
-        );
+        if ($request->action === 'enable') {
+            \DB::table('clinic_lab_tests')->updateOrInsert(
+                ['clinic_id' => $clinicId, 'test_code' => $request->test_code],
+                [
+                    'is_available' => true,
+                    'price' => $request->price ?? 0,
+                    'unavailable_reason' => null,
+                    'updated_by' => $user->id,
+                    'updated_at' => now(),
+                    'created_at' => \DB::raw('COALESCE(created_at, NOW())'),
+                ]
+            );
+        } elseif ($request->action === 'disable') {
+            \DB::table('clinic_lab_tests')
+                ->where('clinic_id', $clinicId)
+                ->where('test_code', $request->test_code)
+                ->update([
+                    'is_available' => false,
+                    'unavailable_reason' => $request->reason,
+                    'updated_by' => $user->id,
+                    'updated_at' => now(),
+                ]);
+        } elseif ($request->action === 'set_price') {
+            \DB::table('clinic_lab_tests')
+                ->where('clinic_id', $clinicId)
+                ->where('test_code', $request->test_code)
+                ->update([
+                    'price' => $request->price,
+                    'updated_by' => $user->id,
+                    'updated_at' => now(),
+                ]);
+        } elseif ($request->action === 'set_params') {
+            $params = $request->parameters
+                ? json_encode(array_map('trim', explode(',', $request->parameters)))
+                : null;
+            \DB::table('clinic_lab_tests')
+                ->where('clinic_id', $clinicId)
+                ->where('test_code', $request->test_code)
+                ->update([
+                    'parameters' => $params,
+                    'updated_by' => $user->id,
+                    'updated_at' => now(),
+                ]);
+        }
 
-        return back()->with('success', 'Test availability updated.');
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true]);
+        }
+
+        return back()->with('success', 'Test updated.');
+    }
+
+    /**
+     * Accept org connection request
+     */
+    public function acceptOrgRequest(\Illuminate\Http\Request $request)
+    {
+        $user = auth('lab')->user();
+        abort_if(!$user->isExternalLab(), 403);
+
+        \DB::table('organisation_lab')
+            ->where('external_lab_id', $user->external_lab_id)
+            ->where('organisation_id', $request->organisation_id)
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'accepted',
+                'is_active' => true,
+                'responded_at' => now(),
+            ]);
+
+        return back()->with('success', 'Connection request accepted.');
+    }
+
+    /**
+     * Reject org connection request
+     */
+    public function rejectOrgRequest(\Illuminate\Http\Request $request)
+    {
+        $user = auth('lab')->user();
+        abort_if(!$user->isExternalLab(), 403);
+
+        \DB::table('organisation_lab')
+            ->where('external_lab_id', $user->external_lab_id)
+            ->where('organisation_id', $request->organisation_id)
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'rejected',
+                'responded_at' => now(),
+            ]);
+
+        return back()->with('success', 'Connection request declined.');
     }
 }

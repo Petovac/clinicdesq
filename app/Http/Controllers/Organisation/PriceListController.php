@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Organisation;
 use App\Http\Controllers\Controller;
 use App\Models\PriceList;
 use App\Models\PriceListItem;
+use App\Models\InventoryItem;
 use Illuminate\Http\Request;
 
 class PriceListController extends Controller
@@ -98,17 +99,13 @@ class PriceListController extends Controller
 
         $request->validate([
             'name'              => 'required|string|max:255',
-            'item_type'         => 'required|in:service,treatment,product',
-            'billing_type'      => 'required|in:fixed,per_ml,per_vial,per_tablet,per_unit',
+            'item_type'         => 'required|in:service,drug,vaccine,consumable,surgical,product',
+            'billing_type'      => 'required|in:fixed,per_ml,per_vial,per_tablet,per_unit,per_strip,per_piece,per_sachet,per_tube,per_dose',
             'price'             => 'nullable|numeric|min:0',
             'procedure_price'   => 'nullable|numeric|min:0',
             'drug_brand_id'     => 'nullable|exists:drug_brands,id',
             'inventory_item_id' => 'nullable|exists:inventory_items,id',
         ]);
-
-        if ($request->item_type === 'treatment' && empty($request->drug_brand_id)) {
-            return response()->json(['error' => 'Treatment items must have a drug selected'], 422);
-        }
 
         $item = $priceList->items()->create([
             'name'              => $request->name,
@@ -171,20 +168,13 @@ class PriceListController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'item_type' => 'required|in:service,treatment,product',
-            'billing_type' => 'required|in:fixed,per_ml,per_vial,per_tablet,per_unit',
+            'item_type' => 'required|in:service,drug,vaccine,consumable,surgical,product',
+            'billing_type' => 'required|in:fixed,per_ml,per_vial,per_tablet,per_unit,per_strip,per_piece,per_sachet,per_tube,per_dose',
             'price' => 'nullable|numeric|min:0',
             'procedure_price' => 'nullable|numeric|min:0',
             'drug_brand_id' => 'nullable|exists:drug_brands,id',
             'inventory_item_id' => 'nullable|exists:inventory_items,id'
         ]);
-
-        // treatment must have drug
-        if($request->item_type === 'treatment' && empty($request->drug_brand_id)){
-            return response()->json([
-                'error' => 'Treatment items must have a drug'
-            ],422);
-        }
 
         $item->update([
             'name' => $request->name,
@@ -201,4 +191,74 @@ class PriceListController extends Controller
         ]);
     }
 
+    /**
+     * Import inventory items into the price list.
+     */
+    public function importFromInventory(Request $request, PriceList $priceList)
+    {
+        $organisationId = auth()->user()->organisation_id;
+        abort_if($priceList->organisation_id !== $organisationId, 403);
+
+        // Get all inventory items for this org
+        $inventoryItems = InventoryItem::where('organisation_id', $organisationId)->get();
+
+        // Get already-linked inventory item IDs in this price list
+        $existingIds = $priceList->items()
+            ->whereNotNull('inventory_item_id')
+            ->pluck('inventory_item_id')
+            ->toArray();
+
+        $imported = 0;
+        foreach ($inventoryItems as $inv) {
+            if (in_array($inv->id, $existingIds)) continue;
+
+            // Map inventory package_type to billing_type
+            $billingMap = [
+                'tablet' => 'per_tablet',
+                'capsule' => 'per_tablet',
+                'strip' => 'per_strip',
+                'injection' => 'per_ml',
+                'vial' => 'per_vial',
+                'fluid' => 'per_ml',
+                'bottle' => 'per_unit',
+                'tube' => 'per_tube',
+                'sachet' => 'per_sachet',
+                'piece' => 'per_piece',
+                'packet' => 'per_unit',
+            ];
+
+            $billingType = $billingMap[$inv->package_type] ?? 'fixed';
+            $itemType = $inv->item_type ?? 'drug'; // drug, consumable, surgical, product
+
+            $priceList->items()->create([
+                'name' => $inv->name,
+                'item_type' => $itemType,
+                'billing_type' => $billingType,
+                'price' => 0, // org admin sets price
+                'procedure_price' => 0,
+                'drug_brand_id' => $inv->drug_brand_id,
+                'inventory_item_id' => $inv->id,
+                'is_active' => 1,
+            ]);
+            $imported++;
+        }
+
+        return back()->with('success', "Imported {$imported} inventory items. Set their prices below.");
+    }
+
+    /**
+     * AJAX: Search inventory items for linking.
+     */
+    public function searchInventory(Request $request)
+    {
+        $organisationId = auth()->user()->organisation_id;
+        $q = $request->get('q', '');
+
+        $items = InventoryItem::where('organisation_id', $organisationId)
+            ->where('name', 'like', "%{$q}%")
+            ->limit(20)
+            ->get(['id', 'name', 'item_type', 'package_type', 'strength_value', 'strength_unit', 'drug_brand_id']);
+
+        return response()->json($items);
+    }
 }

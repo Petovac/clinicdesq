@@ -51,7 +51,7 @@ class PriceListItem extends Model
         return $this->hasMany(ProcedureInventoryItem::class);
     }
 
-    public function isProcedure(): bool  { return $this->item_type === 'procedure'; }
-    public function isVisitFee(): bool   { return $this->item_type === 'visit_fee'; }
-    public function isDrug(): bool       { return $this->item_type === 'drug'; }
+    public function isProcedure(): bool  { return $this->item_type === 'service' && !$this->isVisitFee(); }
+    public function isVisitFee(): bool   { return $this->item_type === 'service' && str_contains(strtolower($this->name ?? ''), 'visit'); }
+    public function isDrug(): bool       { return in_array($this->item_type, ['drug', 'vaccine']); }
 }

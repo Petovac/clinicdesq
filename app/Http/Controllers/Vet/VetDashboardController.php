@@ -15,7 +15,7 @@ public function dashboard()
 {
     $vet = auth('vet')->user();
 
-    $clinics = $vet->clinics()->with('organisation')->get();
+    $clinics = $vet->clinics()->with('organisation')->wherePivot('status', 'accepted')->wherePivot('is_active', 1)->get();
 
     $activeClinicId = session('active_clinic_id');
 
@@ -30,10 +30,20 @@ public function dashboard()
 
     $activeClinic = $clinics->firstWhere('id', $activeClinicId);
 
+    // Pending onboarding requests
+    $pendingClinicRequests = \DB::table('clinic_vet')
+        ->join('clinics', 'clinics.id', '=', 'clinic_vet.clinic_id')
+        ->join('organisations', 'organisations.id', '=', 'clinics.organisation_id')
+        ->where('clinic_vet.vet_id', $vet->id)
+        ->where('clinic_vet.status', 'pending')
+        ->select('clinic_vet.*', 'clinics.name as clinic_name', 'clinics.city', 'organisations.name as org_name')
+        ->get();
+
     return view('vet.dashboard', compact(
         'clinics',
         'activeClinic',
-        'todayCounts'
+        'todayCounts',
+        'pendingClinicRequests'
     ));
 }
 
@@ -86,6 +96,9 @@ public function dashboard()
         'completedCount' => $appointments
                                 ->where('status', 'completed')
                                 ->count(),
+        'awaitingLabCount' => $appointments
+                                ->where('status', 'awaiting_lab_results')
+                                ->count(),
     ]);
 }
 
@@ -117,4 +130,44 @@ public function dashboard()
     return redirect()->route('vet.clinic.dashboard');
 }
 
+/**
+ * Accept clinic onboarding request
+ */
+public function acceptClinicRequest(\Illuminate\Http\Request $request)
+{
+    $vet = auth('vet')->user();
+
+    \DB::table('clinic_vet')
+        ->where('vet_id', $vet->id)
+        ->where('clinic_id', $request->clinic_id)
+        ->where('status', 'pending')
+        ->update([
+            'status' => 'accepted',
+            'is_active' => 1,
+            'updated_at' => now(),
+        ]);
+
+    return redirect()->route('vet.dashboard')
+        ->with('success', 'Clinic onboarding accepted. You can now receive appointments from this clinic.');
+}
+
+/**
+ * Reject clinic onboarding request
+ */
+public function rejectClinicRequest(\Illuminate\Http\Request $request)
+{
+    $vet = auth('vet')->user();
+
+    \DB::table('clinic_vet')
+        ->where('vet_id', $vet->id)
+        ->where('clinic_id', $request->clinic_id)
+        ->where('status', 'pending')
+        ->update([
+            'status' => 'rejected',
+            'updated_at' => now(),
+        ]);
+
+    return redirect()->route('vet.dashboard')
+        ->with('success', 'Clinic request declined.');
+}
 }

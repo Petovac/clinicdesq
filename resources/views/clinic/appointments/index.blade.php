@@ -282,6 +282,7 @@ $statusColors = [
 'scheduled' => 'secondary',
 'checked_in' => 'warning',
 'in_consultation' => 'info',
+'awaiting_lab_results' => 'primary',
 'completed' => 'success',
 'cancelled' => 'danger'
 ];
@@ -355,8 +356,42 @@ Start
 @endif
 
 
+{{-- Mark Complete / Awaiting Lab --}}
+@if($appointment->status == 'in_consultation' && auth()->user()->hasPermission('appointments.manage'))
+
+<form method="POST"
+action="{{ route('clinic.appointments.updateStatus',$appointment->id) }}"
+style="display:inline">
+@csrf
+<input type="hidden" name="status" value="completed">
+<button class="btn btn-success btn-sm">Complete</button>
+</form>
+
+<form method="POST"
+action="{{ route('clinic.appointments.updateStatus',$appointment->id) }}"
+style="display:inline">
+@csrf
+<input type="hidden" name="status" value="awaiting_lab_results">
+<button class="btn btn-warning btn-sm" title="Mark as done but waiting for lab reports">🔬 Awaiting Lab</button>
+</form>
+
+@endif
+
+{{-- Awaiting lab → Complete --}}
+@if($appointment->status == 'awaiting_lab_results' && auth()->user()->hasPermission('appointments.manage'))
+
+<form method="POST"
+action="{{ route('clinic.appointments.updateStatus',$appointment->id) }}"
+style="display:inline">
+@csrf
+<input type="hidden" name="status" value="completed">
+<button class="btn btn-success btn-sm">Mark Complete</button>
+</form>
+
+@endif
+
 {{-- Billing --}}
-@if($appointment->status == 'completed' && auth()->user()->hasPermission('billing.create'))
+@if(in_array($appointment->status, ['completed','awaiting_lab_results']) && auth()->user()->hasPermission('billing.create'))
 
 <a href="{{ route('clinic.billing.create',$appointment->id) }}"
 class="btn btn-primary btn-sm">
@@ -366,7 +401,7 @@ Billing
 @endif
 
 {{-- Reschedule --}}
-@if(!in_array($appointment->status, ['completed','cancelled']) && auth()->user()->hasPermission('appointments.manage'))
+@if(!in_array($appointment->status, ['completed','cancelled','awaiting_lab_results']) && auth()->user()->hasPermission('appointments.manage'))
 
 <button
 class="btn btn-secondary btn-sm reschedule-btn"
@@ -382,7 +417,7 @@ Reschedule
 
 
 {{-- Cancel --}}
-@if(!in_array($appointment->status, ['completed','cancelled']) && auth()->user()->hasPermission('appointments.manage'))
+@if(!in_array($appointment->status, ['completed','cancelled','awaiting_lab_results']) && auth()->user()->hasPermission('appointments.manage'))
 
 <form method="POST"
 action="{{ route('clinic.appointments.updateStatus',$appointment->id) }}"

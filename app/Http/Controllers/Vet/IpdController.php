@@ -243,4 +243,13 @@ class IpdController extends Controller
         return redirect()->route('vet.ipd.show', $admission->id)
             ->with('success', 'Patient discharged successfully.');
     }
+
+    /**
+     * Return HTML fragment for IPD history modal (no layout)
+     */
+    public function historyView(IpdAdmission $admission)
+    {
+        $admission->load(['treatments', 'notes', 'clinic:id,name', 'pet']);
+        return view('vet.ipd.partials.history_view', compact('admission'));
+    }
 }

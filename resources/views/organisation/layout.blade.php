@@ -189,13 +189,17 @@ Clinicdesq
 
 <div class="nav">
 
+{{-- Core --}}
+<div class="nav-section" style="margin-top:0;padding-top:0;border-top:none;">
+<div class="nav-parent">Organisation</div>
+<div class="nav-children">
+
 @if(auth()->user()->hasPermission('dashboard.view'))
 <a href="{{ route('organisation.dashboard') }}"
 class="{{ request()->is('organisation/dashboard') ? 'active' : '' }}">
 Dashboard
 </a>
 @endif
-
 
 @if(auth()->user()->hasPermission('clinics.view'))
 <a href="{{ route('organisation.clinics.index') }}"
@@ -204,14 +208,12 @@ Clinics
 </a>
 @endif
 
-
 @if(auth()->user()->hasPermission('roles.view'))
 <a href="{{ route('organisation.roles.index') }}"
 class="{{ request()->is('organisation/roles*') ? 'active' : '' }}">
 Roles
 </a>
 @endif
-
 
 @if(auth()->user()->hasPermission('users.view'))
 <a href="{{ route('organisation.users.index') }}"
@@ -220,13 +222,15 @@ Users
 </a>
 @endif
 
-
 @if(auth()->user()->hasPermission('vets.view'))
 <a href="{{ route('organisation.vets.index') }}"
 class="{{ request()->is('organisation/vets*') ? 'active' : '' }}">
 Vets
 </a>
 @endif
+
+</div>
+</div>
 
 
 @if(auth()->user()->hasPermission('inventory.view') || auth()->user()->hasPermission('inventory.manage'))
@@ -333,6 +337,26 @@ Lab Technicians
 </div>
 @endif
 
+{{-- Reviews & Hiring --}}
+<div class="nav-section">
+<div class="nav-parent">Engagement</div>
+<div class="nav-children">
+
+@if(auth()->user()->hasPermission('reviews.view') || auth()->user()->hasPermission('reviews.manage'))
+<a href="{{ url('/organisation/reviews') }}"
+   class="{{ request()->is('organisation/reviews*') ? 'active' : '' }}">
+Reviews & Feedback
+</a>
+@endif
+
+<a href="{{ url('/organisation/jobs') }}"
+   class="{{ request()->is('organisation/jobs*') ? 'active' : '' }}">
+Hiring Portal
+</a>
+
+</div>
+</div>
+
 {{-- Settings --}}
 @if(auth()->user()->hasPermission('settings.manage'))
 <div class="nav-section">
@@ -341,6 +365,14 @@ Lab Technicians
         <a href="{{ route('organisation.settings.branding') }}"
            class="{{ request()->is('organisation/settings/branding*') ? 'active' : '' }}">
             Branding &amp; Templates
+        </a>
+        <a href="{{ url('/organisation/whatsapp/settings') }}"
+           class="{{ request()->is('organisation/whatsapp*') ? 'active' : '' }}">
+            WhatsApp Integration
+        </a>
+        <a href="{{ url('/organisation/webhooks') }}"
+           class="{{ request()->is('organisation/webhooks*') ? 'active' : '' }}">
+            Webhooks / API
         </a>
     </div>
 </div>
@@ -390,12 +422,19 @@ document.querySelectorAll('.nav-section .nav-parent').forEach(function(parent) {
     });
 });
 
-// Auto-expand sections that have an active link
+// Auto-expand sections that have an active link, or the first section by default
+var anyOpen = false;
 document.querySelectorAll('.nav-section').forEach(function(section) {
     if (section.querySelector('.nav-children a.active')) {
         section.classList.add('open');
+        anyOpen = true;
     }
 });
+// If nothing is active, open the first section
+if (!anyOpen) {
+    var first = document.querySelector('.nav-section');
+    if (first) first.classList.add('open');
+}
 </script>
 
 </body>

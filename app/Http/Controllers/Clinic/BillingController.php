@@ -13,6 +13,10 @@ use App\Models\PriceListItem;
 use App\Models\InventoryBatch;
 use App\Models\InventoryMovement;
 use App\Models\InjectionRouteFee;
+use App\Services\WebhookService;
+use App\Services\WhatsappService;
+use App\Services\PdfService;
+use App\Models\WhatsappConfig;
 
 class BillingController extends Controller
 {
@@ -73,7 +77,7 @@ class BillingController extends Controller
         $priceItems = $activeList
             ? PriceListItem::where('price_list_id', $activeList->id)
                            ->where('is_active', 1)
-                           ->whereNotIn('item_type', ['visit_fee'])
+                           ->whereNotIn('item_type', ['service'])
                            ->get()
             : collect();
 
@@ -215,6 +219,48 @@ class BillingController extends Controller
             return back()->with('error', 'Failed to confirm bill: ' . $e->getMessage());
         }
 
+        // Auto-send bill via WhatsApp + fire webhook
+        try {
+            $bill->load(['appointment.pet.petParent', 'clinic.organisation', 'items']);
+            $orgId = $bill->clinic->organisation_id;
+            $waConfig = WhatsappConfig::where('organisation_id', $orgId)->first();
+
+            if ($waConfig && $waConfig->isConfigured() && $waConfig->send_bill) {
+                $parent = $bill->appointment->pet->petParent ?? null;
+                if ($parent && $parent->phone) {
+                    $pdfPath = PdfService::generateBill($bill);
+                    WhatsappService::sendDocument(
+                        organisationId: $orgId,
+                        recipientPhone: $parent->phone,
+                        recipientName: $parent->name,
+                        templateName: 'clinicdesq_bill',
+                        messageType: 'bill',
+                        filePath: $pdfPath,
+                        templateVariables: [
+                            'filename' => 'Invoice_' . $bill->id . '.pdf',
+                            'body' => [$parent->name, $bill->appointment->pet->name, '₹' . number_format($bill->total_amount, 2), $bill->clinic->name],
+                        ],
+                        clinicId: $bill->clinic_id,
+                        referenceType: Bill::class,
+                        referenceId: $bill->id,
+                        sentBy: auth()->id(),
+                    );
+                }
+            }
+
+            WebhookService::dispatch($orgId, 'bill.confirmed', [
+                'bill_id' => $bill->id,
+                'total_amount' => $bill->total_amount,
+                'appointment_id' => $bill->appointment_id,
+                'pet' => $bill->appointment->pet->toArray(),
+                'pet_parent' => $bill->appointment->pet->petParent?->toArray(),
+                'items' => $bill->items->toArray(),
+                'clinic' => $bill->clinic->only(['id', 'name', 'city']),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Auto-send/webhook failed after bill confirm', ['error' => $e->getMessage()]);
+        }
+
         return redirect()
             ->route('clinic.billing.create', $bill->appointment_id)
             ->with('success', 'Bill confirmed. Inventory updated.');
@@ -231,7 +277,8 @@ class BillingController extends Controller
         // 1. Visit fee — auto-added
         if ($activeList) {
             $visitFee = PriceListItem::where('price_list_id', $activeList->id)
-                ->where('item_type', 'visit_fee')
+                ->where('item_type', 'service')
+                ->where('name', 'like', '%visit%fee%')
                 ->where('is_active', 1)
                 ->first();
 
@@ -368,14 +415,25 @@ class BillingController extends Controller
      */
     private function deductFefo(int $inventoryItemId, int $clinicId, float $qty): void
     {
+        // Lock rows to prevent concurrent over-deduction
         $batches = InventoryBatch::where('inventory_item_id', $inventoryItemId)
             ->where('clinic_id', $clinicId)
             ->where('quantity', '>', 0)
             ->orderByRaw("CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END")
             ->orderBy('expiry_date')
+            ->lockForUpdate()
             ->get();
 
-        $totalDeducted = 0;
+        // Safety: check total available before deducting
+        $totalAvailable = $batches->sum('quantity');
+        if ($totalAvailable <= 0) {
+            \Log::warning("FEFO: No stock available for item #{$inventoryItemId} at clinic #{$clinicId}");
+            return;
+        }
+
+        // Cap deduction to available stock (prevent negative)
+        $qty = min($qty, $totalAvailable);
+
         foreach ($batches as $batch) {
             if ($qty <= 0) break;
             $deduct = min((float) $batch->quantity, $qty);

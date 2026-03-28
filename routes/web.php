@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\ClinicController;
 use App\Http\Controllers\Admin\VetController;
 use App\Http\Controllers\Admin\OrganisationController;
 use App\Http\Controllers\Admin\DrugController;
+use App\Http\Controllers\Admin\DrugSubmissionController;
 
 /* ===========================
 | Organisation Controllers
@@ -56,6 +57,7 @@ use App\Http\Controllers\Vet\VetClinicController;
 use App\Http\Controllers\Vet\VetAppointmentHistoryController;
 use App\Http\Controllers\Vet\VetPetHistoryController;
 use App\Http\Controllers\Vet\VetAiController;
+use App\Http\Controllers\Vet\VetCreditController;
 use App\Http\Controllers\Vet\DiagnosticController;
 use App\Http\Controllers\Vet\DiagnosticReportController;
 use App\Http\Controllers\Vet\IpdController as VetIpdController;
@@ -89,6 +91,13 @@ use App\Services\AiClinicalService;
 |--------------------------------------------------------------------------
 */
 Route::get('/', [LandingController::class, 'index'])->name('landing');
+
+// WhatsApp webhook (MSG91 delivery status)
+Route::post('/webhooks/whatsapp/msg91', [\App\Http\Controllers\WhatsappSendController::class, 'webhook'])->name('webhook.whatsapp');
+
+// Public review form (no auth)
+Route::get('/review/{token}', [\App\Http\Controllers\ReviewController::class, 'show'])->name('review.show');
+Route::post('/review/{token}', [\App\Http\Controllers\ReviewController::class, 'submit'])->name('review.submit');
 
 Route::middleware('guest')->group(function () {
     Route::get('/register/organisation', [OrgRegisterController::class, 'showForm'])->name('org.register');
@@ -170,6 +179,18 @@ Route::middleware(['auth', 'role:superadmin'])
     Route::post('/drugs/{id}/product', [DrugController::class, 'storeProduct']);
     
     Route::post('/drugs/{id}/delete', [DrugController::class, 'destroy']);
+
+    // Drug Submissions (org-submitted drugs pending approval)
+    Route::get('/drug-submissions', [DrugSubmissionController::class, 'index'])->name('admin.drug-submissions.index');
+    Route::get('/drug-submissions/{submission}', [DrugSubmissionController::class, 'show'])->name('admin.drug-submissions.show');
+    Route::post('/drug-submissions/{submission}/approve', [DrugSubmissionController::class, 'approve'])->name('admin.drug-submissions.approve');
+    Route::post('/drug-submissions/{submission}/reject', [DrugSubmissionController::class, 'reject'])->name('admin.drug-submissions.reject');
+
+    // Lab Test Directory Management
+    Route::get('/lab-directory', [\App\Http\Controllers\Admin\LabDirectoryController::class, 'index'])->name('admin.lab-directory.index');
+    Route::post('/lab-directory', [\App\Http\Controllers\Admin\LabDirectoryController::class, 'store'])->name('admin.lab-directory.store');
+    Route::put('/lab-directory/{code}', [\App\Http\Controllers\Admin\LabDirectoryController::class, 'update'])->name('admin.lab-directory.update');
+    Route::delete('/lab-directory/{code}', [\App\Http\Controllers\Admin\LabDirectoryController::class, 'destroy'])->name('admin.lab-directory.destroy');
 });
 
 /*
@@ -235,6 +256,12 @@ Route::middleware(['auth'])
 
                 Route::post('/clinics', [OrganisationClinicController::class, 'store'])
                     ->name('clinics.store');
+
+                Route::get('/clinics/{clinic}/edit', [OrganisationClinicController::class, 'edit'])
+                    ->name('clinics.edit');
+
+                Route::put('/clinics/{clinic}', [OrganisationClinicController::class, 'update'])
+                    ->name('clinics.update');
             });
 
         /* =========================
@@ -315,6 +342,16 @@ Route::middleware(['auth'])
             '/price-list-items/{item}',
             [PriceListController::class,'deleteItem']
         )->name('organisation.price-items.delete');
+
+        Route::post(
+            '/price-lists/{priceList}/import-inventory',
+            [PriceListController::class, 'importFromInventory']
+        )->name('price-lists.import-inventory');
+
+        Route::get(
+            '/price-lists/search-inventory',
+            [PriceListController::class, 'searchInventory']
+        )->name('price-lists.search-inventory');
     });
 
     /* =========================
@@ -361,8 +398,40 @@ Route::middleware(['auth'])
                 ->name('settings.branding.logo');
             Route::post('/settings/branding/gst', [OrganisationSettingsController::class, 'updateGst'])
                 ->name('settings.branding.gst');
+            Route::post('/settings/lab', [OrganisationSettingsController::class, 'updateLabSettings'])
+                ->name('settings.lab');
+            Route::post('/settings/toggle-vet-lab', [OrganisationSettingsController::class, 'toggleVetLab'])
+                ->name('settings.toggle-vet-lab');
             Route::get('/settings/branding/preview/{type}/{template}', [OrganisationSettingsController::class, 'preview'])
                 ->name('settings.branding.preview');
+
+            // WhatsApp Integration
+            Route::get('/whatsapp/settings', [\App\Http\Controllers\Organisation\WhatsappController::class, 'settings'])->name('whatsapp.settings');
+            Route::post('/whatsapp/settings', [\App\Http\Controllers\Organisation\WhatsappController::class, 'saveSettings'])->name('whatsapp.settings.save');
+            Route::get('/whatsapp/messages', [\App\Http\Controllers\Organisation\WhatsappController::class, 'messages'])->name('whatsapp.messages');
+
+        });
+
+    // Reviews Dashboard (separate permission)
+    Route::middleware(['auth', 'permission:reviews.view'])
+        ->prefix('organisation')
+        ->name('organisation.')
+        ->group(function () {
+            Route::get('/reviews', [\App\Http\Controllers\Organisation\ReviewDashboardController::class, 'index'])->name('reviews.index');
+            Route::post('/reviews/{review}/flag', [\App\Http\Controllers\Organisation\ReviewDashboardController::class, 'flag'])->name('reviews.flag');
+        });
+
+    // Webhooks / API Integration (settings.manage permission)
+    Route::middleware(['auth', 'permission:settings.manage'])
+        ->prefix('organisation')
+        ->name('organisation.')
+        ->group(function () {
+            Route::get('/webhooks', [\App\Http\Controllers\Organisation\WebhookController::class, 'index'])->name('webhooks.index');
+            Route::post('/webhooks', [\App\Http\Controllers\Organisation\WebhookController::class, 'store'])->name('webhooks.store');
+            Route::post('/webhooks/{endpoint}/toggle', [\App\Http\Controllers\Organisation\WebhookController::class, 'toggle'])->name('webhooks.toggle');
+            Route::post('/webhooks/{endpoint}/test', [\App\Http\Controllers\Organisation\WebhookController::class, 'test'])->name('webhooks.test');
+            Route::delete('/webhooks/{endpoint}', [\App\Http\Controllers\Organisation\WebhookController::class, 'destroy'])->name('webhooks.destroy');
+            Route::get('/webhooks/{endpoint}/deliveries', [\App\Http\Controllers\Organisation\WebhookController::class, 'deliveries'])->name('webhooks.deliveries');
         });
 
 
@@ -393,6 +462,7 @@ Route::middleware(['auth'])
                 Route::post('/labs/{lab}/tests', [LabManagementController::class, 'labTestStore'])->name('labs.test.store');
                 Route::put('/labs/tests/{test}/price', [LabManagementController::class, 'labTestUpdatePrice'])->name('labs.test.update-price');
                 Route::post('/labs/{lab}/import-tests', [LabManagementController::class, 'labsImportTests'])->name('labs.import-tests');
+                Route::post('/labs/{lab}/assign-clinics', [LabManagementController::class, 'labsAssignClinics'])->name('labs.assign-clinics');
                 Route::delete('/labs/{lab}/detach', [LabManagementController::class, 'labsDetach'])->name('labs.detach');
             });
 
@@ -401,6 +471,7 @@ Route::middleware(['auth'])
                 Route::get('/lab-techs', [LabManagementController::class, 'labTechIndex'])->name('lab-techs.index');
                 Route::post('/lab-techs', [LabManagementController::class, 'labTechStore'])->name('lab-techs.store');
                 Route::post('/lab-techs/{labUser}/toggle', [LabManagementController::class, 'labTechToggle'])->name('lab-techs.toggle');
+                Route::put('/lab-techs/{labUser}', [LabManagementController::class, 'labTechUpdate'])->name('lab-techs.update');
             });
         });
 
@@ -489,6 +560,20 @@ Route::middleware(['auth'])
              Route::post('/vets/{vet}/offboard', [OrganisationVetController::class, 'offboard']
             )->name('vets.offboard');
          });
+
+         // Hiring Portal
+         Route::middleware('auth')
+         ->prefix('organisation')
+         ->name('organisation.')
+         ->group(function () {
+             Route::get('/jobs', [\App\Http\Controllers\Organisation\JobController::class, 'index'])->name('jobs.index');
+             Route::get('/jobs/create', [\App\Http\Controllers\Organisation\JobController::class, 'create'])->name('jobs.create');
+             Route::post('/jobs', [\App\Http\Controllers\Organisation\JobController::class, 'store'])->name('jobs.store');
+             Route::get('/jobs/{job}', [\App\Http\Controllers\Organisation\JobController::class, 'show'])->name('jobs.show');
+             Route::post('/jobs/{job}/toggle', [\App\Http\Controllers\Organisation\JobController::class, 'toggleStatus'])->name('jobs.toggle');
+             Route::get('/jobs/{job}/applicant/{application}', [\App\Http\Controllers\Organisation\JobController::class, 'viewApplicant'])->name('jobs.applicant');
+             Route::post('/jobs/{job}/applicant/{application}', [\App\Http\Controllers\Organisation\JobController::class, 'updateApplicant'])->name('jobs.applicant.update');
+         });
     
 
 
@@ -511,6 +596,12 @@ Route::middleware(['auth'])
     Route::get('/dashboard', [ClinicDashboardController::class, 'index'])
         ->middleware('permission:dashboard.view')
         ->name('dashboard');
+
+    // Role switch: Clinic Panel → Vet
+    Route::post('/switch-to-vet', [\App\Http\Controllers\RoleSwitchController::class, 'switchToVet'])->name('switchToVet');
+
+    // Clinic Analytics
+    Route::get('/analytics', [\App\Http\Controllers\Clinic\ClinicAnalyticsController::class, 'index'])->name('analytics');
 
     /* =========================
      | Appointments (view)
@@ -536,6 +627,11 @@ Route::middleware(['auth'])
             '/appointments/create/pet/{pet}',
             [ClinicAppointmentController::class,'createForPet']
         )->name('appointments.createForPet');
+
+        Route::get(
+            '/appointments/slots',
+            [ClinicAppointmentController::class,'availableSlots']
+        )->name('appointments.slots');
 
         Route::post(
             '/appointments',
@@ -575,6 +671,11 @@ Route::middleware(['auth'])
         '/bill-items/{item}',
         [BillingController::class, 'updateItem']
     )->middleware('permission:billing.create')->name('billing.item.update');
+
+    // WhatsApp send (clinic staff)
+    Route::post('/whatsapp/send/bill/{bill}', [\App\Http\Controllers\WhatsappSendController::class, 'sendBill'])->name('whatsapp.send.bill');
+    Route::post('/whatsapp/send/case-sheet/{appointment}', [\App\Http\Controllers\WhatsappSendController::class, 'sendCaseSheet'])->name('clinic.whatsapp.send.casesheet');
+    Route::post('/whatsapp/send/prescription/{appointment}', [\App\Http\Controllers\WhatsappSendController::class, 'sendPrescription'])->name('clinic.whatsapp.send.prescription');
 
     /* =========================
      | Inventory
@@ -773,6 +874,29 @@ Route::middleware('auth:vet')->group(function () {
             [AppointmentController::class,'drugPriceItem']
         )->middleware('auth:vet')->name('vet.drug.price-item');
 
+        // Fetch inventory batch numbers for vaccine brand
+        Route::get('/vet/inventory-batches', function(\Illuminate\Http\Request $request) {
+            $brandName = $request->get('brand_name');
+            $clinicId = $request->get('clinic_id');
+            if (!$brandName || !$clinicId) return response()->json([]);
+
+            $batches = \App\Models\InventoryBatch::whereHas('inventoryItem', function($q) use ($brandName) {
+                    $q->where('name', 'like', "%{$brandName}%")
+                      ->orWhereHas('drugBrand', fn($q2) => $q2->where('brand_name', $brandName));
+                })
+                ->where('clinic_id', $clinicId)
+                ->where('quantity', '>', 0)
+                ->whereNotNull('batch_number')
+                ->orderBy('expiry_date')
+                ->get(['batch_number', 'expiry_date', 'quantity']);
+
+            return response()->json($batches->map(fn($b) => [
+                'batch_number' => $b->batch_number,
+                'expiry_date' => $b->expiry_date?->format('d/m/Y'),
+                'quantity' => $b->quantity,
+            ]));
+        })->middleware('auth:vet');
+
         Route::get(
             '/vet/drug-search',
             [InventoryController::class,'searchGenerics']
@@ -835,9 +959,48 @@ Route::middleware('auth:vet')->group(function () {
         [AppointmentController::class, 'createForPet']
     )->name('vet.appointments.createForPet');
 
+    Route::get('/vet/appointments/slots',
+        [AppointmentController::class, 'availableSlots']
+    )->name('vet.appointments.slots');
+
     Route::post('/vet/appointments/store',
         [AppointmentController::class, 'store']
     )->name('vet.appointments.store');
+
+    // Vet Schedule Config
+    Route::get('/vet/schedule', [\App\Http\Controllers\Vet\VetScheduleController::class, 'index'])->name('vet.schedule');
+    Route::post('/vet/schedule', [\App\Http\Controllers\Vet\VetScheduleController::class, 'store'])->name('vet.schedule.store');
+    Route::post('/vet/schedule/break', [\App\Http\Controllers\Vet\VetScheduleController::class, 'toggleBreak'])->name('vet.schedule.break');
+    Route::get('/vet/schedule/break-status', [\App\Http\Controllers\Vet\VetScheduleController::class, 'breakStatus'])->name('vet.schedule.breakStatus');
+
+    // Jobs / Hiring
+    Route::get('/vet/jobs', [\App\Http\Controllers\Vet\JobSearchController::class, 'index'])->name('vet.jobs.index');
+    Route::get('/vet/jobs/my-applications', [\App\Http\Controllers\Vet\JobSearchController::class, 'myApplications'])->name('vet.jobs.my-applications');
+    Route::get('/vet/jobs/{job}', [\App\Http\Controllers\Vet\JobSearchController::class, 'show'])->name('vet.jobs.show');
+    Route::post('/vet/jobs/{job}/apply', [\App\Http\Controllers\Vet\JobSearchController::class, 'apply'])->name('vet.jobs.apply');
+    Route::post('/vet/jobs/withdraw/{application}', [\App\Http\Controllers\Vet\JobSearchController::class, 'withdraw'])->name('vet.jobs.withdraw');
+
+    // Vet clinic onboarding accept/reject
+    Route::post('/vet/accept-clinic', [VetDashboardController::class, 'acceptClinicRequest'])->name('vet.accept-clinic');
+    Route::post('/vet/reject-clinic', [VetDashboardController::class, 'rejectClinicRequest'])->name('vet.reject-clinic');
+
+    // Role switch: Vet → Clinic Panel
+    Route::post('/vet/switch-to-clinic', [\App\Http\Controllers\RoleSwitchController::class, 'switchToClinic'])->name('vet.switchToClinic');
+
+    // Vaccinations
+    Route::post('/vet/vaccinations', [\App\Http\Controllers\Vet\VaccinationController::class, 'store'])->name('vet.vaccinations.store');
+    Route::get('/vet/vaccinations/search', [\App\Http\Controllers\Vet\VaccinationController::class, 'searchVaccines'])->name('vet.vaccinations.search');
+    Route::get('/vet/pets/{pet}/vaccinations', [\App\Http\Controllers\Vet\VaccinationController::class, 'history'])->name('vet.vaccinations.history');
+    Route::delete('/vet/vaccinations/{vaccination}', [\App\Http\Controllers\Vet\VaccinationController::class, 'destroy'])->name('vet.vaccinations.destroy');
+
+    // Certificates
+    Route::get('/vet/pets/{pet}/certificates', [\App\Http\Controllers\Vet\CertificateController::class, 'index'])->name('vet.certificates.index');
+    Route::get('/vet/pets/{pet}/certificates/create', [\App\Http\Controllers\Vet\CertificateController::class, 'create'])->name('vet.certificates.create');
+    Route::post('/vet/certificates', [\App\Http\Controllers\Vet\CertificateController::class, 'store'])->name('vet.certificates.store');
+    Route::get('/vet/certificates/{certificate}/edit', [\App\Http\Controllers\Vet\CertificateController::class, 'edit'])->name('vet.certificates.edit');
+    Route::put('/vet/certificates/{certificate}', [\App\Http\Controllers\Vet\CertificateController::class, 'update'])->name('vet.certificates.update');
+    Route::get('/vet/certificates/{certificate}/preview', [\App\Http\Controllers\Vet\CertificateController::class, 'preview'])->name('vet.certificates.preview');
+    Route::get('/vet/certificates/{certificate}/download', [\App\Http\Controllers\Vet\CertificateController::class, 'download'])->name('vet.certificates.download');
 
     Route::post('/vet/appointments/{appointment}/assign',
         [AppointmentController::class, 'selfAssign']
@@ -897,6 +1060,11 @@ Route::middleware('auth:vet')->group(function () {
         [AppointmentController::class, 'historyView']
     )->middleware('auth:vet');
 
+    Route::get(
+        '/vet/ipd/{admission}/history-view',
+        [\App\Http\Controllers\Vet\IpdController::class, 'historyView']
+    )->middleware('auth:vet');
+
     
 
     /*
@@ -943,6 +1111,19 @@ Route::middleware('auth:vet')->group(function () {
     |--------------------------------------------------------------------------
     */
 
+
+// AI Credits
+Route::get('/vet/ai/credits', [VetCreditController::class, 'index'])
+    ->middleware('auth:vet')
+    ->name('vet.credits.index');
+
+Route::post('/vet/ai/credits/purchase', [VetCreditController::class, 'purchase'])
+    ->middleware('auth:vet')
+    ->name('vet.credits.purchase');
+
+Route::get('/vet/ai/credits/balance', [VetCreditController::class, 'balance'])
+    ->middleware('auth:vet')
+    ->name('vet.credits.balance');
 
 Route::post('/vet/ai/refine', [VetAiController::class, 'refine'])
     ->middleware('auth:vet');
@@ -1000,6 +1181,11 @@ Route::middleware('auth:vet')->group(function () {
     Route::get('/vet/case-sheets/{caseSheet}/pdf', [DocumentController::class, 'caseSheetPdf'])->name('vet.casesheet.pdf');
     Route::get('/vet/bills/{bill}/print', [DocumentController::class, 'billPrint'])->name('vet.bill.print');
     Route::get('/vet/bills/{bill}/pdf', [DocumentController::class, 'billPdf'])->name('vet.bill.pdf');
+
+    // WhatsApp send (vet)
+    Route::post('/whatsapp/send/case-sheet/{appointment}', [\App\Http\Controllers\WhatsappSendController::class, 'sendCaseSheet'])->name('whatsapp.send.casesheet');
+    Route::post('/whatsapp/send/prescription/{appointment}', [\App\Http\Controllers\WhatsappSendController::class, 'sendPrescription'])->name('whatsapp.send.prescription');
+    Route::post('/whatsapp/send/lab-report/{report}', [\App\Http\Controllers\WhatsappSendController::class, 'sendLabReport'])->name('whatsapp.send.labreport');
 });
 
 /* =========================
@@ -1017,6 +1203,24 @@ Route::middleware('auth:vet')->prefix('vet/lab-orders')->name('vet.lab-orders.')
 Route::middleware('auth:vet')->group(function () {
     Route::post('/vet/appointments/{appointment}/lab-orders', [VetLabOrderController::class, 'store'])
         ->name('vet.lab-orders.store');
+
+    // Vaccination routes
+    Route::post('/vet/appointments/{appointment}/vaccination', [\App\Http\Controllers\Vet\AppointmentController::class, 'storeVaccination'])
+        ->name('vet.vaccination.store');
+    Route::get('/vet/search-vaccines', function (\Illuminate\Http\Request $request) {
+        $q = $request->get('q', '');
+        return \App\Models\DrugGeneric::where('drug_class', 'like', '%accin%')
+            ->where('name', 'like', "%{$q}%")
+            ->select('id', 'name')
+            ->limit(20)
+            ->get();
+    });
+    Route::get('/vet/search-vaccine-brands', function (\Illuminate\Http\Request $request) {
+        return \App\Models\DrugBrand::where('generic_id', $request->generic_id)
+            ->select('id', 'brand_name', 'manufacturer')
+            ->orderBy('brand_name')
+            ->get();
+    });
 });
 
 /* =========================
@@ -1044,6 +1248,8 @@ Route::middleware('auth:lab')->prefix('lab')->name('lab.')->group(function () {
     Route::post('/logout', [LabAuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [LabDashboardController::class, 'index'])->name('dashboard');
     Route::post('/toggle-availability', [LabDashboardController::class, 'toggleAvailability'])->name('toggle-availability');
+    Route::post('/accept-org', [LabDashboardController::class, 'acceptOrgRequest'])->name('accept-org');
+    Route::post('/reject-org', [LabDashboardController::class, 'rejectOrgRequest'])->name('reject-org');
     Route::get('/orders', [LabPortalOrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{order}', [LabPortalOrderController::class, 'show'])->name('orders.show');
     Route::post('/orders/{order}/start', [LabPortalOrderController::class, 'startProcessing'])->name('orders.start');
@@ -1052,9 +1258,7 @@ Route::middleware('auth:lab')->prefix('lab')->name('lab.')->group(function () {
 
     // Lab Test Catalog (external labs manage their own tests)
     Route::get('/catalog', [LabCatalogController::class, 'index'])->name('catalog.index');
-    Route::post('/catalog', [LabCatalogController::class, 'store'])->name('catalog.store');
-    Route::put('/catalog/{test}', [LabCatalogController::class, 'update'])->name('catalog.update');
-    Route::delete('/catalog/{test}', [LabCatalogController::class, 'destroy'])->name('catalog.destroy');
+    Route::post('/catalog/toggle', [LabCatalogController::class, 'toggle'])->name('catalog.toggle');
 });
 
 /* =========================

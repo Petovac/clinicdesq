@@ -481,6 +481,11 @@
     }
 
     $hasActiveClinic = session()->has('active_clinic_id');
+
+    $aiCreditBalance = 0;
+    if ($vet) {
+        $aiCreditBalance = \App\Models\VetAiCredit::where('vet_id', $vet->id)->value('balance') ?? 0;
+    }
 @endphp
 
 {{-- ================= HEADER ================= --}}
@@ -533,10 +538,44 @@
             Pet History
         </a>
 
+        @if($hasActiveClinic)
+            <a href="{{ url('/vet/schedule') }}"
+               class="{{ request()->is('vet/schedule*') ? 'active' : '' }}">
+                Schedule
+            </a>
+        @endif
+
+        <a href="{{ route('vet.jobs.index') }}"
+           class="{{ request()->is('vet/jobs*') ? 'active' : '' }}">
+            Jobs
+        </a>
+
         <a href="{{ route('vet.profile') }}"
            class="{{ request()->routeIs('vet.profile') ? 'active' : '' }}">
             Profile
         </a>
+
+        <a href="{{ route('vet.credits.index') }}"
+           style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.08);padding:5px 10px;border-radius:var(--radius-sm);text-decoration:none;color:#d1d5db;font-size:12px;">
+            <span style="color:#fbbf24;">&#9733;</span>
+            <span style="font-weight:700;color:#fff;" class="ai-credit-balance">{{ $aiCreditBalance }}</span>
+            <span>credits</span>
+        </a>
+
+        @php
+            $canSwitchToClinic = false;
+            if ($hasActiveClinic && auth('vet')->user()) {
+                $canSwitchToClinic = auth('vet')->user()->canManageClinic(session('active_clinic_id'));
+            }
+        @endphp
+        @if($canSwitchToClinic)
+            <form method="POST" action="{{ route('vet.switchToClinic') }}" style="margin:0;">
+                @csrf
+                <button type="submit" style="background:var(--primary-soft);color:var(--primary);border:1px solid var(--primary-border);border-radius:var(--radius-sm);padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer;width:100%;text-align:left;">
+                    ⇄ Switch to Clinic Panel
+                </button>
+            </form>
+        @endif
 
         <form method="POST" action="{{ route('vet.logout') }}">
             @csrf

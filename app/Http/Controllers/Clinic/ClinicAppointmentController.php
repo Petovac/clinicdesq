@@ -39,6 +39,10 @@ class ClinicAppointmentController extends Controller
             ->whereDate('completed_at', today())
             ->count();
 
+        $awaitingLabCount = Appointment::where('clinic_id', $clinicId)
+            ->where('status', 'awaiting_lab_results')
+            ->count();
+
         // Ready for billing: completed appointments without a confirmed bill
         $needsBilling = Appointment::with(['pet.petParent', 'vet', 'bill'])
             ->where('clinic_id', $clinicId)
@@ -58,6 +62,7 @@ class ClinicAppointmentController extends Controller
             'waitingCount',
             'consultationCount',
             'completedCount',
+            'awaitingLabCount',
             'needsBilling',
             'needsBillingCount'
         ));
@@ -102,6 +107,24 @@ class ClinicAppointmentController extends Controller
             'pet'  => $pet,
             'vets' => $vets
         ]);
+    }
+
+    /**
+     * AJAX: Get available time slots for a vet on a date
+     */
+    public function availableSlots(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date',
+            'vet_id' => 'required|exists:vets,id',
+        ]);
+
+        $clinicId = session('active_clinic_id') ?? auth()->user()->clinic_id;
+        $date = \Carbon\Carbon::parse($request->date);
+
+        $slots = \App\Models\VetSchedule::generateSlots($date, $request->vet_id, $clinicId);
+
+        return response()->json($slots);
     }
 
     public function store(Request $request)
@@ -152,12 +175,69 @@ class ClinicAppointmentController extends Controller
         if ($status == 'in_consultation') {
             $appointment->consultation_started_at = now();
         }
-        if ($status == 'completed') {
-            $appointment->completed_at = now();
+        if ($status == 'completed' || $status == 'awaiting_lab_results') {
+            if (!$appointment->completed_at) {
+                $appointment->completed_at = now();
+            }
         }
 
         $appointment->status = $status;
         $appointment->save();
+
+        // On completion: create review request + send via WhatsApp
+        if ($status == 'completed') {
+            try {
+                $appointment->load(['pet.petParent', 'clinic.organisation', 'vet']);
+                $parent = $appointment->pet->petParent ?? null;
+
+                if ($parent) {
+                    // Create pending review
+                    $review = \App\Models\ClinicReview::create([
+                        'clinic_id' => $appointment->clinic_id,
+                        'appointment_id' => $appointment->id,
+                        'pet_parent_id' => $parent->id,
+                        'vet_id' => $appointment->vet_id,
+                        'status' => 'pending',
+                    ]);
+
+                    // Send review link via WhatsApp
+                    $orgId = $appointment->clinic->organisation_id;
+                    $waConfig = \App\Models\WhatsappConfig::where('organisation_id', $orgId)->first();
+
+                    if ($waConfig && $waConfig->isConfigured() && $parent->phone) {
+                        \App\Services\WhatsappService::sendTemplate(
+                            organisationId: $orgId,
+                            recipientPhone: $parent->phone,
+                            recipientName: $parent->name,
+                            templateName: 'clinicdesq_review_request',
+                            messageType: 'custom',
+                            templateVariables: [
+                                'body' => [
+                                    $parent->name,
+                                    $appointment->pet->name,
+                                    $appointment->clinic->name,
+                                    $review->getReviewUrl(),
+                                ],
+                            ],
+                            clinicId: $appointment->clinic_id,
+                            referenceType: \App\Models\ClinicReview::class,
+                            referenceId: $review->id,
+                            sentBy: auth()->id(),
+                        );
+                    }
+                }
+
+                // Fire webhook
+                \App\Services\WebhookService::dispatch($appointment->clinic->organisation_id, 'appointment.completed', [
+                    'appointment_id' => $appointment->id,
+                    'pet' => $appointment->pet->toArray(),
+                    'pet_parent' => $parent?->toArray(),
+                    'clinic' => $appointment->clinic->only(['id', 'name', 'city']),
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Post-completion actions failed', ['error' => $e->getMessage()]);
+            }
+        }
 
         return back();
     }

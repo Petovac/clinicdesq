@@ -55,69 +55,127 @@ class LabOrderController extends Controller
 
         $clinic = Clinic::with('organisation')->findOrFail($clinicId);
         $orgId = $clinic->organisation_id;
-        $q = $request->get('q', '');
+        $q = trim($request->get('q', ''));
+        if (strlen($q) < 1) return response()->json(['tests' => [], 'vet_can_select_lab' => false]);
 
-        // In-house tests: org catalog (show all active, indicate availability)
-        $inHouse = LabTestCatalog::where('organisation_id', $orgId)
-            ->where('is_active', true)
-            ->where('name', 'like', "%{$q}%")
-            ->limit(20)
-            ->get()
-            ->map(function ($test) use ($clinicId) {
-                // Check if lab tech marked it available at this clinic
-                $avail = $test->availability()->where('clinic_id', $clinicId)->first();
-                $isAvailable = $avail ? $avail->is_available : true; // default available if no record
-
-                return [
-                    'id' => $test->id,
-                    'type' => 'in_house',
-                    'name' => $test->name,
-                    'code' => $test->code,
-                    'category' => $test->category,
-                    'sample_type' => $test->sample_type,
-                    'parameters' => $test->parameters,
-                    'estimated_time' => $test->estimated_time,
-                    'price' => (float) $test->price,
-                    'lab_name' => 'In-house',
-                    'available' => $isAvailable,
-                ];
-            });
-
-        // External lab tests: from tied-up labs (prefer org-imported pricing, city-matched)
-        $externalTests = ExternalLabTest::where('is_active', true)
-            ->where('test_name', 'like', "%{$q}%")
-            ->where('organisation_id', $orgId) // only org-imported tests
-            ->whereHas('lab', function ($query) use ($orgId, $clinic) {
-                $query->where('is_active', true)
-                    ->whereHas('organisations', function ($q) use ($orgId) {
-                        $q->where('organisation_id', $orgId)->where('organisation_lab.is_active', true);
-                    });
-                if ($clinic->city) {
-                    $query->where('city', $clinic->city);
-                }
+        // 1. Search master directory by name, code, aliases
+        $matchingTests = \DB::table('lab_test_directory')
+            ->where(function ($query) use ($q) {
+                $query->where('name', 'like', "%{$q}%")
+                      ->orWhere('code', 'like', "%{$q}%")
+                      ->orWhere('aliases', 'like', "%{$q}%");
             })
-            ->with('lab:id,name,city')
-            ->limit(20)
+            ->orderBy('category')
+            ->orderBy('name')
+            ->limit(30)
+            ->get();
+
+        if ($matchingTests->isEmpty()) {
+            return response()->json(['tests' => [], 'vet_can_select_lab' => false]);
+        }
+
+        $matchingCodes = $matchingTests->pluck('code')->toArray();
+
+        // 2. In-house: which of these matching tests does this clinic offer?
+        $clinicOfferings = \DB::table('clinic_lab_tests')
+            ->where('clinic_id', $clinicId)
+            ->where('is_available', true)
+            ->whereIn('test_code', $matchingCodes)
             ->get()
-            ->map(function ($test) {
-                return [
-                    'id' => $test->id,
-                    'type' => 'external',
-                    'name' => $test->test_name,
-                    'code' => $test->test_code,
-                    'category' => $test->category,
-                    'sample_type' => $test->sample_type,
-                    'parameters' => $test->parameters,
-                    'estimated_time' => $test->estimated_time,
-                    'price' => (float) ($test->org_selling_price ?? $test->b2b_price),
-                    'lab_name' => $test->lab->name ?? 'External',
-                    'lab_id' => $test->external_lab_id,
+            ->keyBy('test_code');
+
+        // 3. External labs: which connected labs offer these tests?
+        $clinicLabIds = \DB::table('clinic_external_lab')
+            ->where('clinic_id', $clinicId)
+            ->where('is_active', true)
+            ->pluck('external_lab_id')
+            ->toArray();
+
+        // Fall back to org-level if no clinic-level assignments
+        if (empty($clinicLabIds)) {
+            $clinicLabIds = \DB::table('organisation_lab')
+                ->where('organisation_id', $orgId)
+                ->where('status', 'accepted')
+                ->where('is_active', true)
+                ->pluck('external_lab_id')
+                ->toArray();
+        }
+
+        $extOfferings = collect();
+        if (!empty($clinicLabIds)) {
+            $extOfferings = \DB::table('external_lab_offerings as elo')
+                ->join('external_labs as el', 'el.id', '=', 'elo.external_lab_id')
+                ->whereIn('elo.external_lab_id', $clinicLabIds)
+                ->whereIn('elo.test_code', $matchingCodes)
+                ->where('elo.is_active', true)
+                ->select('elo.*', 'el.name as lab_name')
+                ->get();
+        }
+
+        // Check org pricing overrides
+        $orgPricing = \DB::table('org_lab_test_pricing')
+            ->where('organisation_id', $orgId)
+            ->whereIn('test_code', $matchingCodes)
+            ->get()
+            ->keyBy(fn($p) => $p->external_lab_id . '_' . $p->test_code);
+
+        // 4. Build unified results grouped by test code
+        $unified = [];
+
+        foreach ($matchingTests as $test) {
+            $entry = [
+                'name' => $test->name,
+                'code' => $test->code,
+                'category' => $test->category,
+                'sample_type' => $test->sample_type,
+                'labs' => [],
+            ];
+
+            // In-house option
+            $ct = $clinicOfferings[$test->code] ?? null;
+            if ($ct) {
+                $params = $ct->parameters ? json_decode($ct->parameters, true) : null;
+                $entry['labs'][] = [
+                    'id' => $ct->id,
+                    'type' => 'in_house',
+                    'lab_name' => 'In-house',
+                    'lab_id' => null,
+                    'price' => (float) $ct->price,
+                    'available' => true,
+                    'parameters' => $params ?: ($test->default_parameters ? json_decode($test->default_parameters, true) : null),
                 ];
-            });
+            }
+
+            // External lab options
+            $extForCode = $extOfferings->where('test_code', $test->code);
+            foreach ($extForCode as $ext) {
+                $priceKey = $ext->external_lab_id . '_' . $test->code;
+                $orgPrice = $orgPricing[$priceKey] ?? null;
+                $price = $orgPrice ? (float) $orgPrice->org_selling_price : (float) $ext->b2b_price;
+                $extParams = $ext->parameters ? json_decode($ext->parameters, true) : null;
+
+                $entry['labs'][] = [
+                    'id' => $ext->id,
+                    'type' => 'external',
+                    'lab_name' => $ext->lab_name,
+                    'lab_id' => $ext->external_lab_id,
+                    'price' => $price,
+                    'available' => true,
+                    'parameters' => $extParams ?: ($test->default_parameters ? json_decode($test->default_parameters, true) : null),
+                ];
+            }
+
+            // Only include if at least one lab offers it
+            if (!empty($entry['labs'])) {
+                $unified[] = $entry;
+            }
+        }
+
+        $vetCanSelectLab = $clinic->organisation->vet_can_select_lab ?? false;
 
         return response()->json([
-            'in_house' => $inHouse,
-            'external' => $externalTests,
+            'tests' => $unified,
+            'vet_can_select_lab' => $vetCanSelectLab,
         ]);
     }
 
@@ -145,20 +203,22 @@ class LabOrderController extends Controller
             'routing' => 'nullable|in:pending,in_house,external',
         ]);
 
-        // Determine routing
-        $routing = $request->routing ?? 'pending';
-        $labId = null;
+        // Determine routing based on tests
+        $labId = $request->lab_id ?? null;
+        $tests = collect($request->tests);
 
-        // If doctor pre-selected a lab
-        if ($request->lab_id) {
-            $labId = $request->lab_id;
-            $routing = 'external';
-        }
+        // Check if all tests are in-house or all for one external lab
+        $allInHouse = $tests->every(fn($t) => ($t['type'] ?? 'in_house') === 'in_house');
+        $allExternal = $tests->every(fn($t) => ($t['type'] ?? 'in_house') === 'external');
 
-        // If all tests are in-house, auto-route
-        $allInHouse = collect($request->tests)->every(fn ($t) => $t['type'] === 'in_house');
-        if ($allInHouse && $routing === 'pending') {
+        if ($allInHouse) {
             $routing = 'in_house';
+        } elseif ($allExternal && $labId) {
+            $routing = 'external';
+        } elseif ($labId) {
+            $routing = 'external';
+        } else {
+            $routing = 'pending';
         }
 
         $order = LabOrder::create([
@@ -180,6 +240,7 @@ class LabOrderController extends Controller
                 'lab_order_id' => $order->id,
                 'lab_test_catalog_id' => $test['catalog_id'] ?? null,
                 'external_lab_test_id' => $test['external_test_id'] ?? null,
+                'external_lab_id' => $test['external_lab_id'] ?? null,
                 'test_name' => $test['name'],
                 'parameters' => $test['parameters'] ?? null,
                 'price' => $test['price'] ?? 0,

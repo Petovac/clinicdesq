@@ -6,7 +6,10 @@
 <style>
     .ipd-columns { display: flex; gap: 20px; align-items: flex-start; }
     .ipd-main { flex: 1; min-width: 0; }
-    .ipd-sidebar { width: 340px; flex-shrink: 0; }
+    .ipd-sidebar { width: 380px; flex-shrink: 0; }
+    .ipd-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+    .ipd-action-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; }
+    .ipd-action-card h3 { font-size: 13px; font-weight: 700; color: var(--primary); margin: 0 0 10px; }
 
     .patient-banner {
         display: flex;
@@ -149,6 +152,101 @@
 </div>
 @endif
 
+{{-- Action Forms Row (full width, 3-column grid) --}}
+@if($admission->isAdmitted())
+<div class="ipd-actions">
+    {{-- Record Vitals --}}
+    <div class="ipd-action-card">
+        <h3>Record Vitals</h3>
+        <form class="side-form" onsubmit="submitVitals(event)">
+            <input type="hidden" name="recorded_at" value="{{ now()->format('Y-m-d\TH:i') }}">
+            <div class="row-3">
+                <div><label>Temp (&deg;F)</label><input type="number" name="temperature" step="0.1" placeholder="101.5"></div>
+                <div><label>HR (bpm)</label><input type="number" name="heart_rate" placeholder="120"></div>
+                <div><label>RR (/min)</label><input type="number" name="respiratory_rate" placeholder="24"></div>
+            </div>
+            <div class="row-3">
+                <div><label>Weight (kg)</label><input type="number" name="weight" step="0.01" placeholder="12.5"></div>
+                <div><label>SpO2 (%)</label><input type="number" name="spo2" placeholder="98"></div>
+                <div><label>Pain (0-10)</label><input type="number" name="pain_score" min="0" max="10" placeholder="3"></div>
+            </div>
+            <div class="row-2">
+                <div><label>BP (Sys/Dia)</label><div style="display:flex;gap:4px;"><input type="number" name="blood_pressure_systolic" placeholder="120"><input type="number" name="blood_pressure_diastolic" placeholder="80"></div></div>
+                <div><label>MM / CRT</label><div style="display:flex;gap:4px;"><select name="mucous_membrane" style="flex:1;"><option value="">MM</option><option value="pink">Pink</option><option value="pale">Pale</option><option value="cyanotic">Cyanotic</option><option value="icteric">Icteric</option></select><input type="number" name="crt" step="0.1" placeholder="CRT" style="width:60px;"></div></div>
+            </div>
+            <textarea name="notes" placeholder="Notes..." rows="1" style="margin-top:6px;min-height:32px;"></textarea>
+            <button type="submit" class="v-btn v-btn--primary v-btn--sm" style="margin-top:8px;width:100%;">Save Vitals</button>
+        </form>
+    </div>
+
+    {{-- Add Treatment --}}
+    <div class="ipd-action-card">
+        <h3>Add Treatment</h3>
+        <form class="side-form" onsubmit="submitTreatment(event)" id="ipd-treatment-form">
+            <select name="treatment_type" id="ipd-type-select" required onchange="onTreatmentTypeChange(this.value)" style="margin-bottom:6px;">
+                <option value="injection">Injection</option>
+                <option value="medication">Medication</option>
+                <option value="procedure">Procedure / Fluid Therapy</option>
+            </select>
+
+            <div id="ipd-drug-section">
+                <div style="position:relative;">
+                    <input type="text" id="ipd-drug-search" placeholder="Search drug..." autocomplete="off">
+                    <input type="hidden" name="drug_generic_id" id="ipd-drug-generic-id">
+                    <div id="ipd-drug-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,0.1);max-height:180px;overflow-y:auto;z-index:10;"></div>
+                </div>
+                <select name="inventory_item_id" id="ipd-strength-select" style="margin-top:4px;">
+                    <option value="">— select drug first —</option>
+                </select>
+                <div id="ipd-kb-info" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:6px 8px;margin:6px 0;font-size:10px;color:#0369a1;display:none;">
+                    KB: <strong><span id="ipd-kb-dose">—</span></strong> · <span id="ipd-kb-freq">—</span> · <span id="ipd-kb-route">—</span>
+                </div>
+                <select name="route" id="ipd-route-select" style="margin-top:4px;">
+                    <option value="">— Route —</option>
+                    @foreach($injectionRoutes as $ir)
+                        <option value="{{ $ir->route_code }}">{{ $ir->route_code }} — {{ $ir->route_name }}</option>
+                    @endforeach
+                </select>
+                <div class="row-2" style="margin-top:4px;">
+                    <div><label>Wt (kg)</label><input type="number" id="ipd-pet-weight" value="{{ $admission->pet->weight ?? '' }}" step="0.1"></div>
+                    <div><label>Dose (mg/kg)</label><input type="number" name="dose_mg_kg" id="ipd-dose-mgkg" step="0.001" placeholder="Auto"></div>
+                </div>
+                <div class="row-2">
+                    <div><label>Calc mg</label><input type="number" name="dose_mg" id="ipd-calc-mg" step="0.01" readonly style="background:#f9fafb;"></div>
+                    <div><label>Vol (ml)</label><input type="number" name="dose_volume_ml" id="ipd-calc-ml" step="0.001" readonly style="background:#f0fdf4;font-weight:700;"></div>
+                </div>
+                <div id="ipd-dose-warning" style="display:none;padding:4px 8px;border-radius:4px;font-size:10px;font-weight:600;margin-top:2px;"></div>
+            </div>
+
+            <div id="ipd-procedure-section" style="display:none;">
+                <input type="text" name="procedure_name" placeholder="Procedure / Fluid therapy name" style="margin-top:4px;">
+                <textarea name="procedure_description" placeholder="Details..." rows="2" style="margin-top:4px;"></textarea>
+            </div>
+
+            <input type="hidden" name="administered_at" value="{{ now()->format('Y-m-d\TH:i') }}">
+            <textarea name="notes" placeholder="Notes..." rows="1" style="margin-top:6px;min-height:32px;"></textarea>
+            <button type="submit" class="v-btn v-btn--primary v-btn--sm" style="margin-top:8px;width:100%;">Save Treatment</button>
+        </form>
+    </div>
+
+    {{-- Add Note --}}
+    <div class="ipd-action-card">
+        <h3>Add Note</h3>
+        <form class="side-form" onsubmit="submitNote(event)">
+            <select name="note_type" required style="margin-bottom:6px;">
+                <option value="progress">Progress</option>
+                <option value="observation">Observation</option>
+                <option value="plan">Plan</option>
+                <option value="complication">Complication</option>
+                <option value="communication">Owner Communication</option>
+            </select>
+            <textarea name="content" required placeholder="Write clinical note..." rows="4"></textarea>
+            <button type="submit" class="v-btn v-btn--primary v-btn--sm" style="margin-top:8px;width:100%;">Save Note</button>
+        </form>
+    </div>
+</div>
+@endif
+
 <div class="ipd-columns">
     {{-- LEFT: Main Content --}}
     <div class="ipd-main">
@@ -237,123 +335,43 @@
     @if($admission->isAdmitted())
     <div class="ipd-sidebar">
 
-        {{-- Add Vitals --}}
+        {{-- Quick Stats --}}
         <div class="v-card v-card--compact">
-            <h3 class="v-section-title collapse-toggle" onclick="toggleCollapse(this)">Record Vitals</h3>
-            <div class="collapse-body">
-                <form class="side-form" onsubmit="submitVitals(event)">
-                    <label>Recorded At</label>
-                    <input type="datetime-local" name="recorded_at" value="{{ now()->format('Y-m-d\TH:i') }}" required>
-
-                    <div class="row-3">
-                        <div><label>Temp (&deg;F)</label><input type="number" name="temperature" step="0.1" placeholder="101.5"></div>
-                        <div><label>HR (bpm)</label><input type="number" name="heart_rate" placeholder="120"></div>
-                        <div><label>RR (/min)</label><input type="number" name="respiratory_rate" placeholder="24"></div>
-                    </div>
-
-                    <div class="row-3">
-                        <div><label>Weight (kg)</label><input type="number" name="weight" step="0.01" placeholder="12.5"></div>
-                        <div><label>SpO2 (%)</label><input type="number" name="spo2" placeholder="98"></div>
-                        <div><label>Pain (0-10)</label><input type="number" name="pain_score" min="0" max="10" placeholder="3"></div>
-                    </div>
-
-                    <div class="row-2">
-                        <div><label>BP Sys</label><input type="number" name="blood_pressure_systolic" placeholder="120"></div>
-                        <div><label>BP Dia</label><input type="number" name="blood_pressure_diastolic" placeholder="80"></div>
-                    </div>
-
-                    <div class="row-2">
-                        <div>
-                            <label>Mucous Membrane</label>
-                            <select name="mucous_membrane">
-                                <option value="">—</option>
-                                <option value="pink">Pink</option>
-                                <option value="pale">Pale</option>
-                                <option value="cyanotic">Cyanotic</option>
-                                <option value="icteric">Icteric</option>
-                                <option value="hyperemic">Hyperemic</option>
-                                <option value="muddy">Muddy</option>
-                            </select>
-                        </div>
-                        <div><label>CRT (sec)</label><input type="number" name="crt" step="0.1" placeholder="2.0"></div>
-                    </div>
-
-                    <label>Notes</label>
-                    <textarea name="notes" placeholder="Optional observations..."></textarea>
-
-                    <button type="submit" class="v-btn v-btn--primary v-btn--sm" style="margin-top:12px;">Save Vitals</button>
-                </form>
+            <h3 class="v-section-title">Stay Summary</h3>
+            @php
+                $days = (int) $admission->admission_date->diffInDays(now());
+                $hours = (int) $admission->admission_date->diffInHours(now()) % 24;
+            @endphp
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
+                <div style="background:var(--bg-soft);padding:10px;border-radius:6px;text-align:center;">
+                    <div style="font-size:20px;font-weight:700;color:var(--primary);">{{ $days }}d {{ $hours }}h</div>
+                    <div style="font-size:10px;color:var(--text-muted);">Duration</div>
+                </div>
+                <div style="background:var(--bg-soft);padding:10px;border-radius:6px;text-align:center;">
+                    <div style="font-size:20px;font-weight:700;">{{ $admission->treatments->count() }}</div>
+                    <div style="font-size:10px;color:var(--text-muted);">Treatments</div>
+                </div>
+                <div style="background:var(--bg-soft);padding:10px;border-radius:6px;text-align:center;">
+                    <div style="font-size:20px;font-weight:700;">{{ $admission->vitals->count() }}</div>
+                    <div style="font-size:10px;color:var(--text-muted);">Vitals Checks</div>
+                </div>
+                <div style="background:var(--bg-soft);padding:10px;border-radius:6px;text-align:center;">
+                    <div style="font-size:20px;font-weight:700;">{{ $admission->notes->count() }}</div>
+                    <div style="font-size:10px;color:var(--text-muted);">Notes</div>
+                </div>
             </div>
-        </div>
-
-        {{-- Add Treatment --}}
-        <div class="v-card v-card--compact">
-            <h3 class="v-section-title collapse-toggle" onclick="toggleCollapse(this)">Add Treatment</h3>
-            <div class="collapse-body">
-                <form class="side-form" onsubmit="submitTreatment(event)">
-                    <label>Type</label>
-                    <select name="treatment_type" required>
-                        <option value="injection">Injection</option>
-                        <option value="procedure">Procedure</option>
-                        <option value="medication">Medication</option>
-                        <option value="fluid">Fluid Therapy</option>
-                    </select>
-
-                    <label>Drug / Generic</label>
-                    <select name="drug_generic_id">
-                        <option value="">— Select Drug —</option>
-                        @foreach($drugGenerics as $dg)
-                            <option value="{{ $dg->id }}">{{ $dg->name }}</option>
-                        @endforeach
-                    </select>
-
-                    <label>Route</label>
-                    <select name="route">
-                        <option value="">— Select Route —</option>
-                        @foreach($injectionRoutes as $ir)
-                            <option value="{{ $ir->route_code }}">{{ $ir->route_code }} — {{ $ir->route_name }}</option>
-                        @endforeach
-                    </select>
-
-                    <div class="row-2">
-                        <div><label>Dose (mg)</label><input type="number" name="dose_mg" step="0.01" placeholder="10"></div>
-                        <div><label>Volume (ml)</label><input type="number" name="dose_volume_ml" step="0.01" placeholder="2.5"></div>
-                    </div>
-
-                    <label>Administered At</label>
-                    <input type="datetime-local" name="administered_at" value="{{ now()->format('Y-m-d\TH:i') }}" required>
-
-                    <label>Notes</label>
-                    <textarea name="notes" placeholder="Treatment details..."></textarea>
-
-                    <button type="submit" class="v-btn v-btn--primary v-btn--sm" style="margin-top:12px;">Save Treatment</button>
-                </form>
+            @if($admission->vitals->last())
+            <div style="margin-top:10px;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;font-size:12px;">
+                <strong>Last Vitals</strong> ({{ $admission->vitals->last()->recorded_at ? \Carbon\Carbon::parse($admission->vitals->last()->recorded_at)->diffForHumans() : '' }})<br>
+                Temp: {{ $admission->vitals->last()->temperature ?? '—' }}&deg;F ·
+                HR: {{ $admission->vitals->last()->heart_rate ?? '—' }} ·
+                RR: {{ $admission->vitals->last()->respiratory_rate ?? '—' }}
             </div>
-        </div>
-
-        {{-- Add Note --}}
-        <div class="v-card v-card--compact">
-            <h3 class="v-section-title collapse-toggle" onclick="toggleCollapse(this)">Add Note</h3>
-            <div class="collapse-body">
-                <form class="side-form" onsubmit="submitNote(event)">
-                    <label>Note Type</label>
-                    <select name="note_type" required>
-                        <option value="progress">Progress</option>
-                        <option value="handover">Handover</option>
-                        <option value="observation">Observation</option>
-                        <option value="plan">Plan</option>
-                    </select>
-
-                    <label>Content</label>
-                    <textarea name="content" rows="4" placeholder="Enter clinical note..." required></textarea>
-
-                    <button type="submit" class="v-btn v-btn--primary v-btn--sm" style="margin-top:12px;">Save Note</button>
-                </form>
-            </div>
+            @endif
         </div>
 
         {{-- Discharge --}}
-        <div class="v-card v-card--compact">
+        <div class="v-card v-card--compact" style="border:1px solid #fca5a5;">
             <h3 class="v-section-title" style="color:var(--danger);">Discharge Patient</h3>
             <form class="side-form" action="{{ route('vet.ipd.discharge', $admission->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to discharge this patient?')">
                 @csrf
@@ -361,9 +379,9 @@
                 <textarea name="discharge_notes" placeholder="Reason for discharge, instructions..."></textarea>
 
                 <label>Discharge Summary</label>
-                <textarea name="discharge_summary" rows="4" placeholder="Full discharge summary..."></textarea>
+                <textarea name="discharge_summary" rows="3" placeholder="Full discharge summary..."></textarea>
 
-                <button type="submit" class="v-btn v-btn--danger v-btn--sm" style="margin-top:12px;">Discharge</button>
+                <button type="submit" class="v-btn v-btn--danger v-btn--sm" style="margin-top:10px;width:100%;">Discharge Patient</button>
             </form>
         </div>
 
@@ -403,6 +421,152 @@ function submitVitals(e) {
         else alert(res.message || 'Error saving vitals');
     }).catch(() => alert('Error saving vitals'));
 }
+
+// ===== Treatment Type Switching =====
+function onTreatmentTypeChange(type) {
+    document.getElementById('ipd-drug-section').style.display = (type === 'injection' || type === 'medication') ? '' : 'none';
+    document.getElementById('ipd-procedure-section').style.display = type === 'procedure' ? '' : 'none';
+}
+
+// ===== IPD Drug Search & Dose Calculation (mirrors case sheet) =====
+let ipdSelectedStrength = null;
+let ipdRecommendedMin = null;
+let ipdRecommendedMax = null;
+const petSpecies = '{{ $admission->pet->species ?? "dog" }}';
+
+document.getElementById('ipd-drug-search')?.addEventListener('input', function() {
+    const q = this.value.trim();
+    const dd = document.getElementById('ipd-drug-dropdown');
+    if (q.length < 2) { dd.style.display = 'none'; return; }
+
+    fetch(`/vet/drug-search?q=${encodeURIComponent(q)}`)
+        .then(r => r.json())
+        .then(drugs => {
+            if (!drugs.length) {
+                dd.innerHTML = '<div style="padding:10px;color:#9ca3af;font-size:12px;">No drugs found</div>';
+            } else {
+                dd.innerHTML = drugs.map(d =>
+                    `<div onclick="selectIpdDrug(${d.generic_id})" style="padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f3f4f6;"
+                        onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background=''">
+                        <strong>${d.generic_name}</strong>
+                        ${d.dose_info ? '<span style="color:#6b7280;font-size:11px;"> · ' + d.dose_info + '</span>' : ''}
+                        ${d.in_inventory ? '<span style="color:#16a34a;font-size:10px;"> ✓ In stock</span>' : ''}
+                    </div>`
+                ).join('');
+            }
+            dd.style.display = 'block';
+        });
+});
+
+function selectIpdDrug(genericId) {
+    // Get the drug data fresh
+    fetch(`/vet/drug-search?q=`)
+        .catch(() => {});
+
+    document.getElementById('ipd-drug-dropdown').style.display = 'none';
+
+    // Fetch dosage from KB (same as case sheet)
+    fetch(`/vet/drug-dosage/${genericId}?species=${petSpecies}`)
+        .then(r => r.json())
+        .then(data => {
+            const kbInfo = document.getElementById('ipd-kb-info');
+            if (data.dosages && data.dosages.length > 0) {
+                const d = data.dosages[0];
+                ipdRecommendedMin = parseFloat(d.dose_min);
+                ipdRecommendedMax = parseFloat(d.dose_max);
+
+                document.getElementById('ipd-kb-dose').textContent = d.dose_min + '-' + d.dose_max + ' ' + (d.dose_unit || 'mg/kg');
+                document.getElementById('ipd-kb-freq').textContent = d.frequencies || '—';
+                document.getElementById('ipd-kb-route').textContent = d.routes || '—';
+
+                // Auto-fill dose with dose_min
+                document.getElementById('ipd-dose-mgkg').value = d.dose_min;
+                calcIpdDose();
+            } else {
+                document.getElementById('ipd-kb-dose').textContent = 'No dosage data';
+                document.getElementById('ipd-kb-freq').textContent = '—';
+                document.getElementById('ipd-kb-route').textContent = '—';
+                ipdRecommendedMin = null;
+                ipdRecommendedMax = null;
+            }
+            kbInfo.style.display = 'block';
+        });
+
+    // Fetch drug name and set it
+    fetch(`/vet/drug-search?q=id:${genericId}`)
+        .catch(() => {});
+
+    document.getElementById('ipd-drug-generic-id').value = genericId;
+
+    // Load strengths from inventory
+    fetch(`/vet/drug-search?q=`)
+        .catch(() => {});
+
+    // Use the existing drug search to get strengths
+    fetch(`/vet/drug-search?q=${encodeURIComponent(document.getElementById('ipd-drug-search').value)}`)
+        .then(r => r.json())
+        .then(drugs => {
+            const drug = drugs.find(d => d.generic_id == genericId);
+            if (drug) {
+                document.getElementById('ipd-drug-search').value = drug.generic_name;
+                const sel = document.getElementById('ipd-strength-select');
+                sel.innerHTML = '<option value="">— Select strength —</option>';
+                if (drug.strengths && drug.strengths.length) {
+                    drug.strengths.forEach(s => {
+                        sel.innerHTML += `<option value="${s.inventory_item_id}" data-strength="${s.strength_value}" data-unit="${s.strength_unit}">${s.brand_name} ${s.strength_value}${s.strength_unit} (${s.form})</option>`;
+                    });
+                    // Auto-select first if only one
+                    if (drug.strengths.length === 1) {
+                        sel.selectedIndex = 1;
+                        ipdSelectedStrength = parseFloat(drug.strengths[0].strength_value);
+                        calcIpdDose();
+                    }
+                }
+            }
+        });
+}
+
+document.getElementById('ipd-strength-select')?.addEventListener('change', function() {
+    const opt = this.selectedOptions[0];
+    ipdSelectedStrength = opt?.dataset?.strength ? parseFloat(opt.dataset.strength) : null;
+    calcIpdDose();
+});
+
+function calcIpdDose() {
+    const weight = parseFloat(document.getElementById('ipd-pet-weight')?.value) || 0;
+    const mgkg = parseFloat(document.getElementById('ipd-dose-mgkg')?.value) || 0;
+
+    if (!weight || !mgkg) return;
+
+    const totalMg = mgkg * weight;
+    document.getElementById('ipd-calc-mg').value = totalMg.toFixed(2);
+
+    if (ipdSelectedStrength && ipdSelectedStrength > 0) {
+        const vol = totalMg / ipdSelectedStrength;
+        document.getElementById('ipd-calc-ml').value = vol.toFixed(3);
+    }
+
+    // Dose safety check
+    const warn = document.getElementById('ipd-dose-warning');
+    if (ipdRecommendedMin !== null && ipdRecommendedMax !== null) {
+        if (mgkg < ipdRecommendedMin * 0.8) {
+            warn.style.display = 'block';
+            warn.style.background = '#fef3c7';
+            warn.style.color = '#92400e';
+            warn.textContent = 'Below recommended range (' + ipdRecommendedMin + '-' + ipdRecommendedMax + ' mg/kg)';
+        } else if (mgkg > ipdRecommendedMax * 1.2) {
+            warn.style.display = 'block';
+            warn.style.background = '#fee2e2';
+            warn.style.color = '#991b1b';
+            warn.textContent = 'ABOVE recommended range (' + ipdRecommendedMin + '-' + ipdRecommendedMax + ' mg/kg)';
+        } else {
+            warn.style.display = 'none';
+        }
+    }
+}
+
+document.getElementById('ipd-dose-mgkg')?.addEventListener('input', calcIpdDose);
+document.getElementById('ipd-pet-weight')?.addEventListener('input', calcIpdDose);
 
 function submitTreatment(e) {
     e.preventDefault();

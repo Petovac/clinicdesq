@@ -717,9 +717,23 @@ body { background: var(--bg-page); }
                 {{ $appointment->caseSheet ? 'Edit Case Sheet' : 'Add Case Sheet' }}
             </a>
 
+            <a href="javascript:void(0)" onclick="document.getElementById('lab-order-modal').style.display='flex'" class="action-card">
+                <div class="action-icon green">🔬</div>
+                Order Lab Tests
+                @php $pendingLabOrders = \App\Models\LabOrder::where('appointment_id', $appointment->id)->whereNotIn('status', ['approved','cancelled'])->count(); @endphp
+                @if($pendingLabOrders > 0)
+                <span style="background:#ef4444;color:#fff;padding:1px 6px;border-radius:10px;font-size:10px;position:absolute;top:8px;right:8px;">{{ $pendingLabOrders }}</span>
+                @endif
+            </a>
+
+            <a href="javascript:void(0)" onclick="document.getElementById('vaccination-modal').style.display='flex'" class="action-card">
+                <div class="action-icon teal" style="background:#f0fdfa;color:#0d9488;">💉</div>
+                Record Vaccination
+            </a>
+
             <a href="{{ route('vet.diagnostics.create', ['appointment' => $appointment->id, 'type' => 'lab']) }}" class="action-card">
                 <div class="action-icon green">🧪</div>
-                Add Lab Report
+                Upload Lab Report
             </a>
 
             <a href="{{ route('vet.diagnostics.create', ['appointment' => $appointment->id, 'type' => 'radiology']) }}" class="action-card">
@@ -760,10 +774,16 @@ body { background: var(--bg-page); }
     <div class="case-card">
         <div class="section-title">Pet History</div>
 
-        @if($petHistory->isEmpty())
+        @php
+            $hasOpdHistory = $petHistory->isNotEmpty();
+            $hasIpdHistory = isset($ipdHistory) && $ipdHistory->isNotEmpty();
+        @endphp
+
+        @if(!$hasOpdHistory && !$hasIpdHistory)
             <p style="color:var(--text-muted);font-size:13px;">No previous visits for this pet.</p>
         @else
             <div class="history-timeline">
+                {{-- OPD Visits --}}
                 @foreach($petHistory as $past)
                     <div class="history-entry">
                         <div class="history-date">
@@ -771,9 +791,10 @@ body { background: var(--bg-page); }
                             <div class="month">{{ \Carbon\Carbon::parse($past->scheduled_at)->format('M') }}</div>
                         </div>
                         <div class="history-body">
+                            <span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:4px;font-weight:600;">OPD</span>
                             <span style="font-size:12px;color:var(--text-muted);">
                                 {{ \Carbon\Carbon::parse($past->scheduled_at)->format('Y') }}
-                                — {{ ucfirst($past->status) }}
+                                — {{ ucfirst(str_replace('_', ' ', $past->status)) }}
                             </span>
                             @if($past->caseSheet)
                                 <div class="diagnosis">
@@ -783,12 +804,46 @@ body { background: var(--bg-page); }
                             @if($past->prescription)
                                 <span style="font-size:12px;color:var(--success);">Rx given</span>
                             @endif
+                            @if($past->treatments->count())
+                                <span style="font-size:11px;color:#6b7280;">{{ $past->treatments->count() }} treatment(s)</span>
+                            @endif
                             <a href="#" onclick="openHistoryModal({{ $past->id }}); return false;" class="history-link">
                                 View Details &rarr;
                             </a>
                         </div>
                     </div>
                 @endforeach
+
+                {{-- IPD Admissions --}}
+                @if($hasIpdHistory)
+                @foreach($ipdHistory as $ipd)
+                    <div class="history-entry">
+                        <div class="history-date">
+                            <div class="day">{{ \Carbon\Carbon::parse($ipd->admission_date)->format('d') }}</div>
+                            <div class="month">{{ \Carbon\Carbon::parse($ipd->admission_date)->format('M') }}</div>
+                        </div>
+                        <div class="history-body">
+                            <span style="font-size:11px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px;font-weight:600;">IPD</span>
+                            <span style="font-size:12px;color:var(--text-muted);">
+                                {{ \Carbon\Carbon::parse($ipd->admission_date)->format('Y') }}
+                                — {{ ucfirst(str_replace('_', ' ', $ipd->status)) }}
+                                @if($ipd->discharged_at) · Discharged {{ \Carbon\Carbon::parse($ipd->discharged_at)->format('d M') }} @endif
+                            </span>
+                            @if($ipd->tentative_diagnosis)
+                                <div class="diagnosis"><strong>Diagnosis:</strong> {{ $ipd->tentative_diagnosis }}</div>
+                            @endif
+                            @if($ipd->admission_reason)
+                                <div style="font-size:12px;color:var(--text-muted);">Reason: {{ Str::limit($ipd->admission_reason, 60) }}</div>
+                            @endif
+                            <div style="font-size:11px;color:#6b7280;">
+                                {{ $ipd->treatments->count() }} treatment(s)
+                                · {{ $ipd->notes->count() }} note(s)
+                            </div>
+                            <a href="#" onclick="openIpdModal({{ $ipd->id }}); return false;" class="history-link">View Details &rarr;</a>
+                        </div>
+                    </div>
+                @endforeach
+                @endif
             </div>
         @endif
     </div>
@@ -1225,6 +1280,18 @@ function closeHistoryModal() {
     document.getElementById('history-modal').style.display = 'none';
 }
 
+function openIpdModal(id) {
+    document.getElementById('history-modal').style.display = 'block';
+    document.getElementById('history-modal-content').innerHTML = 'Loading IPD details...';
+    fetch(`/vet/ipd/${id}/history-view`)
+        .then(r => {
+            if (!r.ok) throw new Error('Not found');
+            return r.text();
+        })
+        .then(html => { document.getElementById('history-modal-content').innerHTML = html; })
+        .catch(() => { document.getElementById('history-modal-content').innerHTML = 'Failed to load IPD details.'; });
+}
+
 function saveFollowup() {
     const payload = {
         prognosis: document.getElementById('fu-prognosis').value || null,
@@ -1268,13 +1335,305 @@ async function generateSeniorVetSupport(appointmentId) {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json' }
         });
+        if (res.status === 402) {
+            const d = await res.json();
+            box.innerHTML = '<span style="color:#dc2626;">' + d.error + '</span><br><a href="' + d.purchase_url + '" style="color:#2563eb;">Purchase AI Credits</a>';
+            return;
+        }
         if (!res.ok) throw new Error('Request failed');
         const data = await res.json();
         box.innerText = data.guidance || 'No guidance generated.';
+        if (data.credits_remaining !== undefined) updateCreditBadge(data.credits_remaining);
     } catch (e) {
         box.innerText = 'Failed to generate senior vet guidance.';
     }
 }
+
+function updateCreditBadge(balance) {
+    const badges = document.querySelectorAll('.ai-credit-balance');
+    badges.forEach(b => b.textContent = balance);
+}
 </script>
+
+{{-- ============================================
+     LAB ORDER MODAL
+     ============================================ --}}
+@if(!$readOnly)
+<div id="lab-order-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;justify-content:center;align-items:flex-start;padding-top:60px;overflow-y:auto;">
+<div style="background:#fff;border-radius:14px;padding:24px;max-width:700px;width:95%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="margin:0;font-size:18px;font-weight:700;">Order Lab Tests</h3>
+        <button onclick="document.getElementById('lab-order-modal').style.display='none'" style="background:none;border:none;font-size:24px;cursor:pointer;color:#6b7280;">&times;</button>
+    </div>
+
+    {{-- Existing lab orders for this appointment --}}
+    @php $existingOrders = \App\Models\LabOrder::where('appointment_id', $appointment->id)->with('tests')->latest()->get(); @endphp
+    @if($existingOrders->count())
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:600;color:#1e40af;margin-bottom:6px;">Existing Orders ({{ $existingOrders->count() }})</div>
+        @foreach($existingOrders as $order)
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;{{ !$loop->last ? 'border-bottom:1px solid #dbeafe;' : '' }}">
+            <span><strong>{{ $order->order_number }}</strong> — {{ $order->tests->pluck('test_name')->implode(', ') }}</span>
+            <span style="background:{{ $order->status === 'approved' ? '#dcfce7' : '#fef3c7' }};color:{{ $order->status === 'approved' ? '#166534' : '#92400e' }};padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;">{{ ucfirst(str_replace('_',' ',$order->status)) }}</span>
+        </div>
+        @endforeach
+    </div>
+    @endif
+
+    {{-- Search tests --}}
+    <div style="margin-bottom:12px;">
+        <input type="text" id="modal-lab-search" placeholder="Search tests (e.g., CBC, LFT, Thyroid)..." style="width:100%;padding:12px 14px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;" autocomplete="off">
+        <div id="modal-lab-dropdown" style="display:none;position:absolute;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,0.12);max-height:300px;overflow-y:auto;z-index:10;width:calc(100% - 48px);margin-top:2px;"></div>
+    </div>
+
+    {{-- Selected tests pills --}}
+    <div id="modal-lab-pills" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;min-height:20px;"></div>
+
+    {{-- Priority & Notes --}}
+    <div style="display:flex;gap:10px;margin-bottom:14px;">
+        <select id="modal-lab-priority" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+            <option value="routine">Routine</option>
+            <option value="urgent">Urgent</option>
+            <option value="stat">STAT</option>
+        </select>
+        <input type="text" id="modal-lab-notes" placeholder="Notes for lab (optional)" style="flex:1;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+    </div>
+
+    <button type="button" onclick="submitModalLabOrder()" id="modal-lab-order-btn" disabled style="background:#7c3aed;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;width:100%;">
+        Order Lab Tests
+    </button>
+</div>
+</div>
+
+<script>
+const modalLabPills = [];
+
+document.getElementById('modal-lab-search').addEventListener('input', function() {
+    const q = this.value.trim();
+    const dropdown = document.getElementById('modal-lab-dropdown');
+    if (q.length < 2) { dropdown.style.display = 'none'; return; }
+
+    fetch(`{{ route('vet.lab-orders.available-tests') }}?q=${encodeURIComponent(q)}`)
+        .then(r => r.json())
+        .then(data => {
+            const tests = data.tests || [];
+            const vetCanSelectLab = data.vet_can_select_lab || false;
+            if (!tests.length) {
+                dropdown.innerHTML = '<div style="padding:12px;font-size:13px;color:#9ca3af;">No tests found.</div>';
+            } else {
+                dropdown.innerHTML = tests.map(t => {
+                    const labs = t.labs || [];
+                    return `<div style="border-bottom:1px solid #f3f4f6;">
+                        <div style="padding:8px 12px;font-weight:600;font-size:13px;color:#374151;background:#f9fafb;">${t.name} <span style="color:#9ca3af;font-size:11px;">${t.code}</span></div>
+                        ${labs.map(l => {
+                            const badge = l.type === 'in_house'
+                                ? '<span style="background:#7c3aed;color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;">IN</span>'
+                                : '<span style="background:#f59e0b;color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;">EXT</span>';
+                            const params = l.parameters && l.parameters.length ? `<div style="font-size:10px;color:#9ca3af;margin-top:1px;">${l.parameters.join(', ')}</div>` : '';
+                            return `<div onclick="addModalLabTest(${l.id}, '${t.name.replace(/'/g,"\\'")}', '${t.code}', '${l.type}', ${l.lab_id || 'null'}, ${l.price || 0}, '${(l.lab_name||'').replace(/'/g,"\\'")}')"
+                                style="padding:8px 12px 8px 24px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:background .1s;"
+                                onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background=''">
+                                <div>${badge} ${l.lab_name}${params}</div>
+                                <span style="font-weight:600;color:#111;font-size:13px;">₹${l.price}</span>
+                            </div>`;
+                        }).join('')}
+                    </div>`;
+                }).join('');
+            }
+            dropdown.style.display = 'block';
+        });
+});
+
+function addModalLabTest(id, name, code, type, labId, price, labName) {
+    if (modalLabPills.some(t => t.code === code && t.lab_id == labId)) return;
+    modalLabPills.push({ id, name, code, type, lab_id: labId, price, lab_name: labName });
+    document.getElementById('modal-lab-search').value = '';
+    document.getElementById('modal-lab-dropdown').style.display = 'none';
+    renderModalPills();
+}
+
+function removeModalLabTest(i) {
+    modalLabPills.splice(i, 1);
+    renderModalPills();
+}
+
+function renderModalPills() {
+    const c = document.getElementById('modal-lab-pills');
+    c.innerHTML = modalLabPills.map((t, i) => {
+        const isExt = t.type === 'external';
+        const bg = isExt ? '#fef3c7' : '#faf5ff';
+        const border = isExt ? '#fde68a' : '#e9d5ff';
+        const color = isExt ? '#92400e' : '#7c3aed';
+        const badge = isExt ? `<span style="font-size:9px;background:#f59e0b;color:#fff;padding:1px 5px;border-radius:4px;">EXT · ${t.lab_name}</span>` : '<span style="font-size:9px;background:#7c3aed;color:#fff;padding:1px 5px;border-radius:4px;">IN</span>';
+        return `<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px 6px 12px;background:${bg};border:1px solid ${border};border-radius:20px;font-size:13px;color:${color};">
+            <strong>${t.name}</strong> ${badge} ₹${t.price}
+            <button type="button" onclick="removeModalLabTest(${i})" style="background:rgba(0,0,0,0.08);border:none;border-radius:50%;width:18px;height:18px;font-size:12px;cursor:pointer;color:#6b7280;display:flex;align-items:center;justify-content:center;">&times;</button>
+        </span>`;
+    }).join('');
+    document.getElementById('modal-lab-order-btn').disabled = modalLabPills.length === 0;
+}
+
+function submitModalLabOrder() {
+    if (modalLabPills.length === 0) return;
+    const btn = document.getElementById('modal-lab-order-btn');
+    btn.disabled = true;
+    btn.textContent = 'Ordering...';
+
+    // Group by lab
+    const groups = {};
+    modalLabPills.forEach(t => {
+        const key = t.type === 'external' && t.lab_id ? 'ext_' + t.lab_id : 'in_house';
+        if (!groups[key]) groups[key] = { lab_id: t.type === 'external' ? t.lab_id : null, tests: [] };
+        groups[key].tests.push({
+            name: t.name, catalog_id: t.type === 'in_house' ? t.id : null,
+            external_test_id: t.type === 'external' ? t.id : null,
+            external_lab_id: t.type === 'external' ? t.lab_id : null,
+            type: t.type, price: t.price,
+        });
+    });
+
+    const promises = Object.values(groups).map(group =>
+        fetch('{{ route("vet.lab-orders.store", $appointment) }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+            body: JSON.stringify({
+                tests: group.tests, lab_id: group.lab_id,
+                priority: document.getElementById('modal-lab-priority').value,
+                notes: document.getElementById('modal-lab-notes').value,
+            })
+        }).then(r => r.ok ? r.json() : r.text().then(t => ({ message: 'Error ' + r.status })))
+    );
+
+    Promise.all(promises).then(results => {
+        const ok = results.filter(r => r.success);
+        if (ok.length) {
+            modalLabPills.length = 0;
+            renderModalPills();
+            alert(ok.length === 1 ? 'Lab order created: ' + ok[0].order.order_number : ok.length + ' lab orders created');
+            location.reload();
+        } else {
+            alert('Error: ' + (results[0]?.message || 'Unknown error'));
+            btn.disabled = false;
+            btn.textContent = 'Order Lab Tests';
+        }
+    }).catch(e => {
+        alert('Failed: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = 'Order Lab Tests';
+    });
+}
+</script>
+
+{{-- ============================================
+     VACCINATION MODAL
+     ============================================ --}}
+<div id="vaccination-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;justify-content:center;align-items:flex-start;padding-top:60px;">
+<div style="background:#fff;border-radius:14px;padding:24px;max-width:600px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="margin:0;font-size:18px;font-weight:700;">Record Vaccination</h3>
+        <button onclick="document.getElementById('vaccination-modal').style.display='none'" style="background:none;border:none;font-size:24px;cursor:pointer;color:#6b7280;">&times;</button>
+    </div>
+
+    <form method="POST" action="{{ route('vet.vaccination.store', $appointment) }}">
+        @csrf
+        <div style="margin-bottom:12px;">
+            <label style="font-size:12px;font-weight:600;color:#374151;">Search Vaccine *</label>
+            <input type="text" id="vacc-search" placeholder="Search vaccine (e.g., Rabies, DHPP, Tricat)..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;" autocomplete="off">
+            <input type="hidden" name="vaccine_generic_id" id="vacc-generic-id">
+            <div id="vacc-dropdown" style="display:none;position:absolute;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,0.1);max-height:200px;overflow-y:auto;z-index:10;"></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+            <div>
+                <label style="font-size:12px;font-weight:600;color:#374151;">Brand</label>
+                <select name="brand_id" id="vacc-brand" style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+                    <option value="">Select brand</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:12px;font-weight:600;color:#374151;">Dose #</label>
+                <select name="dose_number" style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+                    <option value="1st">1st</option>
+                    <option value="2nd">2nd</option>
+                    <option value="3rd">3rd</option>
+                    <option value="Booster">Booster</option>
+                    <option value="Annual">Annual</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+            <div>
+                <label style="font-size:12px;font-weight:600;color:#374151;">Batch #</label>
+                <input type="text" name="batch_number" placeholder="From vial" style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+            </div>
+            <div>
+                <label style="font-size:12px;font-weight:600;color:#374151;">Route</label>
+                <select name="route" style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+                    <option value="SC">SC (Subcutaneous)</option>
+                    <option value="IM">IM (Intramuscular)</option>
+                    <option value="IN">IN (Intranasal)</option>
+                    <option value="Oral">Oral</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:12px;font-weight:600;color:#374151;">Date</label>
+                <input type="date" name="administered_date" value="{{ date('Y-m-d') }}" style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+            </div>
+        </div>
+
+        <div style="margin-bottom:14px;">
+            <label style="font-size:12px;font-weight:600;color:#374151;">Next Due Date</label>
+            <input type="date" name="next_due_date" style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+        </div>
+
+        <button type="submit" style="background:#0d9488;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;width:100%;">
+            Record Vaccination
+        </button>
+    </form>
+</div>
+</div>
+
+<script>
+// Vaccine search
+document.getElementById('vacc-search').addEventListener('input', function() {
+    const q = this.value.trim();
+    const dd = document.getElementById('vacc-dropdown');
+    if (q.length < 2) { dd.style.display = 'none'; return; }
+
+    fetch(`/vet/search-vaccines?q=${encodeURIComponent(q)}`)
+        .then(r => r.json())
+        .then(vaccines => {
+            if (!vaccines.length) { dd.innerHTML = '<div style="padding:10px;color:#9ca3af;font-size:13px;">No vaccines found</div>'; }
+            else {
+                dd.innerHTML = vaccines.map(v =>
+                    `<div onclick="selectVaccine(${v.id}, '${v.name.replace(/'/g,"\\'")}')" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f3f4f6;" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background=''">
+                        <strong>${v.name}</strong>
+                        <div style="font-size:11px;color:#6b7280;">${v.species || ''}</div>
+                    </div>`
+                ).join('');
+            }
+            dd.style.display = 'block';
+        });
+});
+
+function selectVaccine(id, name) {
+    document.getElementById('vacc-search').value = name;
+    document.getElementById('vacc-generic-id').value = id;
+    document.getElementById('vacc-dropdown').style.display = 'none';
+
+    // Load brands for this vaccine
+    fetch(`/vet/search-vaccine-brands?generic_id=${id}`)
+        .then(r => r.json())
+        .then(brands => {
+            const sel = document.getElementById('vacc-brand');
+            sel.innerHTML = '<option value="">Select brand</option>';
+            brands.forEach(b => {
+                sel.innerHTML += `<option value="${b.id}">${b.brand_name} (${b.manufacturer || ''})</option>`;
+            });
+        });
+}
+</script>
+@endif
 
 @endsection

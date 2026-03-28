@@ -28,14 +28,19 @@ class VetPetHistoryController extends Controller
         $petParent = PetParent::where('phone', $request->mobile)
         ->with([
             'pets.appointments' => function ($q) {
-                $q->where('status', 'completed')
+                $q->whereIn('status', ['completed', 'awaiting_lab_results'])
                 ->with([
                     'caseSheet',
                     'prescription.items',
+                    'treatments.drugGeneric',
                     'clinic:id,name',
                     'vet:id,name',
                 ])
                 ->orderByDesc('scheduled_at');
+            },
+            'pets.ipdAdmissions' => function ($q) {
+                $q->with(['clinic:id,name', 'treatments', 'notes'])
+                  ->orderByDesc('admission_date');
             }
         ])
         ->firstOrFail();

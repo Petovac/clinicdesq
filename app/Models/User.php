@@ -21,11 +21,12 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
-        'phone',             
+        'phone',
         'password',
         'role',
         'organisation_id',
         'clinic_id',
+        'linked_vet_id',
         'is_active',
     ];
     
@@ -139,5 +140,9 @@ class User extends Authenticatable
             ->where('permissions.slug', $permissionSlug)
             ->exists();
     }
-    
+
+    public function linkedVet()
+    {
+        return $this->belongsTo(Vet::class, 'linked_vet_id');
+    }
 }

@@ -54,6 +54,30 @@ class LabManagementController extends Controller
             ? array_map('trim', explode(',', $data['parameters']))
             : null;
 
+        // Auto-link to standard test code from directory
+        if (!empty($data['code'])) {
+            $match = \DB::table('lab_test_directory')
+                ->where('code', strtoupper($data['code']))
+                ->first();
+            if ($match) {
+                $data['standard_test_code'] = $match->code;
+            }
+        }
+
+        // If no code match, try matching by name/aliases
+        if (empty($data['standard_test_code'])) {
+            $match = \DB::table('lab_test_directory')
+                ->where('name', 'like', '%' . $data['name'] . '%')
+                ->orWhere('aliases', 'like', '%' . $data['name'] . '%')
+                ->first();
+            if ($match) {
+                $data['standard_test_code'] = $match->code;
+                if (empty($data['code'])) {
+                    $data['code'] = $match->code;
+                }
+            }
+        }
+
         LabTestCatalog::create($data);
 
         return redirect()->route('organisation.lab-catalog.index')
@@ -106,17 +130,42 @@ class LabManagementController extends Controller
     // EXTERNAL LABS (onboarding & tie-ups)
     // ─────────────────────────────────────────
 
-    public function labsIndex()
+    public function labsIndex(Request $request)
     {
         $orgId = auth()->user()->organisation_id;
 
+        // Get org's clinic cities for matching
+        $orgCities = Clinic::where('organisation_id', $orgId)
+            ->whereNotNull('city')
+            ->where('city', '!=', '')
+            ->pluck('city')
+            ->unique()
+            ->values();
+
+        // Tied-up labs (accepted)
         $tiedUpLabs = ExternalLab::whereHas('organisations', function ($q) use ($orgId) {
-            $q->where('organisation_id', $orgId);
+            $q->where('organisation_id', $orgId)->where('organisation_lab.status', 'accepted');
         })->with(['testOfferings' => function ($q) use ($orgId) {
             $q->where('organisation_id', $orgId);
         }])->get();
 
-        return view('organisation.labs.index', compact('tiedUpLabs'));
+        // Pending requests (sent by org, waiting lab acceptance)
+        $pendingLabs = ExternalLab::whereHas('organisations', function ($q) use ($orgId) {
+            $q->where('organisation_id', $orgId)->where('organisation_lab.status', 'pending');
+        })->get();
+
+        // Available labs in same cities (not yet connected)
+        $search = $request->get('q', '');
+        $availableLabs = ExternalLab::where('is_active', true)
+            ->where('type', 'external')
+            ->whereDoesntHave('organisations', fn($q) => $q->where('organisation_id', $orgId))
+            ->when($search, fn($q) => $q->where(fn($q2) => $q2->where('name', 'like', "%{$search}%")->orWhere('city', 'like', "%{$search}%")))
+            ->when(!$search && $orgCities->isNotEmpty(), fn($q) => $q->whereIn('city', $orgCities))
+            ->orderBy('name')
+            ->limit(50)
+            ->get();
+
+        return view('organisation.labs.index', compact('tiedUpLabs', 'pendingLabs', 'availableLabs', 'search', 'orgCities'));
     }
 
     /**
@@ -159,15 +208,19 @@ class LabManagementController extends Controller
 
         $lab = ExternalLab::findOrFail($request->lab_id);
 
-        // Check not already tied up
+        // Check not already tied up or pending
         if ($lab->organisations()->where('organisation_id', $orgId)->exists()) {
-            return back()->with('error', 'This lab is already onboarded.');
+            return back()->with('error', 'A request to this lab already exists.');
         }
 
-        $lab->organisations()->attach($orgId, ['is_active' => true]);
+        $lab->organisations()->attach($orgId, [
+            'is_active' => false,
+            'status' => 'pending',
+            'requested_at' => now(),
+        ]);
 
-        return redirect()->route('organisation.labs.edit', $lab)
-            ->with('success', "Lab '{$lab->name}' onboarded! You can now import their tests and set your pricing.");
+        return redirect()->route('organisation.labs.index')
+            ->with('success', "Request sent to '{$lab->name}'. They will review and accept your request.");
     }
 
     /**
@@ -258,7 +311,46 @@ class LabManagementController extends Controller
             ->whereNull('organisation_id')
             ->count();
 
-        return view('organisation.labs.edit', compact('lab', 'masterTestCount'));
+        // Clinics for assignment
+        $clinics = Clinic::where('organisation_id', $orgId)->orderBy('name')->get();
+        $assignedClinicIds = \DB::table('clinic_external_lab')
+            ->where('external_lab_id', $lab->id)
+            ->where('is_active', true)
+            ->pluck('clinic_id')
+            ->toArray();
+
+        return view('organisation.labs.edit', compact('lab', 'masterTestCount', 'clinics', 'assignedClinicIds'));
+    }
+
+    /**
+     * Assign/update which clinics can use this external lab.
+     */
+    public function labsAssignClinics(Request $request, ExternalLab $lab)
+    {
+        $orgId = auth()->user()->organisation_id;
+        abort_unless($lab->organisations()->where('organisation_id', $orgId)->exists(), 403);
+
+        $selectedClinicIds = $request->input('clinic_ids', []);
+
+        // Get all org clinics
+        $allClinicIds = Clinic::where('organisation_id', $orgId)->pluck('id')->toArray();
+
+        // Sync: remove unselected, add selected
+        foreach ($allClinicIds as $clinicId) {
+            if (in_array($clinicId, $selectedClinicIds)) {
+                \DB::table('clinic_external_lab')->updateOrInsert(
+                    ['clinic_id' => $clinicId, 'external_lab_id' => $lab->id],
+                    ['is_active' => true, 'updated_at' => now()]
+                );
+            } else {
+                \DB::table('clinic_external_lab')
+                    ->where('clinic_id', $clinicId)
+                    ->where('external_lab_id', $lab->id)
+                    ->update(['is_active' => false, 'updated_at' => now()]);
+            }
+        }
+
+        return back()->with('success', 'Clinic assignments updated for ' . $lab->name);
     }
 
     public function labsUpdate(Request $request, ExternalLab $lab)
@@ -367,5 +459,39 @@ class LabManagementController extends Controller
         $labUser->update(['is_active' => !$labUser->is_active]);
 
         return back()->with('success', $labUser->is_active ? 'Lab tech activated.' : 'Lab tech deactivated.');
+    }
+
+    public function labTechUpdate(Request $request, LabUser $labUser)
+    {
+        $orgId = auth()->user()->organisation_id;
+        abort_if($labUser->organisation_id !== $orgId, 403);
+
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:lab_users,email,' . $labUser->id,
+            'phone' => 'nullable|string|max:20',
+            'clinic_id' => 'required|exists:clinics,id',
+            'role' => 'required|in:lab_tech,lab_admin',
+            'password' => 'nullable|string|min:6',
+        ]);
+
+        // Verify clinic belongs to org
+        Clinic::where('id', $data['clinic_id'])
+            ->where('organisation_id', $orgId)
+            ->firstOrFail();
+
+        $labUser->update([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'phone' => $data['phone'] ?? null,
+            'clinic_id' => $data['clinic_id'],
+            'role' => $data['role'],
+        ]);
+
+        if (!empty($data['password'])) {
+            $labUser->update(['password' => Hash::make($data['password'])]);
+        }
+
+        return back()->with('success', 'Lab technician updated.');
     }
 }

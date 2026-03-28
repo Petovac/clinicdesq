@@ -4,6 +4,97 @@
 
 @section('head')
 <style>
+    /* ===== Case Sheet Section Cards ===== */
+    .cs-section {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 18px 20px;
+        margin-bottom: 16px;
+        position: relative;
+    }
+    .cs-section--blue { border-left: 3px solid #2563eb; }
+    .cs-section--green { border-left: 3px solid #16a34a; }
+    .cs-section--orange { border-left: 3px solid #f59e0b; }
+    .cs-section--purple { border-left: 3px solid #7c3aed; }
+    .cs-section--red { border-left: 3px solid #ef4444; }
+    .cs-section--teal { border-left: 3px solid #0d9488; }
+
+    .cs-section-title {
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0 0 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .cs-section--blue .cs-section-title { color: #2563eb; }
+    .cs-section--green .cs-section-title { color: #16a34a; }
+    .cs-section--orange .cs-section-title { color: #f59e0b; }
+    .cs-section--purple .cs-section-title { color: #7c3aed; }
+    .cs-section--red .cs-section-title { color: #ef4444; }
+    .cs-section--teal .cs-section-title { color: #0d9488; }
+
+    .cs-section-icon {
+        width: 22px; height: 22px;
+        border-radius: 5px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12px;
+    }
+    .cs-section--blue .cs-section-icon { background: #dbeafe; }
+    .cs-section--green .cs-section-icon { background: #dcfce7; }
+    .cs-section--orange .cs-section-icon { background: #fef3c7; }
+    .cs-section--purple .cs-section-icon { background: #ede9fe; }
+    .cs-section--red .cs-section-icon { background: #fee2e2; }
+    .cs-section--teal .cs-section-icon { background: #ccfbf1; }
+
+    /* Lab dropdown hover fix */
+    .lab-option {
+        padding: 8px 14px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13px;
+        border-bottom: 1px solid #f3f4f6;
+        transition: background 0.1s;
+    }
+    .lab-option:hover {
+        background: #eff6ff !important;
+    }
+    .lab-option:last-child { border-bottom: none; }
+    .lab-option .lab-badge {
+        font-size: 10px;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 4px;
+        margin-right: 6px;
+    }
+    .lab-badge--in { background: #dbeafe; color: #1d4ed8; }
+    .lab-badge--ext { background: #dcfce7; color: #166534; }
+    .lab-option .lab-price { font-weight: 600; color: #111827; }
+    .lab-group-header {
+        padding: 8px 14px 4px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #111827;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .lab-group-header .test-code {
+        font-size: 11px;
+        font-weight: 500;
+        color: #6b7280;
+        margin-left: 6px;
+    }
+
+    /* Speech-to-text mic button */
+    .mic-btn.recording { background: #fee2e2 !important; border-color: #ef4444 !important; animation: mic-pulse 1s infinite; }
+    .mic-btn.recording svg { stroke: #ef4444; }
+    @keyframes mic-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.3); } 50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); } }
+
     /* Drug Section Layout */
     .drug-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
     .drug-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 10px; }
@@ -139,11 +230,19 @@
                 return "
                 <div class='v-form-group'>
                     <label>{$label}</label>
-                    <textarea name='{$name}' id='{$name}' rows='{$rows}' placeholder='{$placeholder}' class='v-input'>{$value}</textarea>
-                    <button type='button' onclick=\"refineField('{$name}')\" class='v-btn v-btn--outline v-btn--sm' style='margin-top:6px;'>Rewrite with AI</button>
+                    <div style='position:relative;'>
+                        <textarea name='{$name}' id='{$name}' rows='{$rows}' placeholder='{$placeholder}' class='v-input' style='padding-right:44px;'>{$value}</textarea>
+                        <button type='button' class='mic-btn' data-field='{$name}' onclick='toggleMic(this)' title='Voice input' style='position:absolute;right:8px;top:8px;width:32px;height:32px;border-radius:50%;border:1px solid #d1d5db;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;'>
+                            <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#6b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z'/><path d='M19 10v2a7 7 0 0 1-14 0v-2'/><line x1='12' y1='19' x2='12' y2='23'/><line x1='8' y1='23' x2='16' y2='23'/></svg>
+                        </button>
+                    </div>
                 </div>";
             }
         @endphp
+
+        {{-- Section: Assessment --}}
+        <div class="cs-section cs-section--blue">
+        <div class="cs-section-title"><span class="cs-section-icon">📋</span> Assessment</div>
 
         {!! aiTextarea('presenting_complaint', 'Presenting Complaint', $caseSheet->presenting_complaint ?? '', 3, 'Chief complaint in owner\'s words') !!}
         {!! aiTextarea('history', 'History', $caseSheet->history ?? '', 3, 'Relevant medical, dietary, vaccination, or illness history') !!}
@@ -225,10 +324,13 @@
 
         {!! aiTextarea('diagnosis', 'Diagnosis', $caseSheet->diagnosis ?? '', 2, 'Confirmed / provisional diagnosis') !!}
 
-        <hr class="v-divider">
+        </div>{{-- /Assessment section --}}
 
-        {{-- Injectable Drugs --}}
-        <h4 style="font-size:15px;font-weight:600;color:var(--primary);margin:0 0 8px;">Administer Drug (Injectable)</h4>
+        {{-- Section: Drug Treatment --}}
+        <div class="cs-section cs-section--green">
+        <div class="cs-section-title"><span class="cs-section-icon">💊</span> Drug Treatment</div>
+
+        <h4 style="font-size:14px;font-weight:600;color:#374151;margin:0 0 8px;">Administer Drug (Injectable)</h4>
 
         <div class="drug-grid-2">
             <div style="position:relative;">
@@ -289,8 +391,11 @@
             @endforeach
         </div>
 
-        {{-- Procedures --}}
-        <h4 style="font-size:15px;font-weight:600;color:var(--primary);margin:24px 0 8px;">Procedure</h4>
+        </div>{{-- /Drug Treatment section --}}
+
+        {{-- Section: Procedures --}}
+        <div class="cs-section cs-section--green">
+        <div class="cs-section-title"><span class="cs-section-icon">🔧</span> Procedures</div>
 
         <div style="display:flex;gap:10px;align-items:flex-end;">
             <div style="flex:1;position:relative;">
@@ -311,6 +416,46 @@
             @endforeach
         </div>
 
+        </div>{{-- /Procedures section --}}
+
+        {{-- Section: Vaccinations (read-only — recording is via Clinical Actions) --}}
+        @php $thisApptVaccs = $appointment->pet->vaccinations->where('appointment_id', $appointment->id); @endphp
+        @if($thisApptVaccs->count() || $appointment->pet->vaccinations->count())
+        <div class="cs-section cs-section--orange">
+        <div class="cs-section-title"><span class="cs-section-icon">💉</span> Vaccinations</div>
+
+        @foreach($thisApptVaccs as $vacc)
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;margin-bottom:6px;">
+                <span style="font-weight:600;font-size:13px;color:#92400e;">{{ $vacc->vaccine_name }}</span>
+                <span style="font-size:11px;color:#6b7280;">{{ $vacc->dose_number }} · {{ $vacc->brand_name ?? '' }} · {{ $vacc->route }}</span>
+                <span style="margin-left:auto;font-size:11px;color:#6b7280;">{{ \Carbon\Carbon::parse($vacc->administered_date)->format('d M Y') }}</span>
+                @if($vacc->next_due_date)
+                <span style="font-size:10px;color:#2563eb;">Next: {{ \Carbon\Carbon::parse($vacc->next_due_date)->format('d M Y') }}</span>
+                @endif
+            </div>
+        @endforeach
+
+        @php $prevVaccs = $appointment->pet->vaccinations->where('appointment_id', '!=', $appointment->id); @endphp
+        @if($prevVaccs->count())
+        <details style="margin-top:6px;">
+            <summary style="font-size:11px;color:#6b7280;cursor:pointer;">Previous vaccinations ({{ $prevVaccs->count() }})</summary>
+            <div style="margin-top:6px;font-size:12px;color:#374151;">
+                @foreach($prevVaccs->take(10) as $pv)
+                <div style="padding:3px 0;border-bottom:1px solid #f3f4f6;">
+                    {{ $pv->vaccine_name }} ({{ $pv->dose_number }}) — {{ \Carbon\Carbon::parse($pv->administered_date)->format('d M Y') }}
+                </div>
+                @endforeach
+            </div>
+        </details>
+        @endif
+
+        </div>
+        @endif
+
+        {{-- Section: Treatment Notes --}}
+        <div class="cs-section cs-section--teal">
+        <div class="cs-section-title"><span class="cs-section-icon">📝</span> Treatment Notes</div>
+
         {!! aiTextarea('treatment_given', 'Treatment Given', $caseSheet->treatment_given ?? '', 3, 'Medications, fluids, injections administered') !!}
 
         <div class="v-form-group">
@@ -318,58 +463,41 @@
             <textarea name="procedures_done" rows="2" placeholder="Any procedures performed during the visit" class="v-input">{{ $caseSheet->procedures_done ?? '' }}</textarea>
         </div>
 
-        {{-- Lab Test Ordering --}}
-        <h4 style="font-size:15px;font-weight:600;color:#7c3aed;margin:24px 0 8px;">Order Lab Tests</h4>
+        </div>{{-- /Treatment Notes section --}}
 
-        <div style="display:flex;gap:10px;align-items:flex-end;">
-            <div style="flex:1;position:relative;">
-                <input type="text" id="lab-test-search" placeholder="Type to search lab tests (e.g., CBC, LFT)..." autocomplete="off" class="v-input">
-                <div id="lab-test-dropdown" class="search-dropdown"></div>
-            </div>
-            <button type="button" onclick="addLabTest()" class="v-btn v-btn--outline v-btn--sm" style="border-color:#7c3aed;color:#7c3aed;">+ Add Test</button>
-        </div>
-
-        <div id="lab-test-pills" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
-            {{-- Lab test pills added dynamically --}}
-        </div>
-
-        <div style="display:flex;gap:10px;align-items:center;margin-top:10px;">
-            <select id="lab-priority" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
-                <option value="routine">Routine</option>
-                <option value="urgent">Urgent</option>
-            </select>
-            <input type="text" id="lab-notes" placeholder="Notes for lab (optional)" class="v-input" style="flex:1;">
-            <button type="button" onclick="submitLabOrder()" class="v-btn v-btn--sm" style="background:#7c3aed;color:#fff;" id="lab-order-btn" disabled>
-                Order Lab Tests
-            </button>
-        </div>
-
-        {{-- Existing lab orders for this appointment --}}
+        {{-- Section: Lab Orders (read-only summary — ordering is via Clinical Actions) --}}
         @if($appointment->labOrders->isNotEmpty())
-            <div style="margin-top:14px;">
-                <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">Active Lab Orders</div>
-                @foreach($appointment->labOrders as $labOrder)
-                    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;margin-bottom:6px;">
-                        <span style="font-weight:600;font-size:12px;color:#7c3aed;">{{ $labOrder->order_number }}</span>
-                        <span style="font-size:11px;color:var(--text-muted);">{{ $labOrder->tests->pluck('test_name')->implode(', ') }}</span>
-                        <span style="margin-left:auto;display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;
-                            @if($labOrder->status === 'approved') background:#dcfce7;color:#166534;
-                            @elseif($labOrder->status === 'results_uploaded') background:#d1fae5;color:#065f46;
-                            @elseif($labOrder->status === 'processing') background:#e0e7ff;color:#4338ca;
-                            @else background:#fef3c7;color:#92400e;
-                            @endif">{{ str_replace('_', ' ', ucfirst($labOrder->status)) }}</span>
-                        <a href="{{ route('vet.lab-orders.show', $labOrder) }}" style="font-size:11px;color:#7c3aed;font-weight:600;">View</a>
-                    </div>
-                @endforeach
-            </div>
+        <div class="cs-section cs-section--purple">
+        <div class="cs-section-title"><span class="cs-section-icon">🔬</span> Lab Orders</div>
+            @foreach($appointment->labOrders as $labOrder)
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;margin-bottom:6px;">
+                    <span style="font-weight:600;font-size:12px;color:#7c3aed;">{{ $labOrder->order_number }}</span>
+                    <span style="font-size:11px;color:var(--text-muted);">{{ $labOrder->tests->pluck('test_name')->implode(', ') }}</span>
+                    <span style="margin-left:auto;display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;
+                        @if($labOrder->status === 'approved') background:#dcfce7;color:#166534;
+                        @elseif($labOrder->status === 'results_uploaded') background:#d1fae5;color:#065f46;
+                        @elseif($labOrder->status === 'processing') background:#e0e7ff;color:#4338ca;
+                        @else background:#fef3c7;color:#92400e;
+                        @endif">{{ str_replace('_', ' ', ucfirst($labOrder->status)) }}</span>
+                    <a href="{{ route('vet.lab-orders.show', $labOrder) }}" style="font-size:11px;color:#7c3aed;font-weight:600;">View</a>
+                </div>
+            @endforeach
+        </div>
         @endif
+
+        {{-- Section: Follow-up & Advice --}}
+        <div class="cs-section cs-section--blue">
+        <div class="cs-section-title"><span class="cs-section-icon">📅</span> Follow-up & Advice</div>
 
         {!! aiTextarea('further_plan', 'Further Treatment Plan', $caseSheet->further_plan ?? '', 2, 'Follow-up plan, investigations, monitoring') !!}
         {!! aiTextarea('advice', 'Advice', $caseSheet->advice ?? '', 2, 'Dietary advice, care instructions, warnings') !!}
 
-        <div style="display:flex;gap:10px;margin-top:16px;">
+        </div>{{-- /Follow-up section --}}
+
+        <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
             <button type="button" onclick="showCaseSheetPreview()" class="v-btn v-btn--outline">Preview Case Sheet</button>
             <button type="submit" class="v-btn v-btn--primary">Save Case Sheet</button>
+            <a href="{{ route('vet.certificates.create', ['pet' => $appointment->pet_id, 'appointment_id' => $appointment->id]) }}" class="v-btn v-btn--outline" style="border-color:#f59e0b;color:#f59e0b;">📜 Issue Certificate</a>
             <a href="{{ route('vet.appointments.case', $appointment->id) }}" class="v-btn v-btn--ghost">Cancel</a>
         </div>
     </form>
@@ -387,9 +515,19 @@
             remain the responsibility of the veterinarian.
         </p>
 
-        <button type="button" onclick="getClinicalInsights()" class="v-btn v-btn--outline v-btn--sm" style="margin-bottom:12px;">
-            Generate AI Clinical Insights
-        </button>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <button type="button" onclick="getClinicalInsights()" class="v-btn v-btn--outline v-btn--sm">
+                Generate AI Clinical Insights
+            </button>
+            <span style="font-size:11px;color:var(--text-muted);">1 credit per use</span>
+        </div>
+
+        <div id="ai-credit-info" style="font-size:12px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+            <span style="color:#fbbf24;">&#9733;</span>
+            <span id="ai-credit-balance" style="font-weight:600;">{{ \App\Models\VetAiCredit::where('vet_id', auth('vet')->id())->value('balance') ?? 0 }}</span>
+            <span style="color:var(--text-muted);">credits remaining</span>
+            <a href="{{ route('vet.credits.index') }}" style="font-size:11px;color:var(--primary);margin-left:4px;">Buy more</a>
+        </div>
 
         <div id="ai-insights-output">
             Click the button to generate insights.
@@ -456,7 +594,19 @@
                 </div>
             </div>
 
-            <div style="margin-top:14px;text-align:right;">
+            <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;">
+                <div style="display:flex;gap:8px;">
+                    <button type="button" id="rewriteAllBtn" onclick="rewriteAllWithAI()" class="v-btn v-btn--sm" style="background:#2563eb;color:#fff;">
+                        ✨ Rewrite All with AI
+                    </button>
+                    <button type="button" id="undoRewriteBtn" onclick="undoRewrite()" class="v-btn v-btn--outline v-btn--sm" style="display:none;">
+                        ↩ Undo Rewrite
+                    </button>
+                    <button type="button" id="waShareBtn" onclick="sendCaseSheetWhatsApp()" class="v-btn v-btn--sm" style="background:{{ ($waAlreadySent ?? false) ? '#16a34a' : '#25D366' }};color:#fff;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:4px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                        {{ ($waAlreadySent ?? false) ? '↻ Resend via WhatsApp' : 'Send via WhatsApp' }}
+                    </button>
+                </div>
                 <button onclick="closeCaseSheetPreview()" class="v-btn v-btn--outline v-btn--sm">Close Preview</button>
             </div>
         </div>
@@ -466,6 +616,105 @@
 @endsection
 
 @section('scripts')
+{{-- SPEECH-TO-TEXT --}}
+<script>
+let activeMic = null;
+let recognition = null;
+let baseText = ''; // text before recording started
+
+function toggleMic(btn) {
+    const fieldName = btn.dataset.field;
+    const textarea = document.getElementById(fieldName);
+
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert('Speech recognition is not supported in this browser. Please use Chrome.');
+        return;
+    }
+
+    // If already recording this field, stop
+    if (activeMic === btn) {
+        stopMic();
+        return;
+    }
+
+    // Stop any existing recording
+    if (activeMic) stopMic();
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-IN';
+
+    // Save the text that existed before we started recording
+    baseText = textarea.value.trim();
+    if (baseText && !baseText.endsWith('.') && !baseText.endsWith(',')) {
+        baseText += '. ';
+    } else if (baseText) {
+        baseText += ' ';
+    }
+
+    let allFinal = ''; // accumulates all finalized chunks
+
+    recognition.onstart = function() {
+        btn.classList.add('recording');
+        btn.title = 'Listening... click to stop';
+        activeMic = btn;
+    };
+
+    recognition.onresult = function(event) {
+        // Rebuild allFinal from scratch each time to avoid duplication
+        allFinal = '';
+        let interim = '';
+
+        for (let i = 0; i < event.results.length; i++) {
+            if (event.results[i].isFinal) {
+                allFinal += event.results[i][0].transcript;
+            } else {
+                interim += event.results[i][0].transcript;
+            }
+        }
+
+        // Show: base + all finalized + current interim (gray preview)
+        textarea.value = baseText + allFinal + interim;
+
+        // Auto-resize
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 300) + 'px';
+    };
+
+    recognition.onerror = function(event) {
+        if (event.error !== 'aborted' && event.error !== 'no-speech') {
+            console.warn('Speech error:', event.error);
+        }
+        stopMic();
+    };
+
+    recognition.onend = function() {
+        // Only keep base + finalized text (drop any interim)
+        textarea.value = (baseText + allFinal).trim();
+        if (activeMic === btn) stopMic();
+    };
+
+    recognition.start();
+}
+
+function stopMic() {
+    if (recognition) {
+        recognition.stop();
+        recognition = null;
+    }
+    if (activeMic) {
+        activeMic.classList.remove('recording');
+        activeMic.title = 'Voice input';
+        activeMic = null;
+    }
+}
+
+// Stop recording when navigating away
+window.addEventListener('beforeunload', stopMic);
+</script>
+
 {{-- PREVIEW JS --}}
 <script>
 function showCaseSheetPreview() {
@@ -569,6 +818,129 @@ function showCaseSheetPreview() {
 function closeCaseSheetPreview() {
     document.getElementById('casesheet-preview-modal').style.display = 'none';
 }
+
+// ── Send Case Sheet via WhatsApp ──
+function sendCaseSheetWhatsApp() {
+    const btn = document.getElementById('waShareBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;">Sending...</span>';
+
+    fetch('/whatsapp/send/case-sheet/{{ $appointment->id }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            btn.innerHTML = '✓ Sent via WhatsApp';
+            btn.style.background = '#16a34a';
+            setTimeout(() => {
+                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:4px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> Send via WhatsApp';
+                btn.style.background = '#25D366';
+                btn.disabled = false;
+            }, 3000);
+        } else {
+            alert(data.message || 'Failed to send');
+            btn.innerHTML = 'Retry WhatsApp';
+            btn.style.background = '#ef4444';
+            btn.disabled = false;
+        }
+    })
+    .catch(err => {
+        alert('Error sending WhatsApp: ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = 'Retry WhatsApp';
+    });
+}
+
+// ── Rewrite All with AI ──
+let originalValues = {};
+
+function rewriteAllWithAI() {
+    const fields = [
+        'presenting_complaint', 'history', 'clinical_examination',
+        'differentials', 'diagnosis', 'treatment_given',
+        'procedures_done', 'further_plan', 'advice'
+    ];
+
+    // Save originals for undo
+    originalValues = {};
+    fields.forEach(name => {
+        const el = document.getElementById(name);
+        if (el) originalValues[name] = el.value;
+    });
+
+    const btn = document.getElementById('rewriteAllBtn');
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Rewriting...';
+
+    // Send all fields to AI for comprehensive rewrite
+    const data = {};
+    fields.forEach(name => {
+        const el = document.getElementById(name);
+        if (el && el.value.trim()) data[name] = el.value;
+    });
+
+    if (Object.keys(data).length === 0) {
+        btn.disabled = false;
+        btn.innerHTML = '✨ Rewrite All with AI';
+        alert('No fields to rewrite. Enter some text first.');
+        return;
+    }
+
+    // Rewrite each non-empty field
+    let pending = Object.keys(data).length;
+    let completed = 0;
+
+    Object.entries(data).forEach(([field, text]) => {
+        fetch('{{ url("/vet/ai/refine") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                field: field.replace(/_/g, ' '),
+                text: text
+            })
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.refined) {
+                document.getElementById(field).value = result.refined;
+            }
+            completed++;
+            if (completed >= pending) {
+                btn.disabled = false;
+                btn.innerHTML = '✨ Rewrite All with AI';
+                document.getElementById('undoRewriteBtn').style.display = 'inline-flex';
+                // Refresh preview
+                showCaseSheetPreview();
+            }
+        })
+        .catch(() => {
+            completed++;
+            if (completed >= pending) {
+                btn.disabled = false;
+                btn.innerHTML = '✨ Rewrite All with AI';
+            }
+        });
+    });
+}
+
+function undoRewrite() {
+    Object.entries(originalValues).forEach(([name, value]) => {
+        const el = document.getElementById(name);
+        if (el) el.value = value;
+    });
+    document.getElementById('undoRewriteBtn').style.display = 'none';
+    // Refresh preview
+    showCaseSheetPreview();
+}
 </script>
 
 {{-- AI REWRITE JS --}}
@@ -592,15 +964,22 @@ function refineField(field) {
             text: textarea.value
         })
     })
-    .then(res => res.json())
+    .then(res => {
+        if (res.status === 402) return res.json().then(d => { throw { credits: true, message: d.error, url: d.purchase_url }; });
+        return res.json();
+    })
     .then(data => {
         if (data.refined) {
             textarea.value = data.refined;
+            updateCreditBalance();
         } else {
             alert('AI could not refine the text');
         }
     })
-    .catch(() => alert('AI request failed'));
+    .catch(err => {
+        if (err && err.credits) { alert(err.message); if (err.url) window.open(err.url, '_blank'); }
+        else alert('AI request failed');
+    });
 }
 </script>
 
@@ -648,17 +1027,36 @@ function getClinicalInsights() {
             })()
         })
     })
-    .then(res => res.json())
+    .then(res => {
+        if (res.status === 402) return res.json().then(d => { throw { credits: true, message: d.error, url: d.purchase_url }; });
+        return res.json();
+    })
     .then(data => {
         if (data.raw) {
             document.getElementById('ai-insights-output').innerText = data.raw;
+            updateCreditBalance();
         } else {
             document.getElementById('ai-insights-output').innerText = 'AI did not return insights.';
         }
     })
-    .catch(() => {
-        document.getElementById('ai-insights-output').innerText = 'Failed to generate AI insights.';
+    .catch(err => {
+        if (err && err.credits) {
+            document.getElementById('ai-insights-output').innerHTML =
+                '<span style="color:#dc2626;">' + err.message + '</span><br><a href="' + err.url + '" style="color:var(--primary);font-size:13px;">Purchase AI Credits</a>';
+        } else {
+            document.getElementById('ai-insights-output').innerText = 'Failed to generate AI insights.';
+        }
     });
+}
+
+function updateCreditBalance() {
+    fetch('{{ route("vet.credits.balance") }}')
+        .then(r => r.json())
+        .then(d => {
+            var el = document.getElementById('ai-credit-balance');
+            if (el) el.textContent = d.balance;
+        })
+        .catch(() => {});
 }
 
 let selectedInventoryItemId = null;
@@ -799,7 +1197,7 @@ function deleteTreatment(treatmentId, btn) {
 
 @php
     $drugGenericsJson = $drugGenerics->map(fn($d) => ['id' => $d->id, 'name' => $d->name])->values();
-    $procedureItemsJson = $priceListItems->where('item_type', 'procedure')->values()->map(fn($p) => ['id' => $p->id, 'name' => $p->name, 'price' => $p->price]);
+    $procedureItemsJson = $priceListItems->whereIn('item_type', ['service', 'procedure'])->values()->map(fn($p) => ['id' => $p->id, 'name' => $p->name, 'price' => $p->price]);
 @endphp
 <script>
 // Drug generic searchable dropdown
@@ -1008,25 +1406,48 @@ document.getElementById('lab-test-search').addEventListener('input', function() 
     fetch(`{{ route('vet.lab-orders.available-tests') }}?q=${encodeURIComponent(q)}`)
         .then(r => r.json())
         .then(data => {
-            // Merge in-house + external into one list
-            const inHouse = (data.in_house || []).map(t => ({ ...t, source: 'In-house' }));
-            const external = (data.external || []).map(t => ({ ...t, source: t.lab_name || 'External' }));
-            const tests = [...inHouse, ...external];
+            const vetCanSelectLab = data.vet_can_select_lab || false;
+            const tests = data.tests || [];
 
             if (!tests.length) {
-                dropdown.innerHTML = `<div style="padding:10px;font-size:13px;color:var(--text-muted);">No tests found. Type a custom name and click "+ Add Test".</div>`;
+                dropdown.innerHTML = `<div style="padding:12px;font-size:13px;color:#9ca3af;">No tests found for "${q}". Type a custom name and click "+ Add Test".</div>`;
             } else {
                 dropdown.innerHTML = tests.map(t => {
-                    const unavail = (t.type === 'in_house' && t.available === false) ? ' (Unavailable)' : '';
-                    const params = t.parameters ? (Array.isArray(t.parameters) ? t.parameters.join(', ') : t.parameters) : '';
-                    const priceStr = t.price ? ` · ₹${t.price}` : '';
-                    return `<div class="search-dropdown-item" style="${unavail ? 'opacity:0.5;' : ''}" onclick="selectLabTest(${t.id}, '${t.name.replace(/'/g, "\\'")}', '${t.type}', ${t.lab_id || 'null'}, ${t.price || 0})">
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <span style="font-weight:600;">${t.name}${unavail}</span>
-                            <span style="font-size:11px;color:var(--primary);font-weight:600;">${t.source}${priceStr}</span>
-                        </div>
-                        ${params ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${params}</div>` : ''}
-                    </div>`;
+                    const labs = t.labs || [];
+                    const hasInHouse = labs.some(l => l.type === 'in_house');
+
+                    if (vetCanSelectLab && labs.length > 1) {
+                        return `<div>
+                            <div class="lab-group-header">${t.name} <span class="test-code">${t.code || ''}</span></div>
+                            ${labs.map(l => {
+                                const unavail = l.type === 'in_house' && !l.available ? ' (Unavailable)' : '';
+                                const badgeClass = l.type === 'in_house' ? 'lab-badge--in' : 'lab-badge--ext';
+                                const tag = l.type === 'in_house' ? 'IN' : 'EXT';
+                                const params = l.parameters && l.parameters.length ? l.parameters.join(', ') : '';
+                                return `<div class="lab-option${unavail ? ' opacity:0.5' : ''}" onclick="selectLabTest(${l.id}, '${t.name.replace(/'/g, "\\'")}', '${l.type}', ${l.lab_id || 'null'}, ${l.price || 0})"${unavail ? ' style="opacity:0.5"' : ''} title="${params}">
+                                    <div style="flex:1;">
+                                        <div><span class="lab-badge ${badgeClass}">${tag}</span> ${l.lab_name}${unavail}</div>
+                                        ${params ? `<div style="font-size:10px;color:#9ca3af;margin-top:1px;max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${params}</div>` : ''}
+                                    </div>
+                                    <span class="lab-price">₹${l.price}</span>
+                                </div>`;
+                            }).join('')}
+                        </div>`;
+                    } else {
+                        const lab = labs[0] || {};
+                        const unavail = lab.type === 'in_house' && !lab.available ? ' (Unavailable)' : '';
+                        const labInfo = vetCanSelectLab
+                            ? `${lab.lab_name || 'Unknown'} · ₹${lab.price || 0}`
+                            : (hasInHouse ? 'In-house' : 'External');
+                        const params = lab.parameters && lab.parameters.length ? lab.parameters.join(', ') : '';
+                        return `<div class="lab-option" onclick="selectLabTest(${lab.id || 0}, '${t.name.replace(/'/g, "\\'")}', '${lab.type || 'in_house'}', ${lab.lab_id || 'null'}, ${lab.price || 0})"${unavail ? ' style="opacity:0.5"' : ''} title="${params}">
+                            <div style="flex:1;">
+                                <span style="font-weight:600;">${t.name}${unavail}</span>
+                                ${params ? `<div style="font-size:10px;color:#9ca3af;margin-top:1px;">${params}</div>` : ''}
+                            </div>
+                            <span class="lab-price">${labInfo}</span>
+                        </div>`;
+                    }
                 }).join('');
             }
             dropdown.style.display = 'block';
@@ -1035,12 +1456,27 @@ document.getElementById('lab-test-search').addEventListener('input', function() 
 
 function selectLabTest(id, name, type, labId, price) {
     const input = document.getElementById('lab-test-search');
-    input.value = name;
-    input.dataset.testId = id;
-    input.dataset.testType = type || 'in_house';
-    input.dataset.labId = labId || '';
-    input.dataset.price = price || 0;
+
+    // Check duplicate
+    if (labTestPills.some(t => t.name.toLowerCase() === name.toLowerCase() && t.lab_id == labId)) return;
+
+    // Directly add to pills (skip the "Add Test" click)
+    labTestPills.push({
+        name,
+        catalog_id: type === 'in_house' ? id : null,
+        external_test_id: type === 'external' ? id : null,
+        type: type || 'in_house',
+        lab_id: labId || null,
+        price: parseFloat(price) || 0,
+    });
+
+    input.value = '';
+    input.dataset.testId = '';
+    input.dataset.testType = '';
+    input.dataset.labId = '';
+    input.dataset.price = '';
     document.getElementById('lab-test-dropdown').style.display = 'none';
+    renderLabTestPills();
 }
 
 function addLabTest() {
@@ -1075,12 +1511,17 @@ function removeLabTest(index) {
 
 function renderLabTestPills() {
     const container = document.getElementById('lab-test-pills');
-    container.innerHTML = labTestPills.map((t, i) =>
-        `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px 5px 12px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:20px;font-size:13px;color:#7c3aed;">
-            <span style="font-weight:600;">${t.name}</span>
+    container.innerHTML = labTestPills.map((t, i) => {
+        const isExt = t.type === 'external';
+        const bg = isExt ? '#fef3c7' : '#faf5ff';
+        const border = isExt ? '#fde68a' : '#e9d5ff';
+        const color = isExt ? '#92400e' : '#7c3aed';
+        const badge = isExt ? '<span style="font-size:9px;background:#f59e0b;color:#fff;padding:1px 5px;border-radius:4px;margin-left:2px;">EXT</span>' : '<span style="font-size:9px;background:#7c3aed;color:#fff;padding:1px 5px;border-radius:4px;margin-left:2px;">IN</span>';
+        return `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px 5px 12px;background:${bg};border:1px solid ${border};border-radius:20px;font-size:13px;color:${color};">
+            <span style="font-weight:600;">${t.name}</span>${badge}
             <button type="button" onclick="removeLabTest(${i})" style="background:rgba(0,0,0,0.08);border:none;border-radius:50%;width:18px;height:18px;font-size:12px;cursor:pointer;color:#6b7280;display:flex;align-items:center;justify-content:center;">&times;</button>
-        </span>`
-    ).join('');
+        </span>`;
+    }).join('');
     document.getElementById('lab-order-btn').disabled = labTestPills.length === 0;
 }
 
@@ -1091,38 +1532,223 @@ function submitLabOrder() {
     btn.disabled = true;
     btn.textContent = 'Ordering...';
 
-    fetch('{{ route("vet.lab-orders.store", $appointment) }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-            tests: labTestPills.map(t => ({ name: t.name, catalog_id: t.catalog_id })),
-            priority: document.getElementById('lab-priority').value,
-            notes: document.getElementById('lab-notes').value,
-        })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
+    // Group tests by lab: in-house tests together, each external lab's tests together
+    const groups = {};
+    labTestPills.forEach(t => {
+        const key = t.type === 'external' && t.lab_id ? 'ext_' + t.lab_id : 'in_house';
+        if (!groups[key]) groups[key] = { lab_id: t.type === 'external' ? t.lab_id : null, tests: [] };
+        groups[key].tests.push({
+            name: t.name,
+            catalog_id: t.catalog_id || null,
+            external_test_id: t.external_test_id || null,
+            external_lab_id: t.type === 'external' ? t.lab_id : null,
+            type: t.type || 'in_house',
+            price: t.price || 0,
+        });
+    });
+
+    const priority = document.getElementById('lab-priority').value;
+    const notes = document.getElementById('lab-notes').value;
+    const orderGroups = Object.values(groups);
+
+    // Submit each group as a separate order
+    const promises = orderGroups.map(group => {
+        return fetch('{{ route("vet.lab-orders.store", $appointment) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                tests: group.tests,
+                lab_id: group.lab_id,
+                priority: priority,
+                notes: notes,
+            })
+        }).then(r => {
+            if (!r.ok) {
+                return r.text().then(text => {
+                    try { return JSON.parse(text); }
+                    catch(e) { return { message: 'Server error ' + r.status + ': ' + text.substring(0, 200) }; }
+                });
+            }
+            return r.json();
+        });
+    });
+
+    Promise.all(promises)
+    .then(results => {
+        const errors = results.filter(r => r.errors || r.message);
+        if (errors.length > 0) {
+            const errMsg = errors.map(e => e.message || JSON.stringify(e.errors)).join('\n');
+            alert('Error: ' + errMsg);
+            btn.disabled = false;
+            btn.textContent = 'Order Lab Tests';
+            return;
+        }
+        const orderNums = results.filter(r => r.success).map(r => r.order.order_number);
+        if (orderNums.length > 0) {
             labTestPills.length = 0;
             renderLabTestPills();
             document.getElementById('lab-notes').value = '';
-            alert('Lab order created: ' + data.order.order_number);
+            const msg = orderNums.length === 1
+                ? 'Lab order created: ' + orderNums[0]
+                : orderNums.length + ' lab orders created: ' + orderNums.join(', ');
+            alert(msg);
             location.reload();
         } else {
-            alert('Error creating lab order');
+            alert('Error creating lab orders. Check console.');
+            console.error('Lab order responses:', results);
             btn.disabled = false;
             btn.textContent = 'Order Lab Tests';
         }
     })
-    .catch(() => {
-        alert('Failed to create lab order');
+    .catch(err => {
+        console.error('Lab order error:', err);
+        alert('Failed to create lab orders: ' + err.message);
         btn.disabled = false;
         btn.textContent = 'Order Lab Tests';
     });
+}
+
+// ========== VACCINATION SECTION ==========
+const vaccSearchInput = document.getElementById('vaccine-search');
+const vaccDropdown = document.getElementById('vaccine-dropdown');
+const vaccForm = document.getElementById('vaccine-form');
+let vaccineData = [];
+
+vaccSearchInput.addEventListener('input', function() {
+    const q = this.value.trim();
+    if (q.length < 2) { vaccDropdown.style.display = 'none'; return; }
+
+    fetch(`{{ route('vet.vaccinations.search') }}?q=${encodeURIComponent(q)}`)
+    .then(r => r.json())
+    .then(data => {
+        vaccineData = data;
+        vaccDropdown.innerHTML = '';
+        if (!data.length) {
+            vaccDropdown.innerHTML = '<div style="padding:8px;color:#9ca3af;font-size:12px;">No vaccines found. You can type a custom name.</div>';
+            vaccDropdown.style.display = 'block';
+            return;
+        }
+        data.forEach(g => {
+            const div = document.createElement('div');
+            div.style.cssText = 'padding:8px 10px;cursor:pointer;font-size:13px;border-bottom:1px solid #f3f4f6;';
+            div.textContent = g.name;
+            div.onmouseover = () => div.style.background = '#f3f4f6';
+            div.onmouseout = () => div.style.background = '';
+            div.onclick = () => selectVaccine(g);
+            vaccDropdown.appendChild(div);
+        });
+        vaccDropdown.style.display = 'block';
+    });
+});
+
+function selectVaccine(generic) {
+    vaccSearchInput.value = generic.name;
+    vaccDropdown.style.display = 'none';
+    document.getElementById('vacc-generic-name').value = generic.name;
+    document.getElementById('vacc-name-display').value = generic.name;
+
+    // Populate brands
+    const brandSelect = document.getElementById('vacc-brand');
+    brandSelect.innerHTML = '<option value="">Select brand</option>';
+    (generic.brands || []).forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.brand_name;
+        opt.textContent = b.brand_name + (b.manufacturer ? ' (' + b.manufacturer + ')' : '');
+        opt.dataset.manufacturer = b.manufacturer || '';
+        brandSelect.appendChild(opt);
+    });
+
+    // Auto-set next due date (21 days for most vaccines)
+    const today = new Date();
+    today.setDate(today.getDate() + 21);
+    document.getElementById('vacc-next-due').value = today.toISOString().split('T')[0];
+
+    vaccForm.style.display = 'block';
+}
+
+document.addEventListener('click', function(e) {
+    if (!vaccSearchInput.contains(e.target) && !vaccDropdown.contains(e.target)) vaccDropdown.style.display = 'none';
+});
+
+function onVaccBrandSelected(select) {
+    const brandName = select.value;
+    const datalist = document.getElementById('vacc-batch-list');
+    datalist.innerHTML = '';
+    if (!brandName) return;
+
+    // Fetch batch numbers from clinic inventory
+    fetch(`/vet/inventory-batches?brand_name=${encodeURIComponent(brandName)}&clinic_id={{ session('active_clinic_id') }}`)
+    .then(r => r.json())
+    .then(batches => {
+        batches.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b.batch_number;
+            opt.label = b.batch_number + (b.expiry_date ? ' (Exp: ' + b.expiry_date + ')' : '') + ' — Qty: ' + b.quantity;
+            datalist.appendChild(opt);
+        });
+        if (batches.length === 1) {
+            document.getElementById('vacc-batch').value = batches[0].batch_number;
+        }
+    })
+    .catch(() => {});
+}
+
+function addVaccination() {
+    const name = document.getElementById('vacc-generic-name').value || vaccSearchInput.value;
+    if (!name) return alert('Select a vaccine first');
+
+    const brandSelect = document.getElementById('vacc-brand');
+    const selectedOption = brandSelect.options[brandSelect.selectedIndex];
+    const data = {
+        vaccinations: [{
+            pet_id: {{ $appointment->pet_id }},
+            appointment_id: {{ $appointment->id }},
+            vaccine_name: name,
+            brand_name: brandSelect.value || null,
+            manufacturer: selectedOption?.dataset?.manufacturer || null,
+            batch_number: document.getElementById('vacc-batch').value || null,
+            dose_number: document.getElementById('vacc-dose').value,
+            administered_date: document.getElementById('vacc-date').value,
+            next_due_date: document.getElementById('vacc-next-due').value || null,
+            route: document.getElementById('vacc-route').value,
+        }]
+    };
+
+    fetch('{{ route("vet.vaccinations.store") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            const pills = document.getElementById('vaccination-pills');
+            const pill = document.createElement('span');
+            pill.className = 'treatment-pill';
+            pill.style.cssText = 'background:#fef3c7;border-color:#fde68a;color:#92400e;';
+            pill.innerHTML = `<span class="pill-name">${name} (${data.vaccinations[0].dose_number}) — ${data.vaccinations[0].administered_date}</span>`;
+            pills.appendChild(pill);
+
+            // Reset form
+            vaccForm.style.display = 'none';
+            vaccSearchInput.value = '';
+            document.getElementById('vacc-batch').value = '';
+        }
+    });
+}
+
+function deleteVaccination(id, btn) {
+    if (!confirm('Delete this vaccination record?')) return;
+    fetch(`/vet/vaccinations/${id}`, {
+        method: 'DELETE',
+        headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(() => { btn.closest('.treatment-pill').remove(); });
 }
 </script>
 @endsection

@@ -77,6 +77,28 @@ class OrganisationSettingsController extends Controller
             ->with('success', 'Document templates updated successfully.');
     }
 
+    public function updateLabSettings(Request $request)
+    {
+        $org = Organisation::findOrFail(auth()->user()->organisation_id);
+        $org->vet_can_select_lab = $request->boolean('vet_can_select_lab');
+        $org->save();
+
+        return redirect()->route('organisation.settings.branding')
+            ->with('success', 'Lab settings updated.');
+    }
+
+    /**
+     * Quick toggle for vet_can_select_lab from vets page
+     */
+    public function toggleVetLab(Request $request)
+    {
+        $org = Organisation::findOrFail(auth()->user()->organisation_id);
+        $org->vet_can_select_lab = $request->boolean('vet_can_select_lab');
+        $org->save();
+
+        return redirect()->back()->with('success', 'Vet lab selection ' . ($org->vet_can_select_lab ? 'enabled' : 'disabled') . '.');
+    }
+
     /**
      * Preview a document template with sample data.
      */
