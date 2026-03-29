@@ -99,7 +99,7 @@ class PriceListController extends Controller
 
         $request->validate([
             'name'              => 'required|string|max:255',
-            'item_type'         => 'required|in:service,drug,vaccine,consumable,surgical,product',
+            'item_type'         => 'required|in:service,drug,vaccine,consumable,surgical,product,visit_fee,procedure',
             'billing_type'      => 'required|in:fixed,per_ml,per_vial,per_tablet,per_unit,per_strip,per_piece,per_sachet,per_tube,per_dose',
             'price'             => 'nullable|numeric|min:0',
             'procedure_price'   => 'nullable|numeric|min:0',
@@ -168,7 +168,7 @@ class PriceListController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'item_type' => 'required|in:service,drug,vaccine,consumable,surgical,product',
+            'item_type' => 'required|in:service,drug,vaccine,consumable,surgical,product,visit_fee,procedure',
             'billing_type' => 'required|in:fixed,per_ml,per_vial,per_tablet,per_unit,per_strip,per_piece,per_sachet,per_tube,per_dose',
             'price' => 'nullable|numeric|min:0',
             'procedure_price' => 'nullable|numeric|min:0',
