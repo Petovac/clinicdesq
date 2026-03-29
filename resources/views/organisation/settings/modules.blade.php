@@ -226,7 +226,10 @@ function saveModules() {
             lab: document.getElementById('mod-lab').checked ? 1 : 0,
         })
     })
-    .then(r => r.json())
+    .then(r => {
+        if (!r.ok) return r.text().then(t => { throw new Error(t.substring(0, 300)); });
+        return r.json();
+    })
     .then(data => {
         btn.disabled = false;
         btn.textContent = 'Save Changes';
@@ -236,10 +239,11 @@ function saveModules() {
             showToast('Error saving modules', true);
         }
     })
-    .catch(() => {
+    .catch(err => {
         btn.disabled = false;
         btn.textContent = 'Save Changes';
-        showToast('Error saving modules', true);
+        console.error('Module save error:', err);
+        showToast('Error saving modules: ' + (err.message || '').substring(0, 100), true);
     });
 }
 

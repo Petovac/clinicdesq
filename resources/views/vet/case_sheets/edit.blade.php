@@ -1067,7 +1067,8 @@ let selectedDrugBrandId     = null;
 
 function addDrugTreatment() {
     const strengthSel = document.getElementById('drug-strength-select');
-    if (!strengthSel.value && !selectedInventoryItemId) {
+    // Allow treatment even without inventory — doctor flow should never be blocked
+    if (strengthSel.selectedIndex <= 0 && !selectedGenericId) {
         alert('Please select a drug and strength.');
         return;
     }

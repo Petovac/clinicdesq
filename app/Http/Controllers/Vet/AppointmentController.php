@@ -652,11 +652,13 @@ class AppointmentController extends Controller
         $orgId = $clinic->organisation_id;
 
         // 1. All org inventory items linked to this generic (in-stock OR not)
+        // Match by drug_generic_id, generic_name (exact), or generic_name (LIKE for partial matches)
         $invItems = \App\Models\InventoryItem::where('organisation_id', $orgId)
             ->where('item_type', 'drug')
             ->where(function ($q) use ($genericId, $generic) {
                 $q->where('drug_generic_id', $genericId)
-                  ->orWhere('generic_name', $generic->name);
+                  ->orWhere('generic_name', $generic->name)
+                  ->orWhere('generic_name', 'like', '%' . $generic->name . '%');
             })
             ->get();
 
