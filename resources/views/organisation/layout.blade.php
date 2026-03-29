@@ -231,7 +231,7 @@ Vets
 </div>
 
 
-@if(auth()->user()->organisation->hasModule('inventory') && (auth()->user()->hasPermission('inventory.view') || auth()->user()->hasPermission('inventory.manage')))
+@if(auth()->user()->organisation?->hasModule('inventory') !== false && (auth()->user()->hasPermission('inventory.view') || auth()->user()->hasPermission('inventory.manage')))
 
 <div class="nav-section">
 
@@ -282,7 +282,7 @@ Inventory Log
 @endif
 
 
-@if(auth()->user()->organisation->hasModule('billing') && (auth()->user()->hasPermission('pricing.view') || auth()->user()->hasPermission('pricing.manage')))
+@if(auth()->user()->organisation?->hasModule('billing') !== false && (auth()->user()->hasPermission('pricing.view') || auth()->user()->hasPermission('pricing.manage')))
 
 <div class="nav-section">
 
@@ -311,7 +311,7 @@ Fee Configuration
 @endif
 
 {{-- Lab Management --}}
-@if(auth()->user()->organisation->hasModule('lab') && (auth()->user()->hasPermission('lab_catalog.manage') || auth()->user()->hasPermission('labs.manage')))
+@if(auth()->user()->organisation?->hasModule('lab') !== false && (auth()->user()->hasPermission('lab_catalog.manage') || auth()->user()->hasPermission('labs.manage')))
 <div class="nav-section">
 <div class="nav-parent">Lab</div>
 <div class="nav-children">
