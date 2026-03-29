@@ -169,21 +169,20 @@ public function update(Request $request,$id)
 $item = InventoryItem::where('organisation_id',auth()->user()->organisation_id)
         ->findOrFail($id);
 
-$item->update([
+$data = array_filter([
+    'name'           => $request->name,
+    'strength_value' => $request->strength_value,
+    'strength_unit'  => $request->strength_unit,
+    'unit_volume_ml' => $request->unit_volume_ml,
+    'pack_unit'      => $request->pack_unit,
+], fn($v) => $v !== null);
 
-'name'=>$request->name,
+// Only update package_type if explicitly sent (not from inline edit)
+if ($request->has('package_type') && $request->package_type) {
+    $data['package_type'] = $request->package_type;
+}
 
-'package_type'=>$request->package_type,
-
-'strength_value'=>$request->strength_value,
-
-'strength_unit'=>$request->strength_unit,
-
-'unit_volume_ml'=>$request->unit_volume_ml,
-
-'pack_unit'=>$request->pack_unit
-
-]);
+$item->update($data);
 
 return response()->json(['success'=>true]);
 
