@@ -117,17 +117,16 @@
                                 <span class="qs-stock {{ $stockClass }}">{{ number_format($item->central_qty, 0) }}</span>
                             </td>
                             <td>
-                                <input type="hidden" name="items[{{ $item->id }}][inventory_item_id]" value="{{ $item->id }}" disabled>
-                                <input type="text" class="qs-input qs-entry" data-item="{{ $item->id }}" name="items[{{ $item->id }}][batch_number]" placeholder="LOT-001" style="width:100%;" disabled>
+                                <input type="text" class="qs-input qs-entry" data-item="{{ $item->id }}" placeholder="LOT-001" style="width:100%;">
                             </td>
                             <td>
-                                <input type="date" class="qs-input qs-entry" data-item="{{ $item->id }}" name="items[{{ $item->id }}][expiry_date]" style="width:100%;" disabled>
+                                <input type="date" class="qs-input qs-entry" data-item="{{ $item->id }}" style="width:100%;">
                             </td>
                             <td>
-                                <input type="number" step="0.01" min="0" class="qs-input qs-qty" data-item="{{ $item->id }}" name="items[{{ $item->id }}][quantity]" placeholder="0" style="width:100%;" oninput="onQtyChange(this)" disabled>
+                                <input type="number" step="0.01" min="0" class="qs-input qs-qty" data-item="{{ $item->id }}" placeholder="0" style="width:100%;" oninput="onQtyChange(this)">
                             </td>
                             <td>
-                                <input type="number" step="0.01" min="0" class="qs-input qs-entry" data-item="{{ $item->id }}" name="items[{{ $item->id }}][purchase_price]" placeholder="0.00" style="width:100%;" disabled>
+                                <input type="number" step="0.01" min="0" class="qs-input qs-entry" data-item="{{ $item->id }}" placeholder="0.00" style="width:100%;">
                             </td>
                         </tr>
                         @endforeach
@@ -147,28 +146,15 @@
 let currentFilter = 'all';
 
 function onQtyChange(input) {
-    const itemId = input.dataset.item;
     const row = input.closest('tr');
-    const allInputs = row.querySelectorAll('.qs-entry, .qs-qty');
-    const hiddenInput = row.querySelector('input[type="hidden"]');
     const val = parseFloat(input.value) || 0;
 
     if (val > 0) {
         row.classList.add('has-entry');
         input.classList.add('filled');
-        // Enable all inputs for this row
-        allInputs.forEach(i => i.disabled = false);
-        hiddenInput.disabled = false;
     } else {
         row.classList.remove('has-entry');
         input.classList.remove('filled');
-        // Disable non-qty inputs
-        allInputs.forEach(i => {
-            if (!i.classList.contains('qs-qty')) {
-                i.disabled = true;
-            }
-        });
-        hiddenInput.disabled = true;
     }
 
     updateCounts();
@@ -203,13 +189,6 @@ function showFilter(filter, btn) {
     btn.classList.add('active');
     filterItems();
 }
-
-// Enable qty inputs on load (they're the entry point)
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.qs-qty').forEach(input => {
-        input.disabled = false;
-    });
-});
 
 // Before submit, remove disabled entries so only filled rows are sent
 document.getElementById('quickStockForm').addEventListener('submit', function(e) {
