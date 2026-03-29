@@ -79,9 +79,11 @@
                         <input type="hidden" name="test_code" value="{{ $test->code }}">
                         <input type="hidden" name="action" value="set_price">
                         <input type="hidden" name="b2b_price" value="{{ $off->b2b_price }}">
-                        <input type="text" name="estimated_time" value="{{ $off->estimated_time ?? '' }}" placeholder="e.g. 3 Hrs" style="width:75px;padding:4px 6px;border:1px solid #d1d5db;border-radius:4px;font-size:11px;text-align:center;" onchange="this.form.submit()">
+                        <input type="text" name="estimated_time" value="{{ $off->estimated_time ?? '' }}" placeholder="{{ $test->tat ?? 'e.g. 3 Hrs' }}" style="width:75px;padding:4px 6px;border:1px solid #d1d5db;border-radius:4px;font-size:11px;text-align:center;" onchange="this.form.submit()">
                     </form>
-                    @else — @endif
+                    @else
+                        <span style="color:#d1d5db;font-size:11px;">{{ $test->tat ?? '—' }}</span>
+                    @endif
                 </td>
                 <td style="padding:10px 14px;font-size:11px;color:#6b7280;max-width:220px;">
                     @if($isOffered)
@@ -105,7 +107,7 @@
                         <input type="hidden" name="test_code" value="{{ $test->code }}">
                         <input type="hidden" name="action" value="enable">
                         <input type="number" name="b2b_price" placeholder="₹ Price" step="1" min="0" style="width:70px;padding:4px 6px;border:1px solid #d1d5db;border-radius:4px;font-size:11px;" required>
-                        <input type="text" name="estimated_time" placeholder="TAT" style="width:60px;padding:4px 6px;border:1px solid #d1d5db;border-radius:4px;font-size:11px;">
+                        <input type="text" name="estimated_time" value="{{ $test->tat ?? '' }}" placeholder="TAT" style="width:60px;padding:4px 6px;border:1px solid #d1d5db;border-radius:4px;font-size:11px;">
                         <button type="submit" class="btn btn-sm btn-primary" style="font-size:11px;">+ Add</button>
                     </form>
                     @else
