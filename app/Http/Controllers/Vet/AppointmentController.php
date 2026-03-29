@@ -240,56 +240,66 @@ class AppointmentController extends Controller
 
     public function addTreatment(Request $request, Appointment $appointment)
     {
+        // Convert empty strings to null for foreign keys
+        $request->merge([
+            'inventory_item_id' => $request->inventory_item_id ?: null,
+            'drug_generic_id'   => $request->drug_generic_id ?: null,
+            'drug_brand_id'     => $request->drug_brand_id ?: null,
+            'price_list_item_id'=> $request->price_list_item_id ?: null,
+        ]);
+
         $request->validate([
-            // For injectable drugs — pass inventory_item_id, price_list_item_id auto-resolved
             'inventory_item_id'  => 'nullable|exists:inventory_items,id',
             'drug_generic_id'    => 'nullable|exists:drug_generics,id',
             'drug_brand_id'      => 'nullable|exists:drug_brands,id',
             'dose_mg'            => 'nullable|numeric',
             'dose_volume_ml'     => 'nullable|numeric',
             'route'              => 'nullable|string',
-            // For procedures — pass price_list_item_id directly
             'price_list_item_id' => 'nullable|exists:price_list_items,id',
         ]);
 
-        $priceListItemId = $request->price_list_item_id;
+        try {
+            $priceListItemId = $request->price_list_item_id;
 
-        // Auto-resolve price list item from inventory item (for injectable drugs)
-        if (!$priceListItemId && $request->inventory_item_id) {
-            $clinic     = \App\Models\Clinic::find($appointment->clinic_id);
-            $activeList = \App\Models\PriceList::where('organisation_id', $clinic->organisation_id)
-                ->where('is_active', 1)
-                ->first();
-
-            if ($activeList) {
-                $priceItem = \App\Models\PriceListItem::where('price_list_id', $activeList->id)
-                    ->where('inventory_item_id', $request->inventory_item_id)
+            // Auto-resolve price list item from inventory item (for injectable drugs)
+            if (!$priceListItemId && $request->inventory_item_id) {
+                $clinic     = \App\Models\Clinic::find($appointment->clinic_id);
+                $activeList = \App\Models\PriceList::where('organisation_id', $clinic->organisation_id)
                     ->where('is_active', 1)
                     ->first();
 
-                $priceListItemId = $priceItem?->id;
+                if ($activeList) {
+                    $priceItem = \App\Models\PriceListItem::where('price_list_id', $activeList->id)
+                        ->where('inventory_item_id', $request->inventory_item_id)
+                        ->where('is_active', 1)
+                        ->first();
+
+                    $priceListItemId = $priceItem?->id;
+                }
             }
+
+            // billing_quantity: for multi-use injectables bill per ml; for single-use or procedures bill per unit
+            $billingQuantity = 1;
+            if ($request->inventory_item_id && $request->dose_volume_ml) {
+                $invItem = \App\Models\InventoryItem::find($request->inventory_item_id);
+                $billingQuantity = $invItem?->is_multi_use ? $request->dose_volume_ml : 1;
+            }
+
+            $treatment = $appointment->treatments()->create([
+                'price_list_item_id' => $priceListItemId,
+                'drug_generic_id'    => $request->drug_generic_id,
+                'drug_brand_id'      => $request->drug_brand_id,
+                'inventory_item_id'  => $request->inventory_item_id,
+                'dose_mg'            => $request->dose_mg,
+                'dose_volume_ml'     => $request->dose_volume_ml,
+                'route'              => $request->route,
+                'billing_quantity'   => $billingQuantity,
+            ]);
+
+            return response()->json(['success' => true, 'id' => $treatment->id]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        // billing_quantity: for multi-use injectables bill per ml; for single-use or procedures bill per unit
-        $billingQuantity = 1;
-        if ($request->inventory_item_id && $request->dose_volume_ml) {
-            $invItem = \App\Models\InventoryItem::find($request->inventory_item_id);
-            $billingQuantity = $invItem?->is_multi_use ? $request->dose_volume_ml : 1;
-        }
-
-        $treatment = $appointment->treatments()->create([
-            'price_list_item_id' => $priceListItemId,
-            'drug_generic_id'    => $request->drug_generic_id,
-            'drug_brand_id'      => $request->drug_brand_id,
-            'inventory_item_id'  => $request->inventory_item_id,
-            'dose_mg'            => $request->dose_mg,
-            'dose_volume_ml'     => $request->dose_volume_ml,
-            'route'              => $request->route,
-            'billing_quantity'   => $billingQuantity,
-        ]);
-
-        return response()->json(['success' => true, 'id' => $treatment->id]);
     }
 
     public function deleteTreatment(Appointment $appointment, \App\Models\AppointmentTreatment $treatment)
