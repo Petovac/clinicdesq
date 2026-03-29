@@ -353,10 +353,22 @@ tr.editing td{
                 @foreach($groupItems as $item)
                 @php
                     $inv = $item->inventoryItem;
-                    $strengthLabel = $inv && $inv->strength_value ? $inv->strength_value . ' ' . ($inv->strength_unit ?? '') : '';
-                    $formLabel = $inv && $inv->package_type ? ucfirst(str_replace('_', ' ', $inv->package_type)) : '';
-                    $packLabel = $inv && $inv->unit_volume_ml ? $inv->unit_volume_ml . ' ' . ($inv->pack_unit ?? '') : '';
-                    $multiUse = $inv && $inv->is_multi_use ? true : false;
+                    $db = $item->drugBrand;
+                    // Try inventory item first, then drug brand
+                    $strengthLabel = '';
+                    $formLabel = '';
+                    $packLabel = '';
+                    $multiUse = false;
+                    if ($inv) {
+                        $strengthLabel = $inv->strength_value ? $inv->strength_value . ' ' . ($inv->strength_unit ?? '') : '';
+                        $formLabel = $inv->package_type ? ucfirst(str_replace('_', ' ', $inv->package_type)) : '';
+                        $packLabel = $inv->unit_volume_ml ? $inv->unit_volume_ml . ' ' . ($inv->pack_unit ?? '') : '';
+                        $multiUse = $inv->is_multi_use ? true : false;
+                    } elseif ($db) {
+                        $strengthLabel = $db->strength_value ? $db->strength_value . ' ' . ($db->strength_unit ?? '') : '';
+                        $formLabel = $db->form ? ucfirst(str_replace('_', ' ', $db->form)) : '';
+                        $packLabel = $db->pack_size ? $db->pack_size . ' ' . ($db->pack_unit ?? '') : '';
+                    }
                 @endphp
                 <tr data-id="{{ $item->id }}">
                     <td>
@@ -591,7 +603,10 @@ function addItem(){
         headers: HEADERS,
         body: JSON.stringify(payload)
     })
-    .then(r => r.json())
+    .then(r => {
+        if (!r.ok) return r.json().then(d => { throw d; });
+        return r.json();
+    })
     .then(r => {
         if(r.error){ toast(r.error, true); return; }
         if(!r.success){ toast('Error adding item', true); return; }
@@ -662,7 +677,10 @@ function addItem(){
 
         toast('Item added');
     })
-    .catch(() => toast('Error adding item', true));
+    .catch(err => {
+        const msg = err?.message || err?.errors ? Object.values(err.errors).flat().join(', ') : 'Error adding item';
+        toast(msg, true);
+    });
 }
 
 // ── Inline edit toggle ──
