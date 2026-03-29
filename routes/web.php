@@ -393,6 +393,11 @@ Route::middleware(['auth'])
         ->prefix('organisation')
         ->name('organisation.')
         ->group(function () {
+            Route::get('/settings/modules', [\App\Http\Controllers\Organisation\ModuleSettingsController::class, 'index'])
+                ->name('settings.modules');
+            Route::post('/settings/modules', [\App\Http\Controllers\Organisation\ModuleSettingsController::class, 'update'])
+                ->name('settings.modules.update');
+
             Route::get('/settings/branding', [OrganisationSettingsController::class, 'edit'])
                 ->name('settings.branding');
             Route::post('/settings/branding', [OrganisationSettingsController::class, 'update'])

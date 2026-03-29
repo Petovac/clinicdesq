@@ -231,7 +231,7 @@ Vets
 </div>
 
 
-@if(auth()->user()->hasPermission('inventory.view') || auth()->user()->hasPermission('inventory.manage'))
+@if(auth()->user()->organisation->hasModule('inventory') && (auth()->user()->hasPermission('inventory.view') || auth()->user()->hasPermission('inventory.manage')))
 
 <div class="nav-section">
 
@@ -282,7 +282,7 @@ Inventory Log
 @endif
 
 
-@if(auth()->user()->hasPermission('pricing.view') || auth()->user()->hasPermission('pricing.manage'))
+@if(auth()->user()->organisation->hasModule('billing') && (auth()->user()->hasPermission('pricing.view') || auth()->user()->hasPermission('pricing.manage')))
 
 <div class="nav-section">
 
@@ -311,7 +311,7 @@ Fee Configuration
 @endif
 
 {{-- Lab Management --}}
-@if(auth()->user()->hasPermission('lab_catalog.manage') || auth()->user()->hasPermission('labs.manage'))
+@if(auth()->user()->organisation->hasModule('lab') && (auth()->user()->hasPermission('lab_catalog.manage') || auth()->user()->hasPermission('labs.manage')))
 <div class="nav-section">
 <div class="nav-parent">Lab</div>
 <div class="nav-children">
@@ -360,6 +360,10 @@ Hiring Portal
 <div class="nav-section">
     <div class="nav-parent">Settings</div>
     <div class="nav-children">
+        <a href="{{ route('organisation.settings.modules') }}"
+           class="{{ request()->is('organisation/settings/modules*') ? 'active' : '' }}">
+            Modules
+        </a>
         <a href="{{ route('organisation.settings.branding') }}"
            class="{{ request()->is('organisation/settings/branding*') ? 'active' : '' }}">
             Branding &amp; Templates

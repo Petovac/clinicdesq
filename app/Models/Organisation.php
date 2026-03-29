@@ -26,13 +26,53 @@ class Organisation extends Model
         'package_id',
         'trial_ends_at',
         'vet_can_select_lab',
+        'modules',
     ];
 
     protected $casts = [
         'vet_can_select_lab' => 'boolean',
         'is_active' => 'boolean',
         'trial_ends_at' => 'datetime',
+        'modules' => 'array',
     ];
+
+    /**
+     * Default modules when not configured.
+     */
+    protected static array $defaultModules = [
+        'inventory' => true,
+        'billing'   => true,
+        'lab'       => true,
+    ];
+
+    /**
+     * Check if an org module is enabled.
+     */
+    public function hasModule(string $module): bool
+    {
+        $modules = $this->modules ?? self::$defaultModules;
+        return !empty($modules[$module]);
+    }
+
+    /**
+     * Enable a module.
+     */
+    public function enableModule(string $module): void
+    {
+        $modules = $this->modules ?? self::$defaultModules;
+        $modules[$module] = true;
+        $this->update(['modules' => $modules]);
+    }
+
+    /**
+     * Disable a module.
+     */
+    public function disableModule(string $module): void
+    {
+        $modules = $this->modules ?? self::$defaultModules;
+        $modules[$module] = false;
+        $this->update(['modules' => $modules]);
+    }
 
     public function clinics()
     {
