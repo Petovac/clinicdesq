@@ -348,10 +348,35 @@ tr.editing td{
             </thead>
             <tbody class="items-body">
                 @foreach($groupItems as $item)
+                @php
+                    $inv = $item->inventoryItem;
+                    $strengthLabel = $inv && $inv->strength_value ? $inv->strength_value . ' ' . ($inv->strength_unit ?? '') : '';
+                    $formLabel = $inv && $inv->package_type ? ucfirst(str_replace('_', ' ', $inv->package_type)) : '';
+                    $packLabel = $inv && $inv->unit_volume_ml ? $inv->unit_volume_ml . ' ' . ($inv->pack_unit ?? '') : '';
+                    $multiUse = $inv && $inv->is_multi_use ? true : false;
+                @endphp
                 <tr data-id="{{ $item->id }}">
                     <td>
-                        <input class="f-name" value="{{ $item->name }}" readonly>
-                        <input type="hidden" class="f-type" value="{{ $item->item_type }}">
+                        <div>
+                            <input class="f-name" value="{{ $item->name }}" readonly style="font-weight:600;">
+                            <input type="hidden" class="f-type" value="{{ $item->item_type }}">
+                        </div>
+                        @if($strengthLabel || $formLabel || $packLabel)
+                        <div style="display:flex;gap:6px;align-items:center;margin-top:3px;flex-wrap:wrap;">
+                            @if($formLabel)
+                                <span style="background:#f1f5f9;color:#475569;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:600;">{{ $formLabel }}</span>
+                            @endif
+                            @if($strengthLabel)
+                                <span style="font-size:11px;color:#6b7280;">{{ $strengthLabel }}</span>
+                            @endif
+                            @if($packLabel)
+                                <span style="font-size:11px;color:#9ca3af;">| Pack: {{ $packLabel }}</span>
+                            @endif
+                            @if($multiUse)
+                                <span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;">Multi-use</span>
+                            @endif
+                        </div>
+                        @endif
                     </td>
                     <td>
                         <select class="f-billing" disabled>
@@ -368,8 +393,8 @@ tr.editing td{
                         <input type="hidden" class="f-drug-id" value="{{ $item->drug_brand_id }}">
                         <input type="hidden" class="f-inv-id" value="{{ $item->inventory_item_id }}">
                         <div class="linked-info">
-                            @if($item->inventoryItem)
-                                <span class="linked-label"><span class="dot"></span> {{ $item->inventoryItem->name }}</span>
+                            @if($inv)
+                                <span class="linked-label"><span class="dot"></span> {{ $inv->name }}</span>
                             @elseif($item->drugBrand)
                                 <span class="linked-label"><span class="dot"></span> {{ $item->drugBrand->brand_name ?? '' }}</span>
                             @else
