@@ -133,7 +133,7 @@ input:focus,select:focus{
 
 .add-grid{
     display:grid;
-    grid-template-columns:140px 1fr 130px 110px 110px auto;
+    grid-template-columns:140px 1fr 130px 110px auto;
     gap:10px;
     align-items:end;
 }
@@ -298,11 +298,6 @@ tr.editing td{
             </select>
         </div>
 
-        <div id="newProcedureWrap">
-            <label>Procedure Fee</label>
-            <input id="newProcedure" type="number" step="0.01" placeholder="0.00">
-        </div>
-
         <div>
             <label>Unit Price</label>
             <input id="newPrice" type="number" step="0.01" placeholder="0.00">
@@ -343,7 +338,6 @@ tr.editing td{
                 <tr>
                     <th>Name</th>
                     <th style="width:110px;">Billing</th>
-                    @if($type === 'drug')<th style="width:90px;">Proc. Fee</th>@endif
                     <th style="width:90px;">Unit Price</th>
                     <th style="width:150px;">Linked</th>
                     <th style="width:100px;">Actions</th>
@@ -400,9 +394,6 @@ tr.editing td{
                             @endforeach
                         </select>
                     </td>
-                    @if($type === 'drug')
-                    <td><input class="f-procedure" type="number" step="0.01" value="{{ $item->procedure_price }}" readonly></td>
-                    @endif
                     <td><input class="f-price" type="number" step="0.01" value="{{ $item->price }}" readonly></td>
                     <td>
                         <input type="hidden" class="f-drug-id" value="{{ $item->drug_brand_id }}">
@@ -470,7 +461,6 @@ function saveName(){
 // ── New item type change ──
 function onNewTypeChange(){
     const t = document.getElementById('newType').value;
-    document.getElementById('newProcedureWrap').style.display = (t === 'drug') ? 'block' : 'none';
 
     if(t === 'service'){
         document.getElementById('newBilling').value = 'fixed';
@@ -593,7 +583,6 @@ function addItem(){
         item_type: itemType,
         billing_type: document.getElementById('newBilling').value,
         price: document.getElementById('newPrice').value || 0,
-        procedure_price: document.getElementById('newProcedure').value || 0,
     };
     if (drugId) payload.drug_brand_id = drugId;
     if (invId) payload.inventory_item_id = invId;
@@ -644,7 +633,6 @@ function addItem(){
                     <option value="per_tube" ${item.billing_type==='per_tube'?'selected':''}>Per Tube</option>
                 </select>
             </td>
-            <td><input class="f-procedure" type="number" step="0.01" value="${item.procedure_price}" readonly></td>
             <td><input class="f-price" type="number" step="0.01" value="${item.price}" readonly></td>
             <td>
                 <input type="hidden" class="f-drug-id" value="${item.drug_brand_id || ''}">
@@ -670,7 +658,6 @@ function addItem(){
         // Clear form
         document.getElementById('newName').value = '';
         document.getElementById('newPrice').value = '';
-        document.getElementById('newProcedure').value = '';
         document.getElementById('newDrugBrandId').value = '';
         document.getElementById('newInventoryItemId').value = '';
         document.getElementById('newLinked').innerHTML = '';

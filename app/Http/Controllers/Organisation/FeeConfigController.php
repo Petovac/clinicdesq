@@ -37,7 +37,7 @@ class FeeConfigController extends Controller
         // Get procedure/service price list items
         $procedures = $activeList
             ? PriceListItem::where('price_list_id', $activeList->id)
-                ->where('item_type', 'procedure')
+                ->where('item_type', 'service')
                 ->where('is_active', 1)
                 ->with('procedureInventoryItems.inventoryItem')
                 ->orderBy('name')
