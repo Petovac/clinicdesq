@@ -31,7 +31,7 @@
         <thead style="position:sticky;top:0;background:#f9fafb;z-index:1;">
             <tr style="border-bottom:1px solid var(--border);">
                 <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;">Test</th>
-                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;">Collection</th>
+                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;">Sample Required</th>
                 <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;">B2B Price</th>
                 <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;">TAT</th>
                 <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;">Parameters</th>
@@ -46,6 +46,9 @@
                 $offParams = $off && $off->parameters ? json_decode($off->parameters, true) : [];
                 $defParams = $test->default_parameters ? json_decode($test->default_parameters, true) : [];
                 $showParams = !empty($offParams) ? $offParams : $defParams;
+                $dirSample = $test->preferred_sample ?? ucfirst($test->sample_type);
+                $labSample = $isOffered ? ($off->container_type ?? '') : '';
+                $displaySample = $labSample ?: $dirSample;
             @endphp
             <tr class="cat-row" data-name="{{ strtolower($test->name) }}" data-code="{{ strtolower($test->code) }}" data-cat="{{ $test->category }}" data-offered="{{ $isOffered ? '1' : '0' }}"
                 style="border-bottom:1px solid #f3f4f6;{{ $isOffered ? 'background:#f0fdf4;' : '' }}">
@@ -54,10 +57,14 @@
                     <div style="font-size:11px;color:var(--text-muted);">{{ $test->code }} · <span style="background:#eff6ff;color:#1e40af;padding:1px 6px;border-radius:8px;font-size:10px;">{{ ucfirst(str_replace('_',' ',$test->category)) }}</span></div>
                 </td>
                 <td style="padding:10px 14px;font-size:11px;color:var(--text-muted);">
-                    @if($test->preferred_sample)
-                        <div>{{ $test->preferred_sample }}</div>
+                    @if($isOffered)
+                        <span style="cursor:pointer;color:{{ $labSample ? '#2563eb' : '#9ca3af' }};{{ !$labSample ? 'font-style:italic;' : '' }}"
+                              onclick="editOffering('{{ $test->code }}', '{{ addslashes($test->name) }}', '{{ $off->b2b_price }}', '{{ addslashes($off->estimated_time ?? '') }}', '{{ addslashes($labSample) }}', '{{ addslashes($off->sample_volume ?? '') }}', '{{ addslashes(implode(', ', $offParams)) }}', '{{ addslashes($dirSample) }}', '{{ $test->tat ?? '' }}')"
+                              title="Click to edit">
+                            {{ $displaySample }}
+                        </span>
                     @else
-                        <div>{{ ucfirst($test->sample_type) }}</div>
+                        <div>{{ $dirSample }}</div>
                     @endif
                 </td>
                 <td style="padding:10px 14px;text-align:center;">
@@ -106,17 +113,22 @@
                         @csrf
                         <input type="hidden" name="test_code" value="{{ $test->code }}">
                         <input type="hidden" name="action" value="enable">
+                        <input type="hidden" name="container_type" value="{{ $dirSample }}">
                         <input type="number" name="b2b_price" placeholder="₹ Price" step="1" min="0" style="width:70px;padding:4px 6px;border:1px solid #d1d5db;border-radius:4px;font-size:11px;" required>
                         <input type="text" name="estimated_time" value="{{ $test->tat ?? '' }}" placeholder="TAT" style="width:60px;padding:4px 6px;border:1px solid #d1d5db;border-radius:4px;font-size:11px;">
                         <button type="submit" class="btn btn-sm btn-primary" style="font-size:11px;">+ Add</button>
                     </form>
                     @else
-                    <form method="POST" action="{{ route('lab.catalog.toggle') }}" style="display:inline;">
-                        @csrf
-                        <input type="hidden" name="test_code" value="{{ $test->code }}">
-                        <input type="hidden" name="action" value="disable">
-                        <button type="submit" class="btn btn-sm btn-outline" style="font-size:11px;color:#dc2626;border-color:#fca5a5;">Remove</button>
-                    </form>
+                    <div style="display:flex;gap:4px;justify-content:center;">
+                        <button onclick="editOffering('{{ $test->code }}', '{{ addslashes($test->name) }}', '{{ $off->b2b_price }}', '{{ addslashes($off->estimated_time ?? '') }}', '{{ addslashes($labSample) }}', '{{ addslashes($off->sample_volume ?? '') }}', '{{ addslashes(implode(', ', $offParams)) }}', '{{ addslashes($dirSample) }}', '{{ $test->tat ?? '' }}')"
+                                class="btn btn-sm btn-outline" style="font-size:11px;color:#2563eb;border-color:#93c5fd;">Edit</button>
+                        <form method="POST" action="{{ route('lab.catalog.toggle') }}" style="display:inline;">
+                            @csrf
+                            <input type="hidden" name="test_code" value="{{ $test->code }}">
+                            <input type="hidden" name="action" value="disable">
+                            <button type="submit" class="btn btn-sm btn-outline" style="font-size:11px;color:#dc2626;border-color:#fca5a5;">Remove</button>
+                        </form>
+                    </div>
                     @endif
                 </td>
             </tr>
@@ -125,7 +137,51 @@
     </table>
 </div>
 
-{{-- Parameter Edit Modal --}}
+{{-- Edit Offering Modal --}}
+<div id="edit-offering-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:999;justify-content:center;align-items:center;">
+    <div style="background:#fff;border-radius:12px;padding:24px;max-width:520px;width:90%;">
+        <h3 style="margin:0 0 4px;font-size:15px;font-weight:700;" id="edit-modal-title">Edit Test Offering</h3>
+        <p style="font-size:12px;color:#6b7280;margin:0 0 14px;">Customize your offering details for this test.</p>
+        <form method="POST" action="{{ route('lab.catalog.toggle') }}" id="edit-offering-form">
+            @csrf
+            <input type="hidden" name="test_code" id="eo-code">
+            <input type="hidden" name="action" value="set_price">
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+                <div>
+                    <label style="font-size:11px;font-weight:600;color:#374151;">B2B Price (₹) *</label>
+                    <input type="number" name="b2b_price" id="eo-price" required min="0" step="1" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+                </div>
+                <div>
+                    <label style="font-size:11px;font-weight:600;color:#374151;">TAT</label>
+                    <input type="text" name="estimated_time" id="eo-tat" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+                    <div style="font-size:10px;color:#9ca3af;margin-top:2px;" id="eo-tat-hint"></div>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+                <div>
+                    <label style="font-size:11px;font-weight:600;color:#374151;">Sample Required</label>
+                    <input type="text" name="container_type" id="eo-sample" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+                    <div style="font-size:10px;color:#9ca3af;margin-top:2px;" id="eo-sample-hint"></div>
+                </div>
+                <div>
+                    <label style="font-size:11px;font-weight:600;color:#374151;">Sample Volume</label>
+                    <input type="text" name="sample_volume" id="eo-volume" placeholder="e.g., 2ml" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+                </div>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="font-size:11px;font-weight:600;color:#374151;">Parameters (comma-separated)</label>
+                <textarea name="parameters" id="eo-params" rows="2" placeholder="e.g., RBC, WBC, Hemoglobin, Platelets" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;resize:vertical;"></textarea>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button type="submit" class="btn btn-sm btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('edit-offering-modal').style.display='none'">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Parameter Edit Modal (quick inline) --}}
 <div id="param-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:999;justify-content:center;align-items:center;">
     <div style="background:#fff;border-radius:12px;padding:24px;max-width:480px;width:90%;">
         <h3 style="margin:0 0 8px;font-size:15px;font-weight:700;">Edit Parameters</h3>
@@ -189,7 +245,7 @@
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
                 <div>
-                    <label style="font-size:11px;font-weight:600;color:#374151;">Container / Vial</label>
+                    <label style="font-size:11px;font-weight:600;color:#374151;">Sample Required</label>
                     <input type="text" name="container_type" placeholder="e.g., 2ml EDTA Blood" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
                 </div>
                 <div>
@@ -206,6 +262,22 @@
 </div>
 
 <script>
+function editOffering(code, name, price, tat, sample, volume, params, dirSample, dirTat) {
+    document.getElementById('edit-modal-title').textContent = 'Edit: ' + name;
+    document.getElementById('eo-code').value = code;
+    document.getElementById('eo-price').value = price;
+    document.getElementById('eo-tat').value = tat;
+    document.getElementById('eo-tat').placeholder = dirTat || 'e.g. 3 Hrs';
+    document.getElementById('eo-tat-hint').textContent = dirTat ? 'Directory default: ' + dirTat : '';
+    document.getElementById('eo-sample').value = sample;
+    document.getElementById('eo-sample').placeholder = dirSample || 'e.g., 2ml EDTA Blood';
+    document.getElementById('eo-sample-hint').textContent = dirSample ? 'Directory default: ' + dirSample : '';
+    document.getElementById('eo-volume').value = volume;
+    document.getElementById('eo-params').value = params;
+    document.getElementById('edit-offering-modal').style.display = 'flex';
+    document.getElementById('eo-price').focus();
+}
+
 function editLabParams(code, current) {
     document.getElementById('p-code').value = code;
     document.getElementById('p-input').value = current;
@@ -224,5 +296,12 @@ function filterCatalog() {
         row.style.display = matchName && matchCat && matchStatus ? '' : 'none';
     });
 }
+
+// Close modals on backdrop click
+['edit-offering-modal', 'param-modal', 'custom-test-modal'].forEach(id => {
+    document.getElementById(id).addEventListener('click', function(e) {
+        if (e.target === this) this.style.display = 'none';
+    });
+});
 </script>
 @endsection

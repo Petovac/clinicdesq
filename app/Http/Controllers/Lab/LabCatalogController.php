@@ -97,6 +97,8 @@ class LabCatalogController extends Controller
             'b2b_price' => 'nullable|numeric|min:0',
             'estimated_time' => 'nullable|string|max:50',
             'parameters' => 'nullable|string|max:2000',
+            'container_type' => 'nullable|string|max:100',
+            'sample_volume' => 'nullable|string|max:50',
         ]);
 
         $labId = $user->external_lab_id;
@@ -107,6 +109,8 @@ class LabCatalogController extends Controller
                 [
                     'b2b_price' => $request->b2b_price ?? 0,
                     'estimated_time' => $request->estimated_time,
+                    'container_type' => $request->container_type,
+                    'sample_volume' => $request->sample_volume,
                     'is_active' => true,
                     'updated_at' => now(),
                     'created_at' => DB::raw('COALESCE(created_at, NOW())'),
@@ -124,6 +128,17 @@ class LabCatalogController extends Controller
             }
             if ($request->has('estimated_time')) {
                 $updateData['estimated_time'] = $request->estimated_time;
+            }
+            if ($request->has('container_type')) {
+                $updateData['container_type'] = $request->container_type;
+            }
+            if ($request->has('sample_volume')) {
+                $updateData['sample_volume'] = $request->sample_volume;
+            }
+            if ($request->has('parameters')) {
+                $updateData['parameters'] = $request->parameters
+                    ? json_encode(array_map('trim', explode(',', $request->parameters)))
+                    : null;
             }
             DB::table('external_lab_offerings')
                 ->where('external_lab_id', $labId)
