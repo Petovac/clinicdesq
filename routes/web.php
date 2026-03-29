@@ -208,19 +208,21 @@ Route::middleware(['auth'])
         /* =========================
          | Organisation Dashboard
          ========================= */
-         Route::middleware('permission:dashboard.view')->group(function () {
-
+         // Dashboard — accessible to all org users (content adapts to permissions)
                 Route::get('/dashboard', [OrganisationDashboardController::class, 'index'])
                     ->name('dashboard');
 
                 // View clinics
-                Route::get('/clinics', [OrganisationClinicController::class, 'index'])
-                    ->name('clinics.index');
+                Route::middleware('permission:clinics.view')->group(function () {
+                    Route::get('/clinics', [OrganisationClinicController::class, 'index'])
+                        ->name('clinics.index');
+                });
 
                 // Users list & assignment
-                Route::get('/users', [OrganisationUserController::class, 'index'])
-                    ->name('users.index');
-            });
+                Route::middleware('permission:users.view')->group(function () {
+                    Route::get('/users', [OrganisationUserController::class, 'index'])
+                        ->name('users.index');
+                });
 
             /* =========================
             | Manage Roles
@@ -594,8 +596,8 @@ Route::middleware(['auth'])
     /* =========================
      | Dashboard (any clinic staff)
      ========================= */
+    // Dashboard — accessible to all clinic staff (content adapts to permissions)
     Route::get('/dashboard', [ClinicDashboardController::class, 'index'])
-        ->middleware('permission:dashboard.view')
         ->name('dashboard');
 
     // Role switch: Clinic Panel → Vet

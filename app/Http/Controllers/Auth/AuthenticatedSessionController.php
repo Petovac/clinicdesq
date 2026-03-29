@@ -69,12 +69,7 @@ class AuthenticatedSessionController extends Controller
 
     // Central / multi-clinic users → org panel
     if ($clinicScope === 'none' || $clinicScope === 'multiple') {
-        if ($user->hasPermission('dashboard.view') ||
-            $user->hasPermission('users.view') ||
-            $user->hasPermission('clinics.view') ||
-            $user->hasPermission('inventory.view')) {
-            return redirect('/organisation/dashboard');
-        }
+        return redirect('/organisation/dashboard');
     }
 
     // Fallback: anyone with clinic permissions goes to clinic panel

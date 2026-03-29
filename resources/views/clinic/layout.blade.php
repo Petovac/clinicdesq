@@ -143,7 +143,6 @@
             <div class="nav-parent">Clinic</div>
             <div class="nav-children">
 
-            @if(auth()->user()->hasPermission('dashboard.view'))
             <a href="{{ route('clinic.dashboard') }}"
                class="{{ request()->is('clinic/dashboard') ? 'active' : '' }}">
                 Dashboard
@@ -152,7 +151,6 @@
                class="{{ request()->is('clinic/analytics*') ? 'active' : '' }}">
                 Analytics
             </a>
-            @endif
 
             @if(auth()->user()->hasPermission('appointments.view'))
             <a href="{{ route('clinic.appointments.index') }}"

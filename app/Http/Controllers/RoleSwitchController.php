@@ -118,23 +118,16 @@ class RoleSwitchController extends Controller
         // Link vet to user
         $vet->update(['linked_user_id' => $user->id]);
 
-        // Auto-assign Clinic Manager role (or first available role with dashboard.view)
+        // Auto-assign Clinic Manager role (or first available role)
         $managerRole = DB::table('organisation_roles')
             ->where('organisation_id', $organisationId)
             ->where('name', 'LIKE', '%Manager%')
             ->first();
 
         if (!$managerRole) {
-            // Fallback: find any role with dashboard.view permission
+            // Fallback: first available role in the organisation
             $managerRole = DB::table('organisation_roles')
                 ->where('organisation_id', $organisationId)
-                ->whereExists(function ($q) {
-                    $q->select(DB::raw(1))
-                       ->from('role_permissions')
-                       ->join('permissions', 'permissions.id', '=', 'role_permissions.permission_id')
-                       ->whereColumn('role_permissions.role_id', 'organisation_roles.id')
-                       ->where('permissions.slug', 'dashboard.view');
-                })
                 ->first();
         }
 

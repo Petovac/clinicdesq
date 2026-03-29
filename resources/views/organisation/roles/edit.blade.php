@@ -70,7 +70,7 @@
         <p style="font-size:12px;color:#6b7280;margin-bottom:12px;">Select what this role can access and manage.</p>
 
         @php
-            $centralSlugs = ['dashboard.view','dashboard.metrics','clinics.view','clinics.manage','roles.view','roles.manage','users.view','users.manage','vets.view','vets.assign','pricing.view','pricing.manage','settings.manage','whatsapp.manage','webhooks.manage','inventory.metrics','billing.metrics','doctors.performance_view'];
+            $centralSlugs = ['clinics.view','clinics.manage','roles.view','roles.manage','users.view','users.manage','vets.view','vets.assign','pricing.view','pricing.manage','settings.manage','whatsapp.manage','webhooks.manage','inventory.metrics','billing.metrics','doctors.performance_view'];
         @endphp
 
         <div class="perm-grid">

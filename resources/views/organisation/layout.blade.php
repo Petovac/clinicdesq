@@ -194,12 +194,10 @@ Clinicdesq
 <div class="nav-parent">Organisation</div>
 <div class="nav-children">
 
-@if(auth()->user()->hasPermission('dashboard.view'))
 <a href="{{ route('organisation.dashboard') }}"
 class="{{ request()->is('organisation/dashboard') ? 'active' : '' }}">
 Dashboard
 </a>
-@endif
 
 @if(auth()->user()->hasPermission('clinics.view'))
 <a href="{{ route('organisation.clinics.index') }}"
