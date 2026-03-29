@@ -86,7 +86,7 @@
             <p class="not-found-text">No pet parent found with this number</p>
             <p class="not-found-hint">The number <strong>{{ $mobile }}</strong> is not registered yet. You can register them as a new pet parent.</p>
 
-            <a href="{{ route('vet.petparent.create') }}?phone={{ $mobile }}&redirect=clinic" class="btn-register">
+            <a href="{{ route('clinic.petparent.create') }}?phone={{ $mobile }}&redirect=clinic" class="btn-register">
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
                 Register New Pet Parent
             </a>

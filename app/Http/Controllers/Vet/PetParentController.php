@@ -25,10 +25,9 @@ class PetParentController extends Controller
 
         $parent = PetParent::create($request->only(['name', 'phone']));
 
-        // If coming from clinic appointment flow, redirect to pet creation for this parent
+        // If coming from clinic appointment flow, redirect to pet creation under clinic routes
         if ($request->input('redirect') === 'clinic') {
-            return redirect()->route('vet.pets.create', $parent->id)
-                ->with('from_clinic', true);
+            return redirect()->route('clinic.pets.create', $parent->id);
         }
 
         return redirect()->route('vet.pets.create', $parent->id);

@@ -26,7 +26,7 @@ class PetController extends Controller
             'breed'       => 'nullable|string',
         ]);
     
-        Pet::create([
+        $pet = Pet::create([
             'pet_parent_id'   => $parentId,
             'name'            => $request->name,
             'species'         => $request->species,
@@ -38,10 +38,16 @@ class PetController extends Controller
         ]);
     
         if ($request->filled('redirect_to')) {
+            // If redirecting back to clinic appointments, go directly to create appointment for this pet
+            if (str_contains($request->redirect_to, '/clinic/')) {
+                return redirect()->route('clinic.appointments.createForPet', $pet->id)
+                    ->with('success', 'Pet added successfully');
+            }
+
             return redirect($request->redirect_to)
                 ->with('success', 'Pet added successfully');
         }
-    
+
         return redirect()
             ->route('vet.petparent.show', $parentId)
             ->with('success', 'Pet added successfully');

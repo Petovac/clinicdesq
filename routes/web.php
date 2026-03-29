@@ -653,6 +653,18 @@ Route::middleware(['auth'])
     });
 
     /* =========================
+     | Pet Parent (from clinic)
+     ========================= */
+    Route::get('/pet-parent/create', [\App\Http\Controllers\Vet\PetParentController::class, 'create'])
+        ->name('petparent.create');
+    Route::post('/pet-parent/store', [\App\Http\Controllers\Vet\PetParentController::class, 'store'])
+        ->name('petparent.store');
+    Route::get('/pets/create/{parent}', [\App\Http\Controllers\Vet\PetController::class, 'create'])
+        ->name('pets.create');
+    Route::post('/pets/store/{parent}', [\App\Http\Controllers\Vet\PetController::class, 'store'])
+        ->name('pets.store');
+
+    /* =========================
      | Billing
      ========================= */
     Route::get(

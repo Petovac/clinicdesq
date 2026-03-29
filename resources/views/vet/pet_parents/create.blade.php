@@ -43,7 +43,7 @@
         <h2 class="pp-title">Register Pet Parent</h2>
         <p class="pp-subtitle">Enter the pet parent's details to get started.</p>
 
-        <form method="POST" action="{{ route('vet.petparent.store') }}">
+        <form method="POST" action="{{ isset($redirect) && $redirect === 'clinic' ? route('clinic.petparent.store') : route('vet.petparent.store') }}">
             @csrf
             @if(isset($redirect))
                 <input type="hidden" name="redirect" value="{{ $redirect }}">
