@@ -39,16 +39,22 @@
 .modal-box { background:#fff; border-radius:12px; padding:24px; width:560px; max-width:90vw; max-height:80vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.15); }
 .modal-box h4 { margin:0 0 6px; font-size:17px; font-weight:700; }
 .modal-box .modal-subtitle { font-size:13px; color:#6b7280; margin-bottom:16px; }
-.consumable-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; }
-.consumable-row:last-child { border-bottom:none; }
-.consumable-name { flex:1; font-size:14px; font-weight:500; }
-.consumable-qty { font-size:13px; color:#6b7280; }
-.add-consumable-row { display:flex; gap:8px; align-items:flex-end; margin-top:14px; padding-top:14px; border-top:1px solid #e5e7eb; }
-.add-consumable-row select, .add-consumable-row input { padding:7px 10px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; }
-.add-consumable-row select { flex:1; }
-.add-consumable-row input { width:70px; }
-.btn-add { background:#10b981; color:#fff; border:none; padding:7px 14px; border-radius:6px; font-size:13px; font-weight:500; cursor:pointer; }
-.btn-add:hover { background:#059669; }
+.consumable-search { width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:7px; font-size:13px; margin-bottom:10px; box-sizing:border-box; }
+.consumable-search:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,.1); }
+.consumable-checklist { max-height:340px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:8px; }
+.cl-row { display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid #f3f4f6; cursor:pointer; transition:background .1s; }
+.cl-row:last-child { border-bottom:none; }
+.cl-row:hover { background:#f8fafc; }
+.cl-row.checked { background:#f0fdf4; }
+.cl-row input[type=checkbox] { width:16px; height:16px; cursor:pointer; accent-color:#10b981; flex-shrink:0; }
+.cl-name { flex:1; font-size:13px; font-weight:500; color:#1e293b; }
+.cl-type { font-size:10px; color:#6b7280; background:#f1f5f9; padding:1px 6px; border-radius:4px; }
+.cl-qty { width:65px; padding:5px 8px; border:1px solid #d1d5db; border-radius:5px; font-size:13px; text-align:center; }
+.cl-qty:disabled { background:#f9fafb; color:#d1d5db; }
+.cl-qty:focus { outline:none; border-color:#10b981; box-shadow:0 0 0 2px rgba(16,163,74,.12); }
+.selected-count { font-size:12px; color:#6b7280; padding:6px 0; }
+.selected-count strong { color:#10b981; }
+.cl-no-results { padding:20px; text-align:center; color:#9ca3af; font-size:13px; }
 .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; padding-top:14px; border-top:1px solid #e5e7eb; }
 .btn-cancel { background:#f3f4f6; color:#374151; border:1px solid #e5e7eb; padding:8px 18px; border-radius:7px; font-size:13px; cursor:pointer; }
 .consumable-count { font-size:11px; color:#6b7280; margin-left:6px; }
@@ -214,21 +220,13 @@
 <div class="modal-overlay" id="consumablesModal">
     <div class="modal-box">
         <h4 id="modalTitle">Linked Consumables</h4>
-        <p class="modal-subtitle" id="modalSubtitle">Items below will be auto-deducted from inventory when this procedure is billed.</p>
+        <p class="modal-subtitle">Check items to link. They will be auto-deducted from inventory when this procedure is billed.</p>
 
-        <div id="consumablesList">
+        <input type="text" class="consumable-search" id="consumableSearch" placeholder="Search items..." oninput="filterConsumableList()">
+        <div class="selected-count"><strong id="selectedCount">0</strong> items selected</div>
+
+        <div class="consumable-checklist" id="consumableChecklist">
             {{-- Populated by JS --}}
-        </div>
-
-        <div class="add-consumable-row">
-            <select id="addConsumableSelect">
-                <option value="">Select inventory item...</option>
-                @foreach($consumableItems as $ci)
-                    <option value="{{ $ci->id }}">{{ $ci->name }} ({{ $ci->item_type }})</option>
-                @endforeach
-            </select>
-            <input type="number" id="addConsumableQty" placeholder="Qty" min="0.001" step="0.001" value="1">
-            <button type="button" class="btn-add" onclick="addConsumableRow()">Add</button>
         </div>
 
         <div class="modal-actions">
@@ -240,19 +238,27 @@
 
 <script>
 let currentProcedureId = null;
-let currentConsumables = [];
+let currentConsumables = []; // [{inventory_item_id, name, quantity_used}, ...]
 const csrfToken = '{{ csrf_token() }}';
+
+// All available consumable/surgical items from backend
+const allItems = @json($consumableItems->map(fn($ci) => ['id' => $ci->id, 'name' => $ci->name, 'item_type' => $ci->item_type]));
 
 function openConsumablesModal(procedureId, procedureName) {
     currentProcedureId = procedureId;
     document.getElementById('modalTitle').textContent = 'Consumables for: ' + procedureName;
+    document.getElementById('consumableSearch').value = '';
 
     // Fetch existing consumables
     fetch('/organisation/fee-config/procedures/' + procedureId + '/consumables')
         .then(r => r.json())
         .then(data => {
-            currentConsumables = data;
-            renderConsumables();
+            currentConsumables = data.map(c => ({
+                inventory_item_id: c.inventory_item_id,
+                name: c.name,
+                quantity_used: c.quantity_used
+            }));
+            renderChecklist();
             document.getElementById('consumablesModal').classList.add('active');
         });
 }
@@ -263,57 +269,107 @@ function closeConsumablesModal() {
     currentConsumables = [];
 }
 
-function renderConsumables() {
-    let container = document.getElementById('consumablesList');
+function renderChecklist(filter) {
+    const container = document.getElementById('consumableChecklist');
+    const q = (filter || '').toLowerCase();
 
-    if (currentConsumables.length === 0) {
-        container.innerHTML = '<p style="color:#9ca3af;font-size:13px;padding:12px 0;">No consumables linked yet.</p>';
+    // Filter items
+    let items = allItems;
+    if (q) {
+        items = items.filter(i => i.name.toLowerCase().includes(q));
+    }
+
+    if (items.length === 0) {
+        container.innerHTML = '<div class="cl-no-results">No items match your search.</div>';
+        updateSelectedCount();
         return;
     }
 
+    // Sort: checked items first
+    const checkedIds = new Set(currentConsumables.map(c => c.inventory_item_id));
+    items = [...items].sort((a, b) => {
+        const aChecked = checkedIds.has(a.id) ? 0 : 1;
+        const bChecked = checkedIds.has(b.id) ? 0 : 1;
+        if (aChecked !== bChecked) return aChecked - bChecked;
+        return a.name.localeCompare(b.name);
+    });
+
     let html = '';
-    currentConsumables.forEach((c, idx) => {
+    items.forEach(item => {
+        const linked = currentConsumables.find(c => c.inventory_item_id === item.id);
+        const isChecked = !!linked;
+        const qty = linked ? linked.quantity_used : 1;
+
         html += `
-            <div class="consumable-row">
-                <span class="consumable-name">${c.name}</span>
-                <span class="consumable-qty">${c.quantity_used} unit(s)</span>
-                <button type="button" class="btn-sm-danger" onclick="removeConsumable(${idx})">Remove</button>
+            <div class="cl-row ${isChecked ? 'checked' : ''}" data-id="${item.id}">
+                <input type="checkbox" ${isChecked ? 'checked' : ''}
+                       onchange="toggleConsumableItem(${item.id}, '${item.name.replace(/'/g, "\\'")}', this.checked)">
+                <span class="cl-name">${item.name}</span>
+                <span class="cl-type">${item.item_type}</span>
+                <input type="number" class="cl-qty" value="${qty}" min="0.001" step="0.001"
+                       ${isChecked ? '' : 'disabled'}
+                       onchange="updateConsumableQty(${item.id}, this.value)"
+                       onclick="event.stopPropagation()">
             </div>
         `;
     });
     container.innerHTML = html;
-}
 
-function addConsumableRow() {
-    let select = document.getElementById('addConsumableSelect');
-    let qtyInput = document.getElementById('addConsumableQty');
-
-    if (!select.value) return;
-
-    let itemId = parseInt(select.value);
-    let qty = parseFloat(qtyInput.value) || 1;
-    let name = select.options[select.selectedIndex].text;
-
-    // Check duplicate
-    if (currentConsumables.find(c => c.inventory_item_id === itemId)) {
-        alert('This item is already linked.');
-        return;
-    }
-
-    currentConsumables.push({
-        inventory_item_id: itemId,
-        name: name,
-        quantity_used: qty
+    // Click row to toggle checkbox
+    container.querySelectorAll('.cl-row').forEach(row => {
+        row.addEventListener('click', function(e) {
+            if (e.target.tagName === 'INPUT') return; // Don't double-toggle
+            const cb = this.querySelector('input[type=checkbox]');
+            cb.checked = !cb.checked;
+            cb.dispatchEvent(new Event('change'));
+        });
     });
 
-    renderConsumables();
-    select.value = '';
-    qtyInput.value = '1';
+    updateSelectedCount();
 }
 
-function removeConsumable(index) {
-    currentConsumables.splice(index, 1);
-    renderConsumables();
+function toggleConsumableItem(itemId, itemName, isChecked) {
+    if (isChecked) {
+        if (!currentConsumables.find(c => c.inventory_item_id === itemId)) {
+            currentConsumables.push({
+                inventory_item_id: itemId,
+                name: itemName,
+                quantity_used: 1
+            });
+        }
+    } else {
+        currentConsumables = currentConsumables.filter(c => c.inventory_item_id !== itemId);
+    }
+
+    // Update row style and qty input
+    const row = document.querySelector(`.cl-row[data-id="${itemId}"]`);
+    if (row) {
+        row.classList.toggle('checked', isChecked);
+        const qtyInput = row.querySelector('.cl-qty');
+        if (isChecked) {
+            qtyInput.disabled = false;
+            qtyInput.value = 1;
+        } else {
+            qtyInput.disabled = true;
+        }
+    }
+    updateSelectedCount();
+}
+
+function updateConsumableQty(itemId, value) {
+    const linked = currentConsumables.find(c => c.inventory_item_id === itemId);
+    if (linked) {
+        linked.quantity_used = parseFloat(value) || 1;
+    }
+}
+
+function filterConsumableList() {
+    const q = document.getElementById('consumableSearch').value;
+    renderChecklist(q);
+}
+
+function updateSelectedCount() {
+    document.getElementById('selectedCount').textContent = currentConsumables.length;
 }
 
 function saveConsumables() {
@@ -335,7 +391,6 @@ function saveConsumables() {
     .then(data => {
         if (data.success) {
             closeConsumablesModal();
-            // Update the count badge on the button
             location.reload();
         } else {
             alert(data.error || 'Failed to save.');
