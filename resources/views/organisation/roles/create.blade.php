@@ -63,6 +63,10 @@
         <h3 style="font-size:16px;font-weight:600;color:#1f2937;margin-bottom:4px;">Permissions</h3>
         <p style="font-size:12px;color:#6b7280;margin-bottom:12px;">Select what this role can access and manage.</p>
 
+        @php
+            $centralSlugs = ['dashboard.view','dashboard.metrics','clinics.view','clinics.manage','roles.view','roles.manage','users.view','users.manage','vets.view','vets.assign','pricing.view','pricing.manage','settings.manage','whatsapp.manage','webhooks.manage','inventory.metrics','billing.metrics','doctors.performance_view'];
+        @endphp
+
         <div class="perm-grid">
             @foreach($groupedPermissions as $group => $perms)
                 <div class="perm-card">
@@ -73,7 +77,12 @@
                     @foreach($perms as $perm)
                         <div class="perm-item">
                             <input type="checkbox" name="permissions[]" value="{{ $perm->id }}" id="perm_{{ $perm->id }}">
-                            <label for="perm_{{ $perm->id }}">{{ $perm->name }}</label>
+                            <label for="perm_{{ $perm->id }}">
+                                {{ $perm->name }}
+                                @if(in_array($perm->slug, $centralSlugs))
+                                    <span style="font-size:10px;color:#7c3aed;background:#f5f3ff;padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:600;">Org-wide</span>
+                                @endif
+                            </label>
                         </div>
                     @endforeach
                 </div>
