@@ -448,6 +448,62 @@ public function centralBatches($itemId)
 */
 public function transfer(Request $request)
 {
+    // Bulk transfer mode
+    if ($request->bulk_transfer && $request->transfers) {
+        $request->validate([
+            'clinic_id'                     => 'required|exists:clinics,id',
+            'transfers'                     => 'required|array|min:1',
+            'transfers.*.inventory_item_id' => 'required|exists:inventory_items,id',
+            'transfers.*.batch_id'          => 'required|exists:inventory_batches,id',
+            'transfers.*.quantity'          => 'required|numeric|min:0.001',
+        ]);
+
+        $orgId = auth()->user()->organisation_id;
+        $clinic = Clinic::where('organisation_id', $orgId)->findOrFail($request->clinic_id);
+        $orgClinicIds = Clinic::where('organisation_id', $orgId)->pluck('id')->toArray();
+        $count = 0;
+
+        DB::transaction(function () use ($request, $clinic, $orgClinicIds, &$count) {
+            foreach ($request->transfers as $t) {
+                $sourceBatch = InventoryBatch::where('id', $t['batch_id'])
+                    ->where('inventory_item_id', $t['inventory_item_id'])
+                    ->where(function ($q) use ($orgClinicIds) {
+                        $q->whereNull('clinic_id')->orWhereIn('clinic_id', $orgClinicIds);
+                    })->first();
+
+                if (!$sourceBatch || $t['quantity'] > $sourceBatch->quantity) continue;
+
+                $sourceBatch->decrement('quantity', $t['quantity']);
+
+                $clinicBatch = InventoryBatch::firstOrCreate(
+                    ['inventory_item_id' => $t['inventory_item_id'], 'clinic_id' => $clinic->id, 'batch_number' => $sourceBatch->batch_number],
+                    ['expiry_date' => $sourceBatch->expiry_date, 'quantity' => 0, 'purchase_price' => $sourceBatch->purchase_price, 'created_by' => auth()->id()]
+                );
+                $clinicBatch->increment('quantity', $t['quantity']);
+
+                $sourceLabel = $sourceBatch->clinic_id ? (Clinic::find($sourceBatch->clinic_id)->name ?? 'Clinic') : 'Central';
+
+                InventoryMovement::create([
+                    'clinic_id' => $sourceBatch->clinic_id ?? 0, 'inventory_item_id' => $t['inventory_item_id'],
+                    'inventory_batch_id' => $sourceBatch->id, 'quantity' => -$t['quantity'],
+                    'movement_type' => 'transfer_out', 'reference_id' => $clinic->id,
+                    'notes' => "Bulk transfer to {$clinic->name}", 'created_by' => auth()->id(),
+                ]);
+                InventoryMovement::create([
+                    'clinic_id' => $clinic->id, 'inventory_item_id' => $t['inventory_item_id'],
+                    'inventory_batch_id' => $clinicBatch->id, 'quantity' => $t['quantity'],
+                    'movement_type' => 'transfer_in', 'reference_id' => $sourceBatch->clinic_id ?? 0,
+                    'notes' => "Bulk transfer from {$sourceLabel}", 'created_by' => auth()->id(),
+                ]);
+                $count++;
+            }
+        });
+
+        return redirect()->route('organisation.inventory.transfer')
+            ->with('success', "Transferred {$count} items to {$clinic->name} successfully.");
+    }
+
+    // Single transfer mode (legacy)
     $request->validate([
         'clinic_id'          => 'required|exists:clinics,id',
         'inventory_item_id'  => 'required|exists:inventory_items,id',
