@@ -635,6 +635,7 @@ Add Item
             <tr>
                 <th>Name</th>
                 <th>Type</th>
+                <th>Form</th>
                 <th>Strength</th>
                 <th>Pack Size</th>
                 <th>Action</th>
@@ -652,6 +653,10 @@ Add Item
                     <span style="background:{{ $typeBg }};color:{{ $typeColor }};padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">{{ ucfirst($item->item_type) }}</span>
                 </td>
                 <td>
+                    <span style="font-size:13px;color:#6b7280;">{{ $item->package_type ? ucfirst(str_replace('_', ' ', $item->package_type)) : '—' }}</span>
+                </td>
+                <td>
+                    @if($item->strength_value)
                     <div class="flex-small">
                         <input class="edit-field input-small" name="strength_value" value="{{ $item->strength_value }}" data-id="{{ $item->id }}" readonly>
                         <select class="edit-field input-medium" name="strength_unit" data-id="{{ $item->id }}" disabled style="border:none;background:transparent;appearance:none;">
@@ -660,6 +665,9 @@ Add Item
                             @endforeach
                         </select>
                     </div>
+                    @else
+                    <span style="color:#d1d5db;">—</span>
+                    @endif
                 </td>
                 <td>
                     <div class="flex-small">
