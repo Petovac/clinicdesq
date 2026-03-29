@@ -211,7 +211,7 @@ foreach ($allItems as $item) {
     // Check if already in price list
     $exists = DB::table('price_list_items')
         ->where('price_list_id', $priceListId)
-        ->where('item_name', $item->name)
+        ->where('name', $item->name)
         ->exists();
     if ($exists) continue;
 
@@ -220,9 +220,9 @@ foreach ($allItems as $item) {
 
     $row = [
         'price_list_id' => $priceListId,
-        'item_name' => $item->name,
+        'name' => $item->name,
         'item_type' => $item->item_type === 'drug' ? 'product' : 'product',
-        'selling_price' => $sellPrice,
+        'price' => $sellPrice,
         'created_at' => now(),
         'updated_at' => now(),
     ];
