@@ -111,9 +111,8 @@ tr:hover td { background:#f9fafb; }
                 $clinicIds = $vet->clinics->pluck('id');
                 $caseCount = \App\Models\Appointment::where('vet_id', $vet->id)->whereIn('clinic_id', $clinicIds)->count();
                 $tenure = optional(
-                    \DB::table('clinic_vet')->where('vet_id', $vet->id)->where('is_active', 1)->orderBy('created_at')->first()
+                    \DB::table('clinic_vet')->where('vet_id', $vet->id)->orderBy('created_at')->first()
                 )->created_at;
-                $pivotStatus = \DB::table('clinic_vet')->where('vet_id', $vet->id)->whereIn('clinic_id', $clinicIds)->value('status');
             @endphp
             <tr>
                 <td><strong>{{ $vet->name }}</strong></td>
@@ -122,11 +121,7 @@ tr:hover td { background:#f9fafb; }
                 <td>{{ $caseCount }}</td>
                 <td class="vet-muted">{{ $tenure ? \Carbon\Carbon::parse($tenure)->diffForHumans(null, true) : '—' }}</td>
                 <td>
-                    @if($pivotStatus === 'pending')
-                        <span class="badge badge-pending">Pending</span>
-                    @else
-                        <span class="badge badge-active">Active</span>
-                    @endif
+                    <span class="badge badge-active">Active</span>
                 </td>
                 <td class="actions">
                     <a href="{{ route('organisation.vets.show', $vet) }}">Manage</a>
