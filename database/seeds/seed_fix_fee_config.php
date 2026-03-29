@@ -27,39 +27,67 @@ if ($col && str_contains($col[0]->Type, 'enum')) {
 // ──────────────────────────────────────
 // 2. Seed injection routes
 // ──────────────────────────────────────
-echo "\nChecking injection routes...\n";
-$hasRoutes = DB::table('injection_routes')->exists();
-if (!$hasRoutes) {
-    echo "Seeding default injection routes...\n";
+echo "\nChecking injection route fees...\n";
+
+// Create table if it doesn't exist
+if (!Schema::hasTable('injection_route_fees')) {
+    echo "Creating injection_route_fees table...\n";
+    Schema::create('injection_route_fees', function ($table) {
+        $table->id();
+        $table->unsignedBigInteger('organisation_id');
+        $table->string('route_code', 20);
+        $table->string('route_name', 80);
+        $table->decimal('administration_fee', 10, 2)->default(0);
+        $table->boolean('is_active')->default(true);
+        $table->timestamps();
+        $table->unique(['organisation_id', 'route_code']);
+    });
+    echo "Table created.\n";
+}
+
+// Create procedure_inventory_items table if needed
+if (!Schema::hasTable('procedure_inventory_items')) {
+    echo "Creating procedure_inventory_items table...\n";
+    Schema::create('procedure_inventory_items', function ($table) {
+        $table->id();
+        $table->unsignedBigInteger('price_list_item_id');
+        $table->unsignedBigInteger('inventory_item_id');
+        $table->decimal('quantity_used', 10, 3)->default(1);
+        $table->timestamps();
+    });
+    echo "Table created.\n";
+}
+
+$orgId = DB::table('organisations')->value('id');
+if ($orgId) {
     $routes = [
-        ['code' => 'IV',  'name' => 'Intravenous (IV)',    'admin_fee' => 300, 'is_active' => 1],
-        ['code' => 'IM',  'name' => 'Intramuscular (IM)',  'admin_fee' => 250, 'is_active' => 1],
-        ['code' => 'SC',  'name' => 'Subcutaneous (SC)',   'admin_fee' => 200, 'is_active' => 1],
-        ['code' => 'ID',  'name' => 'Intradermal (ID)',    'admin_fee' => 200, 'is_active' => 1],
-        ['code' => 'PO',  'name' => 'Oral (PO)',           'admin_fee' => 150, 'is_active' => 1],
-        ['code' => 'IO',  'name' => 'Intraosseous (IO)',   'admin_fee' => 1000, 'is_active' => 1],
-        ['code' => 'IT',  'name' => 'Intrathecal (IT)',    'admin_fee' => 600, 'is_active' => 1],
+        ['route_code' => 'IV',  'route_name' => 'Intravenous (IV)',    'administration_fee' => 300],
+        ['route_code' => 'IM',  'route_name' => 'Intramuscular (IM)',  'administration_fee' => 250],
+        ['route_code' => 'SC',  'route_name' => 'Subcutaneous (SC)',   'administration_fee' => 200],
+        ['route_code' => 'ID',  'route_name' => 'Intradermal (ID)',    'administration_fee' => 200],
+        ['route_code' => 'PO',  'route_name' => 'Oral (PO)',           'administration_fee' => 150],
+        ['route_code' => 'IO',  'route_name' => 'Intraosseous (IO)',   'administration_fee' => 1000],
+        ['route_code' => 'IT',  'route_name' => 'Intrathecal (IT)',    'administration_fee' => 600],
     ];
+    $seeded = 0;
     foreach ($routes as $route) {
-        // Check for org_id column
-        if (Schema::hasColumn('injection_routes', 'organisation_id')) {
-            $orgs = DB::table('organisations')->pluck('id');
-            foreach ($orgs as $orgId) {
-                DB::table('injection_routes')->updateOrInsert(
-                    ['code' => $route['code'], 'organisation_id' => $orgId],
-                    array_merge($route, ['organisation_id' => $orgId, 'created_at' => now(), 'updated_at' => now()])
-                );
-            }
-        } else {
-            DB::table('injection_routes')->updateOrInsert(
-                ['code' => $route['code']],
-                array_merge($route, ['created_at' => now(), 'updated_at' => now()])
-            );
+        $exists = DB::table('injection_route_fees')
+            ->where('organisation_id', $orgId)
+            ->where('route_code', $route['route_code'])
+            ->exists();
+        if (!$exists) {
+            DB::table('injection_route_fees')->insert(array_merge($route, [
+                'organisation_id' => $orgId,
+                'is_active'       => true,
+                'created_at'      => now(),
+                'updated_at'      => now(),
+            ]));
+            $seeded++;
         }
     }
-    echo "Injection routes seeded.\n";
+    echo "Seeded {$seeded} injection route fees.\n";
 } else {
-    echo "Injection routes already exist, skipping.\n";
+    echo "No organisation found, skipping injection routes.\n";
 }
 
 // ──────────────────────────────────────
