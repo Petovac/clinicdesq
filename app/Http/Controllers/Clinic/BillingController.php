@@ -274,12 +274,17 @@ class BillingController extends Controller
 
     private function populateDraftItems(Bill $bill, Appointment $appointment, ?PriceList $activeList, int $clinicId): void
     {
-        // 1. Visit fee — auto-added
+        // 1. Visit fee — auto-added (check both item_type=visit_fee and name match)
         if ($activeList) {
             $visitFee = PriceListItem::where('price_list_id', $activeList->id)
-                ->where('item_type', 'service')
-                ->where('name', 'like', '%visit%fee%')
                 ->where('is_active', 1)
+                ->where(function ($q) {
+                    $q->where('item_type', 'visit_fee')
+                      ->orWhere(function ($q2) {
+                          $q2->where('item_type', 'service')
+                             ->where('name', 'like', '%visit%fee%');
+                      });
+                })
                 ->first();
 
             if ($visitFee) {
@@ -299,24 +304,23 @@ class BillingController extends Controller
         $orgId = $appointment->clinic->organisation_id;
 
         foreach ($appointment->treatments as $treatment) {
-            if (!$treatment->priceItem) {
-                continue;
-            }
-
             $source = $treatment->drug_generic_id ? 'injection' : 'procedure';
             $qty    = $treatment->billing_quantity ?? 1;
 
             if ($source === 'injection') {
                 // Injection billing: route_admin_fee + (drug_price_per_ml × volume)
-                $drugCostPerUnit = (float) $treatment->priceItem->price;
+                $drugCostPerUnit = $treatment->priceItem ? (float) $treatment->priceItem->price : 0;
                 $volume          = (float) ($treatment->dose_volume_ml ?? $qty);
                 $drugCost        = round($drugCostPerUnit * $volume, 2);
 
                 $routeFee = InjectionRouteFee::feeFor($orgId, $treatment->route);
                 $total    = $drugCost + $routeFee;
 
-                // Build description with breakdown
-                $desc = $treatment->priceItem->name;
+                // Build description
+                $desc = $treatment->priceItem->name
+                    ?? $treatment->inventoryItem->name
+                    ?? $treatment->drugBrand->brand_name
+                    ?? 'Drug treatment';
                 if ($treatment->dose_volume_ml) {
                     $desc .= ' (' . $treatment->dose_volume_ml . ' ml)';
                 }
@@ -325,24 +329,27 @@ class BillingController extends Controller
                 }
 
                 $bill->items()->create([
-                    'price_list_item_id' => $treatment->priceItem->id,
+                    'price_list_item_id' => $treatment->priceItem?->id,
                     'quantity'           => $volume,
                     'price'              => $drugCostPerUnit,
                     'total'              => $total,
                     'source'             => 'injection',
-                    'status'             => 'approved',
+                    'status'             => $treatment->priceItem ? 'approved' : 'pending',
                     'description'        => $desc,
                 ]);
             } else {
                 // Procedure billing: flat price
+                $price = $treatment->priceItem ? (float) $treatment->priceItem->price : 0;
+                $desc  = $treatment->priceItem->name ?? 'Procedure';
+
                 $bill->items()->create([
-                    'price_list_item_id' => $treatment->priceItem->id,
+                    'price_list_item_id' => $treatment->priceItem?->id,
                     'quantity'           => $qty,
-                    'price'              => $treatment->priceItem->price,
-                    'total'              => round($treatment->priceItem->price * $qty, 2),
+                    'price'              => $price,
+                    'total'              => round($price * $qty, 2),
                     'source'             => 'procedure',
-                    'status'             => 'approved',
-                    'description'        => $treatment->priceItem->name,
+                    'status'             => $treatment->priceItem ? 'approved' : 'pending',
+                    'description'        => $desc,
                 ]);
             }
         }
