@@ -436,6 +436,15 @@ z-index:1000;
 <option value="tablet">Tablet</option>
 <option value="capsule">Capsule</option>
 <option value="injection">Injection</option>
+<option value="oral_suspension">Oral Suspension</option>
+<option value="syrup">Syrup</option>
+<option value="drops">Drops</option>
+<option value="ointment">Ointment</option>
+<option value="cream">Cream</option>
+<option value="gel">Gel</option>
+<option value="spray">Spray</option>
+<option value="powder">Powder</option>
+<option value="shampoo">Shampoo</option>
 <option value="vial">Vial</option>
 <option value="fluid">Fluid</option>
 <option value="bottle">Bottle</option>
@@ -482,7 +491,13 @@ z-index:1000;
 <select name="pack_unit" class="select">
 
 <option value="">Unit</option>
+<option value="tabs">tabs</option>
+<option value="caps">caps</option>
 <option value="ml">ml</option>
+<option value="vial">vial</option>
+<option value="dose">dose</option>
+<option value="bottle">bottle</option>
+<option value="tube">tube</option>
 <option value="litre">litre</option>
 <option value="mg">mg</option>
 <option value="gm">gm</option>
@@ -861,9 +876,43 @@ data-form="${drug.form}">${label}</span>
 
 });
 
+// Always show "Not found? Add manually" at the bottom
+html += `
+<div id="addManualDrug"
+style="padding:10px;color:#2563eb;cursor:pointer;font-weight:500;border-top:1px solid #e5e7eb;font-size:13px;">
+🔍 Can't find it? <strong>Add manually</strong>
+</div>
+`;
+
 document.getElementById("drugSuggestions").innerHTML = html;
 
 });
+});
+
+// Handle "Add manually" click from drug search
+document.addEventListener("click", function(e){
+    if(e.target.closest && e.target.closest("#addManualDrug")){
+        // Clear KB link
+        document.getElementById("drug_brand_id").value = "";
+        document.getElementById("generic_id").value = "";
+
+        // Pre-fill brand name with what user typed
+        let searchVal = document.getElementById("drugSearch").value.trim();
+        document.querySelector('#drugFields [name="name"]').value = searchVal;
+
+        // Clear other fields
+        document.querySelector('#drugFields [name="strength_value"]').value = "";
+        document.querySelector('#drugFields [name="strength_unit"]').value = "";
+        document.querySelector('#drugFields [name="package_type"]').value = "";
+        document.querySelector('#drugFields [name="unit_volume_ml"]').value = "";
+        document.querySelector('#drugFields [name="pack_unit"]').value = "";
+
+        // Show the manual form
+        document.getElementById("drugFields").style.display = "block";
+        document.getElementById("drugSuggestions").innerHTML = "";
+
+        document.querySelector('#drugFields [name="name"]').focus();
+    }
 });
 
 </script>
