@@ -54,8 +54,8 @@
                     <div style="font-size:11px;color:var(--text-muted);">{{ $test->code }} · <span style="background:#eff6ff;color:#1e40af;padding:1px 6px;border-radius:8px;font-size:10px;">{{ ucfirst(str_replace('_',' ',$test->category)) }}</span></div>
                 </td>
                 <td style="padding:10px 14px;font-size:11px;color:var(--text-muted);">
-                    @if($test->container_type)
-                        <div>{{ $test->container_type }}</div>
+                    @if($test->preferred_sample)
+                        <div>{{ $test->preferred_sample }}</div>
                     @else
                         <div>{{ ucfirst($test->sample_type) }}</div>
                     @endif
