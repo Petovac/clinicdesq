@@ -387,21 +387,38 @@ class BillingController extends Controller
             }
         }
 
-        // 3. Prescription items — pending staff review
+        // 3. Prescription items — always pending for staff review (never auto-reject)
         if ($appointment->prescription) {
             foreach ($appointment->prescription->items as $rxItem) {
                 $priceItem = null;
 
-                if ($rxItem->inventory_item_id && $activeList) {
-                    $priceItem = PriceListItem::where('price_list_id', $activeList->id)
-                        ->where('inventory_item_id', $rxItem->inventory_item_id)
-                        ->where('is_active', 1)
-                        ->first();
+                if ($activeList) {
+                    // Try by inventory_item_id first
+                    if ($rxItem->inventory_item_id) {
+                        $priceItem = PriceListItem::where('price_list_id', $activeList->id)
+                            ->where('inventory_item_id', $rxItem->inventory_item_id)
+                            ->where('is_active', 1)
+                            ->first();
+                    }
+                    // Fallback: try by drug_brand_id
+                    if (!$priceItem && $rxItem->drug_brand_id) {
+                        $priceItem = PriceListItem::where('price_list_id', $activeList->id)
+                            ->where('drug_brand_id', $rxItem->drug_brand_id)
+                            ->where('is_active', 1)
+                            ->first();
+                    }
+                    // Fallback: try by name match
+                    if (!$priceItem && $rxItem->medicine) {
+                        $priceItem = PriceListItem::where('price_list_id', $activeList->id)
+                            ->where('name', 'like', '%' . explode(' ', $rxItem->medicine)[0] . '%')
+                            ->where('is_active', 1)
+                            ->first();
+                    }
                 }
 
-                $inStock = $rxItem->isInStock($clinicId);
                 $qty = $this->calculatePrescriptionQty($rxItem);
 
+                // Always show as pending — staff decides. Never auto-reject due to stock.
                 $bill->items()->create([
                     'price_list_item_id'  => $priceItem?->id,
                     'prescription_item_id'=> $rxItem->id,
@@ -409,7 +426,7 @@ class BillingController extends Controller
                     'price'               => $priceItem?->price ?? 0,
                     'total'               => round(($priceItem?->price ?? 0) * $qty, 2),
                     'source'              => 'prescription',
-                    'status'              => $inStock ? 'pending' : 'rejected',
+                    'status'              => 'pending',
                     'description'         => $rxItem->medicine
                         . ($rxItem->strength_value ? ' ' . $rxItem->strength_value . $rxItem->strength_unit : ''),
                 ]);
