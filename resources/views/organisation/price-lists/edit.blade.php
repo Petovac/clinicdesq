@@ -317,10 +317,20 @@ tr.editing td{
 @endphp
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
-    <div style="font-weight:600;font-size:15px;color:#374151;">
-        Items <span id="itemCount" style="color:#9ca3af;font-weight:400;">({{ $priceList->items->count() }})</span>
+    <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-weight:600;font-size:15px;color:#374151;">
+            Items <span id="itemCount" style="color:#9ca3af;font-weight:400;">({{ $priceList->items->count() }})</span>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" id="bulkEditBtn" onclick="bulkEdit()">Bulk Edit</button>
+        <button type="button" class="btn btn-success btn-sm" id="bulkSaveBtn" onclick="bulkSave()" style="display:none;">Save All</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="bulkCancelBtn" onclick="bulkCancel()" style="display:none;">Cancel</button>
     </div>
-    <input type="text" id="priceSearch" placeholder="Search items..." oninput="filterPriceItems()" style="padding:8px 14px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;width:280px;">
+    <div style="display:flex;align-items:center;gap:8px;">
+        <div style="position:relative;">
+            <input type="text" id="priceSearch" placeholder="Search items..." oninput="filterPriceItems()" style="padding:8px 14px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;width:360px;padding-right:32px;">
+            <span id="searchClear" onclick="clearSearch()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:#9ca3af;font-size:16px;display:none;line-height:1;">&times;</span>
+        </div>
+    </div>
 </div>
 
 @forelse($typeGroups as $type => $groupItems)
@@ -752,11 +762,137 @@ function updateCount(){
 // ── Search/filter items ──
 function filterPriceItems(){
     const q = document.getElementById('priceSearch').value.toLowerCase();
+    document.getElementById('searchClear').style.display = q.length ? 'block' : 'none';
     document.querySelectorAll('.items-body tr').forEach(row => {
         const name = (row.querySelector('.f-name')?.value || '').toLowerCase();
         const meta = (row.querySelector('td')?.textContent || '').toLowerCase();
         row.style.display = (name.includes(q) || meta.includes(q)) ? '' : 'none';
     });
+}
+
+function clearSearch(){
+    document.getElementById('priceSearch').value = '';
+    document.getElementById('searchClear').style.display = 'none';
+    document.querySelectorAll('.items-body tr').forEach(row => row.style.display = '');
+}
+
+// ── Bulk Edit / Save All ──
+let isBulkEditing = false;
+
+function bulkEdit(){
+    isBulkEditing = true;
+    document.getElementById('bulkEditBtn').style.display = 'none';
+    document.getElementById('bulkSaveBtn').style.display = '';
+    document.getElementById('bulkCancelBtn').style.display = '';
+
+    // Enable all rows
+    document.querySelectorAll('.items-body tr').forEach(row => {
+        row.classList.add('editing');
+        row.querySelectorAll('input:not([type=hidden])').forEach(el => el.removeAttribute('readonly'));
+        row.querySelectorAll('select').forEach(el => el.removeAttribute('disabled'));
+    });
+
+    // Hide individual edit buttons, show they're in bulk mode
+    document.querySelectorAll('.edit-btn').forEach(btn => btn.style.display = 'none');
+
+    toast('Editing all items — change prices and click Save All');
+}
+
+function bulkCancel(){
+    isBulkEditing = false;
+    document.getElementById('bulkEditBtn').style.display = '';
+    document.getElementById('bulkSaveBtn').style.display = 'none';
+    document.getElementById('bulkCancelBtn').style.display = 'none';
+
+    // Lock all rows back
+    document.querySelectorAll('.items-body tr').forEach(row => {
+        row.classList.remove('editing');
+        row.querySelectorAll('input:not([type=hidden])').forEach(el => el.setAttribute('readonly', true));
+        row.querySelectorAll('select').forEach(el => el.setAttribute('disabled', true));
+    });
+
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.style.display = '';
+        btn.textContent = 'Edit';
+        btn.className = 'btn btn-secondary btn-sm edit-btn';
+        btn.dataset.mode = '';
+    });
+
+    toast('Bulk edit cancelled');
+}
+
+async function bulkSave(){
+    const rows = document.querySelectorAll('.items-body tr');
+    const saveBtn = document.getElementById('bulkSaveBtn');
+    const total = rows.length;
+    let saved = 0;
+    let errors = 0;
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = `Saving 0/${total}...`;
+
+    for (const row of rows) {
+        const id = row.dataset.id;
+        if (!id) continue;
+
+        const procEl = row.querySelector('.f-procedure');
+        const drugEl = row.querySelector('.f-drug-id');
+        const invEl = row.querySelector('.f-inv-id');
+        const data = {
+            name: row.querySelector('.f-name').value,
+            item_type: row.querySelector('.f-type').value,
+            billing_type: row.querySelector('.f-billing').value,
+            price: row.querySelector('.f-price').value || 0,
+            procedure_price: procEl ? procEl.value || 0 : 0,
+            drug_brand_id: (drugEl && drugEl.value) ? drugEl.value : null,
+            inventory_item_id: (invEl && invEl.value) ? invEl.value : null,
+        };
+
+        try {
+            const r = await fetch(`${BASE}/price-list-items/${id}`, {
+                method: 'PUT',
+                headers: HEADERS,
+                body: JSON.stringify(data)
+            });
+            const result = await r.json();
+            if (result.success) {
+                saved++;
+            } else {
+                errors++;
+            }
+        } catch(e) {
+            errors++;
+        }
+
+        saveBtn.textContent = `Saving ${saved + errors}/${total}...`;
+    }
+
+    // Exit bulk mode
+    isBulkEditing = false;
+    saveBtn.disabled = false;
+    document.getElementById('bulkEditBtn').style.display = '';
+    document.getElementById('bulkSaveBtn').style.display = 'none';
+    document.getElementById('bulkCancelBtn').style.display = 'none';
+
+    // Lock all rows
+    document.querySelectorAll('.items-body tr').forEach(row => {
+        row.classList.remove('editing');
+        row.querySelectorAll('input:not([type=hidden])').forEach(el => el.setAttribute('readonly', true));
+        row.querySelectorAll('select').forEach(el => el.setAttribute('disabled', true));
+    });
+
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.style.display = '';
+        btn.textContent = 'Edit';
+        btn.className = 'btn btn-secondary btn-sm edit-btn';
+        btn.dataset.mode = '';
+    });
+
+    if (errors > 0) {
+        toast(`Saved ${saved} items, ${errors} failed`, true);
+    } else {
+        toast(`All ${saved} items saved successfully`);
+    }
 }
 </script>
 
