@@ -9,7 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('organisations', function (Blueprint $table) {
-            $table->json('modules')->nullable()->after('vet_can_select_lab');
+            if (!Schema::hasColumn('organisations', 'modules')) {
+                $table->json('modules')->nullable();
+            }
         });
     }
 
