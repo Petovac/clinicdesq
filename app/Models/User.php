@@ -55,6 +55,11 @@ class User extends Authenticatable
         ];
     }
 
+    public function organisation()
+    {
+        return $this->belongsTo(\App\Models\Organisation::class);
+    }
+
     public function clinics()
     {
         return $this->belongsToMany(Clinic::class, 'clinic_user');

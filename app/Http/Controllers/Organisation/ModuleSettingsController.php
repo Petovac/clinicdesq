@@ -7,9 +7,22 @@ use Illuminate\Http\Request;
 
 class ModuleSettingsController extends Controller
 {
+    private function resolveOrg()
+    {
+        $user = auth()->user();
+        // Try direct relationship first, then derive from clinic
+        $org = $user->organisation;
+        if (!$org && $user->clinic) {
+            $org = $user->clinic->organisation;
+        }
+        return $org;
+    }
+
     public function index()
     {
-        $org = auth()->user()->organisation;
+        $org = $this->resolveOrg();
+        abort_if(!$org, 404, 'Organisation not found.');
+
         $modules = $org->modules ?? [
             'inventory' => true,
             'billing'   => true,
@@ -21,7 +34,8 @@ class ModuleSettingsController extends Controller
 
     public function update(Request $request)
     {
-        $org = auth()->user()->organisation;
+        $org = $this->resolveOrg();
+        abort_if(!$org, 404, 'Organisation not found.');
 
         $modules = [
             'inventory' => (bool) $request->input('inventory', false),
