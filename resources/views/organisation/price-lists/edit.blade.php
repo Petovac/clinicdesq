@@ -572,15 +572,16 @@ function addItem(){
         return;
     }
 
+    const invId = document.getElementById('newInventoryItemId').value;
     const payload = {
         name: name,
         item_type: itemType,
         billing_type: document.getElementById('newBilling').value,
         price: document.getElementById('newPrice').value || 0,
         procedure_price: document.getElementById('newProcedure').value || 0,
-        drug_brand_id: drugId || null,
-        inventory_item_id: document.getElementById('newInventoryItemId').value || null,
     };
+    if (drugId) payload.drug_brand_id = drugId;
+    if (invId) payload.inventory_item_id = invId;
 
     fetch(`${BASE}/price-lists/${LIST_ID}/items`, {
         method: 'POST',
@@ -676,14 +677,17 @@ function toggleEdit(btn){
         btn.dataset.mode = 'editing';
     } else {
         // Save via AJAX
+        const procEl = row.querySelector('.f-procedure');
+        const drugEl = row.querySelector('.f-drug-id');
+        const invEl = row.querySelector('.f-inv-id');
         const data = {
             name: row.querySelector('.f-name').value,
             item_type: row.querySelector('.f-type').value,
             billing_type: row.querySelector('.f-billing').value,
             price: row.querySelector('.f-price').value || 0,
-            procedure_price: row.querySelector('.f-procedure').value || 0,
-            drug_brand_id: row.querySelector('.f-drug-id').value || null,
-            inventory_item_id: row.querySelector('.f-inv-id').value || null,
+            procedure_price: procEl ? procEl.value || 0 : 0,
+            drug_brand_id: (drugEl && drugEl.value) ? drugEl.value : null,
+            inventory_item_id: (invEl && invEl.value) ? invEl.value : null,
         };
 
         fetch(`${BASE}/price-list-items/${id}`, {

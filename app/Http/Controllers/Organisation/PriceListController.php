@@ -113,8 +113,8 @@ class PriceListController extends Controller
             'billing_type'      => $request->billing_type,
             'price'             => $request->price ?? 0,
             'procedure_price'   => $request->procedure_price ?? 0,
-            'drug_brand_id'     => $request->drug_brand_id,
-            'inventory_item_id' => $request->inventory_item_id,
+            'drug_brand_id'     => $request->drug_brand_id ?: null,
+            'inventory_item_id' => $request->inventory_item_id ?: null,
             'is_active'         => 1,
         ]);
 
@@ -182,8 +182,8 @@ class PriceListController extends Controller
             'billing_type' => $request->billing_type,
             'procedure_price' => $request->procedure_price ?? 0,
             'price' => $request->price ?? 0,
-            'drug_brand_id' => $request->drug_brand_id,
-            'inventory_item_id' => $request->inventory_item_id
+            'drug_brand_id' => $request->drug_brand_id ?: null,
+            'inventory_item_id' => $request->inventory_item_id ?: null,
         ]);
 
         return response()->json([
