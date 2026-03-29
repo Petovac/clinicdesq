@@ -223,37 +223,50 @@ class LabManagementController extends Controller
     }
 
     /**
-     * Import test offerings from an external lab (copy lab's tests as ExternalLabTest with org pricing).
+     * Import test offerings from an external lab (copy lab's offerings as ExternalLabTest with org pricing).
      */
     public function labsImportTests(ExternalLab $lab)
     {
         $orgId = auth()->user()->organisation_id;
         abort_unless($lab->organisations()->where('organisation_id', $orgId)->exists(), 403);
 
-        // Get lab's tests that don't have org-specific pricing yet
-        $existingTestNames = ExternalLabTest::where('external_lab_id', $lab->id)
+        // Get already-imported test codes for this org
+        $existingTestCodes = ExternalLabTest::where('external_lab_id', $lab->id)
             ->where('organisation_id', $orgId)
-            ->pluck('test_name')
+            ->pluck('test_code')
             ->toArray();
 
-        $labTests = ExternalLabTest::where('external_lab_id', $lab->id)
-            ->whereNull('organisation_id')
-            ->whereNotIn('test_name', $existingTestNames)
+        // Read from lab's offerings (external_lab_offerings) — joined with directory for metadata
+        $offerings = \DB::table('external_lab_offerings')
+            ->leftJoin('lab_test_directory', 'external_lab_offerings.test_code', '=', 'lab_test_directory.code')
+            ->where('external_lab_offerings.external_lab_id', $lab->id)
+            ->where('external_lab_offerings.is_active', true)
+            ->whereNotIn('external_lab_offerings.test_code', $existingTestCodes)
+            ->select(
+                'external_lab_offerings.test_code',
+                'external_lab_offerings.b2b_price',
+                'external_lab_offerings.estimated_time',
+                'external_lab_offerings.parameters',
+                'lab_test_directory.name as dir_name',
+                'lab_test_directory.category as dir_category',
+                'lab_test_directory.sample_type as dir_sample_type'
+            )
             ->get();
 
         $imported = 0;
-        foreach ($labTests as $test) {
+        foreach ($offerings as $off) {
             ExternalLabTest::create([
                 'external_lab_id' => $lab->id,
                 'organisation_id' => $orgId,
-                'test_name' => $test->test_name,
-                'test_code' => $test->test_code,
-                'category' => $test->category,
-                'sample_type' => $test->sample_type,
-                'parameters' => $test->parameters,
-                'estimated_time' => $test->estimated_time,
-                'b2b_price' => $test->b2b_price,
-                'org_selling_price' => $test->b2b_price, // default: same as B2B, org can adjust
+                'test_name' => $off->dir_name ?? $off->test_code,
+                'test_code' => $off->test_code,
+                'category' => $off->dir_category ?? 'other',
+                'sample_type' => $off->dir_sample_type ?? 'blood',
+                'parameters' => $off->parameters,
+                'estimated_time' => $off->estimated_time,
+                'b2b_price' => $off->b2b_price,
+                'org_selling_price' => $off->b2b_price, // default: same as B2B, org can adjust
+                'is_active' => true,
             ]);
             $imported++;
         }
@@ -305,9 +318,10 @@ class LabManagementController extends Controller
             $q->where('organisation_id', $orgId);
         }, 'users']);
 
-        // Count how many master tests the lab has (to show "X tests available to import")
-        $masterTestCount = ExternalLabTest::where('external_lab_id', $lab->id)
-            ->whereNull('organisation_id')
+        // Count how many tests the lab offers (from external_lab_offerings)
+        $masterTestCount = \DB::table('external_lab_offerings')
+            ->where('external_lab_id', $lab->id)
+            ->where('is_active', true)
             ->count();
 
         // Clinics for assignment
