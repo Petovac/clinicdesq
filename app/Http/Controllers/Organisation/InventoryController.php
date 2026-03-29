@@ -204,10 +204,16 @@ public function searchDrugs(Request $request)
 {
     $term = $request->q;
 
+    // Exclude fluids/infusions — they don't have a drug strength
+    $excludedForms = ['infusion', 'fluid', 'solution'];
+
     $drugs = \App\Models\DrugBrand::with('generic')
-        ->where('brand_name', 'like', "%{$term}%")
-        ->orWhereHas('generic', function ($q) use ($term) {
-            $q->where('name', 'like', "%{$term}%");
+        ->whereNotIn('form', $excludedForms)
+        ->where(function ($query) use ($term) {
+            $query->where('brand_name', 'like', "%{$term}%")
+                  ->orWhereHas('generic', function ($q) use ($term) {
+                      $q->where('name', 'like', "%{$term}%");
+                  });
         })
         ->limit(10)
         ->get();
