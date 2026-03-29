@@ -58,8 +58,9 @@ tbody tr:hover td { background:#f9fafb; }
             <th>Code</th>
             <th>Name</th>
             <th>Category</th>
-            <th>Sample</th>
-            <th>Collection</th>
+            <th>Sample Type</th>
+            <th>Preferred Sample</th>
+            <th>TAT</th>
             <th>Parameters</th>
             <th>Actions</th>
         </tr>
@@ -75,10 +76,8 @@ tbody tr:hover td { background:#f9fafb; }
             <td>{{ $test->name }}</td>
             <td><span class="badge-cat">{{ ucfirst(str_replace('_',' ',$test->category)) }}</span></td>
             <td style="font-size:12px;color:#6b7280;">{{ ucfirst($test->sample_type) }}</td>
-            <td style="font-size:11px;color:#6b7280;">
-                {{ $test->container_type ?? '—' }}<br>
-                {{ $test->sample_volume ?? '' }}
-            </td>
+            <td style="font-size:11px;color:#6b7280;">{{ $test->preferred_sample ?? '—' }}</td>
+            <td style="font-size:11px;color:#6b7280;">{{ $test->tat ?? '—' }}</td>
             <td style="font-size:11px;color:#6b7280;max-width:200px;">
                 @if($test->default_parameters)
                     {{ implode(', ', json_decode($test->default_parameters, true)) }}
@@ -141,23 +140,14 @@ tbody tr:hover td { background:#f9fafb; }
                 <label style="font-size:11px;font-weight:600;">Default Parameters (comma-separated)</label>
                 <input type="text" name="default_parameters" id="f-params" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;" placeholder="RBC, WBC, Hemoglobin, Platelets">
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
                 <div>
-                    <label style="font-size:11px;font-weight:600;">Collection Method</label>
-                    <select name="collection_method" id="f-method" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
-                        <option value="">—</option>
-                        @foreach(['blood','urine','swab','tissue','feces','fluid','mixed','other'] as $m)
-                        <option value="{{ $m }}">{{ ucfirst($m) }}</option>
-                        @endforeach
-                    </select>
+                    <label style="font-size:11px;font-weight:600;">Preferred Sample</label>
+                    <input type="text" name="preferred_sample" id="f-preferred-sample" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;" placeholder="2ml EDTA Blood">
                 </div>
                 <div>
-                    <label style="font-size:11px;font-weight:600;">Container / Vial</label>
-                    <input type="text" name="container_type" id="f-container" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;" placeholder="2ml EDTA Blood">
-                </div>
-                <div>
-                    <label style="font-size:11px;font-weight:600;">Volume</label>
-                    <input type="text" name="sample_volume" id="f-volume" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;" placeholder="2ml">
+                    <label style="font-size:11px;font-weight:600;">TAT (Turnaround Time)</label>
+                    <input type="text" name="tat" id="f-tat" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;" placeholder="2 Hrs">
                 </div>
             </div>
             <div style="display:flex;gap:8px;">
@@ -179,9 +169,8 @@ function editTest(test) {
     document.getElementById('f-sample').value = test.sample_type;
     document.getElementById('f-aliases').value = test.aliases ? JSON.parse(test.aliases).join(', ') : '';
     document.getElementById('f-params').value = test.default_parameters ? JSON.parse(test.default_parameters).join(', ') : '';
-    document.getElementById('f-method').value = test.collection_method || '';
-    document.getElementById('f-container').value = test.container_type || '';
-    document.getElementById('f-volume').value = test.sample_volume || '';
+    document.getElementById('f-preferred-sample').value = test.preferred_sample || '';
+    document.getElementById('f-tat').value = test.tat || '';
 
     // Switch form to PUT
     document.getElementById('dir-form').action = '/admin/lab-directory/' + test.code;
@@ -202,8 +191,8 @@ function closeModal() {
     document.getElementById('f-name').value = '';
     document.getElementById('f-aliases').value = '';
     document.getElementById('f-params').value = '';
-    document.getElementById('f-container').value = '';
-    document.getElementById('f-volume').value = '';
+    document.getElementById('f-preferred-sample').value = '';
+    document.getElementById('f-tat').value = '';
 }
 </script>
 @endsection

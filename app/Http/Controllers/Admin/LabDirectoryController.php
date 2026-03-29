@@ -41,9 +41,8 @@ class LabDirectoryController extends Controller
             'sample_type' => 'required|string|max:50',
             'aliases' => 'nullable|string',
             'default_parameters' => 'nullable|string',
-            'collection_method' => 'nullable|string|max:50',
-            'container_type' => 'nullable|string|max:100',
-            'sample_volume' => 'nullable|string|max:50',
+            'preferred_sample' => 'nullable|string|max:255',
+            'tat' => 'nullable|string|max:100',
         ]);
 
         DB::table('lab_test_directory')->insert([
@@ -53,9 +52,8 @@ class LabDirectoryController extends Controller
             'sample_type' => $request->sample_type,
             'aliases' => $request->aliases ? json_encode(array_map('trim', explode(',', $request->aliases))) : json_encode([$request->name]),
             'default_parameters' => $request->default_parameters ? json_encode(array_map('trim', explode(',', $request->default_parameters))) : null,
-            'collection_method' => $request->collection_method,
-            'container_type' => $request->container_type,
-            'sample_volume' => $request->sample_volume,
+            'preferred_sample' => $request->preferred_sample,
+            'tat' => $request->tat,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -71,9 +69,8 @@ class LabDirectoryController extends Controller
             'sample_type' => 'required|string|max:50',
             'aliases' => 'nullable|string',
             'default_parameters' => 'nullable|string',
-            'collection_method' => 'nullable|string|max:50',
-            'container_type' => 'nullable|string|max:100',
-            'sample_volume' => 'nullable|string|max:50',
+            'preferred_sample' => 'nullable|string|max:255',
+            'tat' => 'nullable|string|max:100',
         ]);
 
         DB::table('lab_test_directory')->where('code', $code)->update([
@@ -82,9 +79,8 @@ class LabDirectoryController extends Controller
             'sample_type' => $request->sample_type,
             'aliases' => $request->aliases ? json_encode(array_map('trim', explode(',', $request->aliases))) : null,
             'default_parameters' => $request->default_parameters ? json_encode(array_map('trim', explode(',', $request->default_parameters))) : null,
-            'collection_method' => $request->collection_method,
-            'container_type' => $request->container_type,
-            'sample_volume' => $request->sample_volume,
+            'preferred_sample' => $request->preferred_sample,
+            'tat' => $request->tat,
             'updated_at' => now(),
         ]);
 
