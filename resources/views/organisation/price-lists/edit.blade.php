@@ -321,8 +321,11 @@ tr.editing td{
     $typeColors = ['drug' => ['#dbeafe','#1d4ed8'], 'vaccine' => ['#fef3c7','#b45309'], 'service' => ['#f3e8ff','#7c3aed'], 'consumable' => ['#fef3c7','#92400e'], 'surgical' => ['#fce7f3','#9d174d'], 'product' => ['#d1fae5','#065f46']];
 @endphp
 
-<div style="font-weight:600;font-size:15px;color:#374151;margin-bottom:12px;">
-    Items <span id="itemCount" style="color:#9ca3af;font-weight:400;">({{ $priceList->items->count() }})</span>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+    <div style="font-weight:600;font-size:15px;color:#374151;">
+        Items <span id="itemCount" style="color:#9ca3af;font-weight:400;">({{ $priceList->items->count() }})</span>
+    </div>
+    <input type="text" id="priceSearch" placeholder="Search items..." oninput="filterPriceItems()" style="padding:8px 14px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;width:280px;">
 </div>
 
 @forelse($typeGroups as $type => $groupItems)
@@ -739,6 +742,16 @@ function deleteItem(btn){
 function updateCount(){
     const count = document.querySelectorAll('#itemsBody tr').length;
     document.getElementById('itemCount').textContent = `(${count})`;
+}
+
+// ── Search/filter items ──
+function filterPriceItems(){
+    const q = document.getElementById('priceSearch').value.toLowerCase();
+    document.querySelectorAll('.items-body tr').forEach(row => {
+        const name = (row.querySelector('.f-name')?.value || '').toLowerCase();
+        const meta = (row.querySelector('td')?.textContent || '').toLowerCase();
+        row.style.display = (name.includes(q) || meta.includes(q)) ? '' : 'none';
+    });
 }
 </script>
 
