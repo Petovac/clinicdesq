@@ -593,6 +593,15 @@ Add Item
         'tube' => 'Tubes',
         'piece' => 'Pieces',
         'sachet' => 'Sachets',
+        'oral_suspension' => 'Oral Suspensions',
+        'syrup' => 'Syrups',
+        'drops' => 'Drops',
+        'ointment' => 'Ointments',
+        'cream' => 'Creams',
+        'shampoo' => 'Shampoos',
+        'gel' => 'Gels',
+        'spray' => 'Sprays',
+        'powder' => 'Powders',
         'other' => 'Other',
     ];
 @endphp
@@ -630,13 +639,21 @@ Add Item
                 <td>
                     <div class="flex-small">
                         <input class="edit-field input-small" name="strength_value" value="{{ $item->strength_value }}" data-id="{{ $item->id }}" readonly>
-                        <input class="edit-field input-medium" name="strength_unit" value="{{ $item->strength_unit }}" data-id="{{ $item->id }}" readonly>
+                        <select class="edit-field input-medium" name="strength_unit" data-id="{{ $item->id }}" disabled style="border:none;background:transparent;appearance:none;">
+                            @foreach(['mg','mg/ml','mg/kg','ml','g','mcg','IU','%','units'] as $su)
+                                <option value="{{ $su }}" {{ $item->strength_unit === $su ? 'selected' : '' }}>{{ $su }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 </td>
                 <td>
                     <div class="flex-small">
                         <input class="edit-field input-small" name="unit_volume_ml" value="{{ $item->unit_volume_ml }}" data-id="{{ $item->id }}" readonly>
-                        <input class="edit-field input-medium" name="pack_unit" value="{{ $item->pack_unit }}" data-id="{{ $item->id }}" readonly>
+                        <select class="edit-field input-medium" name="pack_unit" data-id="{{ $item->id }}" disabled style="border:none;background:transparent;appearance:none;">
+                            @foreach(['tabs','caps','vial','ml','g','strips','pcs','sachets','dose','bottle','tube','unit'] as $pu)
+                                <option value="{{ $pu }}" {{ $item->pack_unit === $pu ? 'selected' : '' }}>{{ $pu }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 </td>
                 <td>
@@ -713,23 +730,31 @@ toggleType();
 function editRow(button,id){
 
 let row=button.closest("tr")
-let inputs=row.querySelectorAll(".edit-field")
+let fields=row.querySelectorAll(".edit-field")
 
 if(button.innerText==="Edit"){
 
-inputs.forEach(input=>{
-input.removeAttribute("readonly")
-input.style.border="1px solid #d1d5db"
+fields.forEach(f=>{
+    if(f.tagName==='SELECT'){
+        f.disabled=false;
+        f.style.border="1px solid #d1d5db";
+        f.style.background="#fff";
+        f.style.appearance="auto";
+    } else {
+        f.removeAttribute("readonly");
+        f.style.border="1px solid #d1d5db";
+    }
 })
 
-button.innerText="✔"
+button.innerText="Save"
+button.style.background="#16a34a"
 
 }else{
 
 let data={}
 
-inputs.forEach(input=>{
-data[input.name]=input.value
+fields.forEach(f=>{
+data[f.name]=f.value
 })
 
 fetch("/organisation/inventory/update/"+id,{
@@ -743,12 +768,20 @@ body:JSON.stringify(data)
 .then(res=>res.json())
 .then(res=>{
 
-inputs.forEach(input=>{
-input.setAttribute("readonly",true)
-input.style.border="none"
+fields.forEach(f=>{
+    if(f.tagName==='SELECT'){
+        f.disabled=true;
+        f.style.border="none";
+        f.style.background="transparent";
+        f.style.appearance="none";
+    } else {
+        f.setAttribute("readonly",true);
+        f.style.border="none";
+    }
 })
 
 button.innerText="Edit"
+button.style.background=""
 
 })
 
