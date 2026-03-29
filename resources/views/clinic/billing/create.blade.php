@@ -44,6 +44,11 @@ tr + tr td { border-top: 1px solid #f3f4f6; }
 .add-item-row input  { width: 80px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 7px; font-size: 14px; text-align: center; }
 .alert-success { background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:14px 20px;color:#065f46;margin-bottom:20px;font-size:14px;font-weight:600; }
 .alert-error   { background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:14px 20px;color:#991b1b;margin-bottom:20px;font-size:14px; }
+.stock-badge { display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:600;margin-left:6px; }
+.stock-badge-ok { background:#d1fae5;color:#065f46; }
+.stock-badge-low { background:#fef3c7;color:#92400e; }
+.stock-badge-out { background:#fee2e2;color:#991b1b; }
+.price-input { width:80px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:14px;text-align:right; }
 </style>
 
 <div class="bill-wrap">
@@ -148,15 +153,28 @@ tr + tr td { border-top: 1px solid #f3f4f6; }
     <div class="section section-clip">
         <div class="section-title">Injectable Drugs (administered)</div>
         <table>
-            <thead><tr><th>Drug</th><th>Volume</th><th>Drug Cost</th><th>Route Fee</th><th>Total</th></tr></thead>
+            <thead><tr><th>Drug</th><th>Stock</th><th>Volume</th><th>Drug Cost</th><th>Route Fee</th><th>Total</th></tr></thead>
             <tbody>
             @foreach($injections as $item)
             @php
                 $drugCost = round($item->price * $item->quantity, 2);
                 $routeFee = round($item->total - $drugCost, 2);
+                $invId = optional($item->priceItem)->inventory_item_id;
+                $stock = $invId ? ($stockMap[$invId] ?? 0) : null;
             @endphp
             <tr>
                 <td>{{ $item->description ?? optional($item->priceItem)->name ?? '—' }}</td>
+                <td>
+                    @if($stock === null)
+                        <span class="stock-badge stock-badge-out">No link</span>
+                    @elseif($stock > 10)
+                        <span class="stock-badge stock-badge-ok">{{ $stock }} ml</span>
+                    @elseif($stock > 0)
+                        <span class="stock-badge stock-badge-low">{{ $stock }} ml</span>
+                    @else
+                        <span class="stock-badge stock-badge-out">Out</span>
+                    @endif
+                </td>
                 <td>{{ number_format($item->quantity, 1) }} ml</td>
                 <td>₹{{ number_format($drugCost, 2) }}</td>
                 <td>{{ $routeFee > 0 ? '₹' . number_format($routeFee, 2) : '—' }}</td>
@@ -203,6 +221,7 @@ tr + tr td { border-top: 1px solid #f3f4f6; }
             <thead>
                 <tr>
                     <th>Medicine</th>
+                    <th>Stock</th>
                     <th>Qty</th>
                     <th>Unit Price</th>
                     <th>Total</th>
@@ -212,8 +231,23 @@ tr + tr td { border-top: 1px solid #f3f4f6; }
             </thead>
             <tbody>
             @foreach($rxItems as $item)
+            @php
+                $rxInvId = optional($item->prescriptionItem)->inventory_item_id;
+                $rxStock = $rxInvId ? ($stockMap[$rxInvId] ?? 0) : null;
+            @endphp
             <tr id="rx-row-{{ $item->id }}">
                 <td>{{ $item->description ?? '—' }}</td>
+                <td>
+                    @if($rxStock === null)
+                        <span class="stock-badge stock-badge-out">N/A</span>
+                    @elseif($rxStock > 10)
+                        <span class="stock-badge stock-badge-ok">{{ number_format($rxStock, 0) }}</span>
+                    @elseif($rxStock > 0)
+                        <span class="stock-badge stock-badge-low">{{ number_format($rxStock, 0) }}</span>
+                    @else
+                        <span class="stock-badge stock-badge-out">Out</span>
+                    @endif
+                </td>
                 <td>
                     @if($bill->isDraft() && $item->status === 'pending')
                         <input type="number" class="qty-input" id="qty-{{ $item->id }}"

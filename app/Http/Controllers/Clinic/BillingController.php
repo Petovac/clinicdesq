@@ -81,7 +81,40 @@ class BillingController extends Controller
                            ->get()
             : collect();
 
-        return view('clinic.billing.create', compact('appointment', 'bill', 'priceItems'));
+        // Build stock map: inventory_item_id => available qty at this clinic
+        $stockMap = [];
+        $allInvIds = collect();
+
+        // Collect inventory_item_ids from bill items (treatments + prescriptions)
+        foreach ($bill->items as $bi) {
+            if ($bi->priceItem && $bi->priceItem->inventory_item_id) {
+                $allInvIds->push($bi->priceItem->inventory_item_id);
+            }
+            if ($bi->prescriptionItem && $bi->prescriptionItem->inventory_item_id) {
+                $allInvIds->push($bi->prescriptionItem->inventory_item_id);
+            }
+        }
+        // Also from treatments directly
+        foreach ($appointment->treatments as $t) {
+            if ($t->inventory_item_id) $allInvIds->push($t->inventory_item_id);
+        }
+
+        $allInvIds = $allInvIds->unique()->filter();
+
+        if ($allInvIds->isNotEmpty()) {
+            $stockMap = InventoryBatch::where('clinic_id', $clinicId)
+                ->whereIn('inventory_item_id', $allInvIds)
+                ->where('quantity', '>', 0)
+                ->where(function ($q) {
+                    $q->whereNull('expiry_date')->orWhere('expiry_date', '>=', now()->toDateString());
+                })
+                ->selectRaw('inventory_item_id, SUM(quantity) as total_qty')
+                ->groupBy('inventory_item_id')
+                ->pluck('total_qty', 'inventory_item_id')
+                ->toArray();
+        }
+
+        return view('clinic.billing.create', compact('appointment', 'bill', 'priceItems', 'stockMap'));
     }
 
     /*

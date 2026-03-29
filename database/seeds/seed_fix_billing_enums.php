@@ -18,6 +18,7 @@ $fixes = [
     ['inventory_movements', 'movement_type', "VARCHAR(50) NOT NULL DEFAULT 'stock_in'"],
     ['bill_items', 'source', "VARCHAR(50) NOT NULL DEFAULT 'manual'"],
     ['bills', 'status', "VARCHAR(30) NOT NULL DEFAULT 'draft'"],
+    ['bills', 'payment_status', "VARCHAR(30) NOT NULL DEFAULT 'unpaid'"],
     ['bill_items', 'status', "VARCHAR(30) NOT NULL DEFAULT 'approved'"],
 ];
 
