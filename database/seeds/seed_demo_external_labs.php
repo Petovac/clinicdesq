@@ -21,13 +21,19 @@ $labs = [
 
 $labIdMap = []; // old_name => new_id
 
+$hasDescription = Schema::hasColumn('external_labs', 'description');
+
 foreach ($labs as $lab) {
     $existing = DB::table('external_labs')->where('email', $lab['email'])->first();
     if ($existing) {
         $labIdMap[$lab['name']] = $existing->id;
         echo "  Exists: {$lab['name']} (id: {$existing->id})\n";
     } else {
-        $id = DB::table('external_labs')->insertGetId(array_merge($lab, [
+        $insertData = $lab;
+        if (!$hasDescription) {
+            unset($insertData['description']);
+        }
+        $id = DB::table('external_labs')->insertGetId(array_merge($insertData, [
             'is_active' => 1,
             'created_at' => now(),
             'updated_at' => now(),
