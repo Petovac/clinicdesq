@@ -134,7 +134,7 @@
                     <div class="field">
                         <label>Email <span class="req">*</span></label>
                         <input type="email" name="admin_email" value="{{ old('admin_email') }}" required placeholder="jane@example.com">
-                        <div class="hint">This will be your login email</div>
+                        <div class="hint" style="color:#2563eb;font-weight:600;">🔑 This will be your login email</div>
                     </div>
                     <div class="field">
                         <label>Phone <span class="req">*</span></label>
@@ -184,7 +184,7 @@
                     <div class="field">
                         <label>Organisation Email</label>
                         <input type="email" name="org_email" value="{{ old('org_email') }}" placeholder="info@happypaws.com">
-                        <div class="hint">Defaults to admin email if empty</div>
+                        <div class="hint">For display only — your admin email above is used for login</div>
                     </div>
                     <div class="field">
                         <label>Organisation Phone</label>
