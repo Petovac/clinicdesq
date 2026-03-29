@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Schema;
 // Add column if not exists
 if (!Schema::hasColumn('organisations', 'modules')) {
     echo "Adding 'modules' column to organisations table...\n";
-    DB::statement("ALTER TABLE `organisations` ADD COLUMN `modules` JSON NULL AFTER `vet_can_select_lab`");
+    DB::statement("ALTER TABLE `organisations` ADD COLUMN `modules` JSON NULL");
     echo "Column added.\n";
 } else {
     echo "Column 'modules' already exists.\n";
