@@ -8,14 +8,28 @@ use App\Models\PetParent;
 
 class PetParentController extends Controller
 {
-    public function create()
+    public function create(Request $request)
     {
-        return view('vet.pet_parents.create');
+        $prefillPhone = $request->query('phone', session('prefill_mobile'));
+        $redirect = $request->query('redirect');
+
+        return view('vet.pet_parents.create', compact('prefillPhone', 'redirect'));
     }
 
     public function store(Request $request)
     {
-        $parent = PetParent::create($request->only(['name','phone']));
+        $request->validate([
+            'name'  => 'required|string|max:255',
+            'phone' => 'required|string|max:20',
+        ]);
+
+        $parent = PetParent::create($request->only(['name', 'phone']));
+
+        // If coming from clinic appointment flow, redirect to pet creation for this parent
+        if ($request->input('redirect') === 'clinic') {
+            return redirect()->route('vet.pets.create', $parent->id)
+                ->with('from_clinic', true);
+        }
 
         return redirect()->route('vet.pets.create', $parent->id);
     }
