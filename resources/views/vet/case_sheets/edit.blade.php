@@ -341,7 +341,7 @@
                 <div id="drug-generic-dropdown" class="search-dropdown"></div>
             </div>
             <div>
-                <label>Strength (clinic stock only)</label>
+                <label>Strength / Formulation</label>
                 <select id="drug-strength-select" class="v-input">
                     <option value="">— select generic first —</option>
                 </select>
@@ -1063,10 +1063,12 @@ function updateCreditBalance() {
 let selectedInventoryItemId = null;
 let selectedGenericId       = null;
 let selectedIsMultiUse      = false;
+let selectedDrugBrandId     = null;
 
 function addDrugTreatment() {
-    if (!selectedInventoryItemId) {
-        alert('Please select a drug and strength from the clinic stock.');
+    const strengthSel = document.getElementById('drug-strength-select');
+    if (!strengthSel.value && !selectedInventoryItemId) {
+        alert('Please select a drug and strength.');
         return;
     }
 
@@ -1093,7 +1095,8 @@ function addDrugTreatment() {
         },
         body: JSON.stringify({
             drug_generic_id:   selectedGenericId,
-            inventory_item_id: selectedInventoryItemId,
+            inventory_item_id: selectedInventoryItemId || null,
+            drug_brand_id:     selectedDrugBrandId || null,
             dose_mg:           doseMg,
             dose_volume_ml:    doseMl,
             route:             route,
@@ -1305,9 +1308,15 @@ function onDrugGenericSelected(genericId) {
             option.dataset.strength     = item.strength_value;
             option.dataset.strengthUnit = item.strength_unit;
             option.dataset.inStock      = item.in_stock ? '1' : '0';
-            const stockLabel = item.in_stock
-                ? ' ✓ In stock'
-                : (item.source === 'kb' ? ' (KB only — not imported)' : ' ✗ Out of stock');
+            option.dataset.drugBrandId  = item.drug_brand_id || '';
+            let stockLabel = '';
+            if (item.in_stock) {
+                stockLabel = ' ✓ In stock';
+            } else if (item.source === 'inventory') {
+                stockLabel = ' (not in clinic — central only)';
+            } else {
+                stockLabel = ' (KB reference)';
+            }
             option.text = item.strength_value + ' ' + item.strength_unit
                 + ' (' + (item.form || 'injection') + ')'
                 + (item.name ? ' — ' + item.name : '')
@@ -1339,6 +1348,7 @@ function onDrugGenericSelected(genericId) {
 document.getElementById('drug-strength-select').addEventListener('change', function(){
     selectedInventoryItemId = this.value || null;
     selectedIsMultiUse = this.options[this.selectedIndex]?.dataset.isMultiUse === '1';
+    selectedDrugBrandId = this.options[this.selectedIndex]?.dataset.drugBrandId || null;
     calculateDose();
 });
 

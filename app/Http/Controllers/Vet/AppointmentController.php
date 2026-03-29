@@ -675,6 +675,7 @@ class AppointmentController extends Controller
 
             $results[] = [
                 'inventory_item_id' => $item->id,
+                'drug_brand_id'     => $item->drug_brand_id,
                 'name'              => $item->name,
                 'strength_value'    => $item->strength_value,
                 'strength_unit'     => $item->strength_unit,
@@ -695,6 +696,7 @@ class AppointmentController extends Controller
 
             $results[] = [
                 'inventory_item_id' => null,
+                'drug_brand_id'     => $brand->id,
                 'name'              => $brand->brand_name,
                 'strength_value'    => $brand->strength_value,
                 'strength_unit'     => $brand->strength_unit,
