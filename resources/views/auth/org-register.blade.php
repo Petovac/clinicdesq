@@ -86,6 +86,7 @@
 </head>
 <body>
     <div class="card">
+        <a href="/" style="position:absolute;top:16px;right:20px;font-size:22px;color:#94a3b8;text-decoration:none;line-height:1;z-index:1;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:all 0.2s;" onmouseover="this.style.background='#f1f5f9';this.style.color='#475569'" onmouseout="this.style.background='';this.style.color='#94a3b8'">&times;</a>
         <div class="brand">
             <h1>ClinicDesq</h1>
             <p>Register your veterinary practice</p>
