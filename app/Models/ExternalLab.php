@@ -17,7 +17,7 @@ class ExternalLab extends Model
     public function organisations()
     {
         return $this->belongsToMany(Organisation::class, 'organisation_lab')
-            ->withPivot('is_active')
+            ->withPivot('is_active', 'status', 'responded_at')
             ->withTimestamps();
     }
 

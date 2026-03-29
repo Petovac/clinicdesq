@@ -58,123 +58,112 @@ class LabOrderController extends Controller
         $q = trim($request->get('q', ''));
         if (strlen($q) < 1) return response()->json(['tests' => [], 'vet_can_select_lab' => false]);
 
-        // 1. Search master directory by name, code, aliases
-        $matchingTests = \DB::table('lab_test_directory')
+        // 1. Search org's lab test catalog by name or code
+        $catalogTests = LabTestCatalog::where('organisation_id', $orgId)
+            ->where('is_active', true)
             ->where(function ($query) use ($q) {
                 $query->where('name', 'like', "%{$q}%")
-                      ->orWhere('code', 'like', "%{$q}%")
-                      ->orWhere('aliases', 'like', "%{$q}%");
+                      ->orWhere('code', 'like', "%{$q}%");
             })
             ->orderBy('category')
             ->orderBy('name')
             ->limit(30)
             ->get();
 
-        if ($matchingTests->isEmpty()) {
-            return response()->json(['tests' => [], 'vet_can_select_lab' => false]);
-        }
-
-        $matchingCodes = $matchingTests->pluck('code')->toArray();
-
-        // 2. In-house: which of these matching tests does this clinic offer?
-        $clinicOfferings = \DB::table('clinic_lab_tests')
+        // 2. Check in-house availability for this clinic
+        $catalogIds = $catalogTests->pluck('id')->toArray();
+        $availability = \DB::table('lab_test_availability')
             ->where('clinic_id', $clinicId)
             ->where('is_available', true)
-            ->whereIn('test_code', $matchingCodes)
-            ->get()
-            ->keyBy('test_code');
+            ->whereIn('lab_test_catalog_id', $catalogIds)
+            ->pluck('lab_test_catalog_id')
+            ->toArray();
 
-        // 3. External labs: which connected labs offer these tests?
-        $clinicLabIds = \DB::table('clinic_external_lab')
-            ->where('clinic_id', $clinicId)
+        // 3. Get connected external labs (org-level)
+        $connectedLabIds = \DB::table('organisation_lab')
+            ->where('organisation_id', $orgId)
             ->where('is_active', true)
             ->pluck('external_lab_id')
             ->toArray();
 
-        // Fall back to org-level if no clinic-level assignments
-        if (empty($clinicLabIds)) {
-            $clinicLabIds = \DB::table('organisation_lab')
-                ->where('organisation_id', $orgId)
-                ->where('status', 'accepted')
-                ->where('is_active', true)
-                ->pluck('external_lab_id')
-                ->toArray();
-        }
-
+        // 4. Get external lab test offerings matching search
         $extOfferings = collect();
-        if (!empty($clinicLabIds)) {
-            $extOfferings = \DB::table('external_lab_offerings as elo')
-                ->join('external_labs as el', 'el.id', '=', 'elo.external_lab_id')
-                ->whereIn('elo.external_lab_id', $clinicLabIds)
-                ->whereIn('elo.test_code', $matchingCodes)
-                ->where('elo.is_active', true)
-                ->select('elo.*', 'el.name as lab_name')
+        if (!empty($connectedLabIds)) {
+            $extOfferings = ExternalLabTest::whereIn('external_lab_id', $connectedLabIds)
+                ->where('is_active', true)
+                ->where(function ($query) use ($q) {
+                    $query->where('test_name', 'like', "%{$q}%")
+                          ->orWhere('test_code', 'like', "%{$q}%");
+                })
+                ->with('lab:id,name')
+                ->limit(30)
                 ->get();
         }
 
-        // Check org pricing overrides
-        $orgPricing = \DB::table('org_lab_test_pricing')
-            ->where('organisation_id', $orgId)
-            ->whereIn('test_code', $matchingCodes)
-            ->get()
-            ->keyBy(fn($p) => $p->external_lab_id . '_' . $p->test_code);
-
-        // 4. Build unified results grouped by test code
+        // 5. Build unified results
         $unified = [];
 
-        foreach ($matchingTests as $test) {
-            $entry = [
-                'name' => $test->name,
-                'code' => $test->code,
-                'category' => $test->category,
-                'sample_type' => $test->sample_type,
-                'labs' => [],
+        // In-house tests from catalog
+        foreach ($catalogTests as $test) {
+            $isAvailable = in_array($test->id, $availability);
+            if (!$isAvailable) continue;
+
+            $params = $test->parameters ? json_decode($test->parameters, true) : null;
+            $code = $test->code ?: 'CAT-' . $test->id;
+
+            // Check if already in unified
+            if (!isset($unified[$code])) {
+                $unified[$code] = [
+                    'name' => $test->name,
+                    'code' => $code,
+                    'category' => $test->category,
+                    'sample_type' => $test->sample_type,
+                    'labs' => [],
+                ];
+            }
+
+            $unified[$code]['labs'][] = [
+                'id' => $test->id,
+                'type' => 'in_house',
+                'lab_name' => 'In-house',
+                'lab_id' => null,
+                'price' => (float) $test->price,
+                'available' => true,
+                'parameters' => $params,
             ];
+        }
 
-            // In-house option
-            $ct = $clinicOfferings[$test->code] ?? null;
-            if ($ct) {
-                $params = $ct->parameters ? json_decode($ct->parameters, true) : null;
-                $entry['labs'][] = [
-                    'id' => $ct->id,
-                    'type' => 'in_house',
-                    'lab_name' => 'In-house',
-                    'lab_id' => null,
-                    'price' => (float) $ct->price,
-                    'available' => true,
-                    'parameters' => $params ?: ($test->default_parameters ? json_decode($test->default_parameters, true) : null),
+        // External lab offerings
+        foreach ($extOfferings as $ext) {
+            $code = $ext->test_code ?: 'EXT-' . $ext->id;
+            $params = $ext->parameters ? json_decode($ext->parameters, true) : null;
+            $price = $ext->org_selling_price ?? $ext->b2b_price;
+
+            if (!isset($unified[$code])) {
+                $unified[$code] = [
+                    'name' => $ext->test_name,
+                    'code' => $code,
+                    'category' => $ext->category,
+                    'sample_type' => $ext->sample_type,
+                    'labs' => [],
                 ];
             }
 
-            // External lab options
-            $extForCode = $extOfferings->where('test_code', $test->code);
-            foreach ($extForCode as $ext) {
-                $priceKey = $ext->external_lab_id . '_' . $test->code;
-                $orgPrice = $orgPricing[$priceKey] ?? null;
-                $price = $orgPrice ? (float) $orgPrice->org_selling_price : (float) $ext->b2b_price;
-                $extParams = $ext->parameters ? json_decode($ext->parameters, true) : null;
-
-                $entry['labs'][] = [
-                    'id' => $ext->id,
-                    'type' => 'external',
-                    'lab_name' => $ext->lab_name,
-                    'lab_id' => $ext->external_lab_id,
-                    'price' => $price,
-                    'available' => true,
-                    'parameters' => $extParams ?: ($test->default_parameters ? json_decode($test->default_parameters, true) : null),
-                ];
-            }
-
-            // Only include if at least one lab offers it
-            if (!empty($entry['labs'])) {
-                $unified[] = $entry;
-            }
+            $unified[$code]['labs'][] = [
+                'id' => $ext->id,
+                'type' => 'external',
+                'lab_name' => $ext->lab->name ?? 'External Lab',
+                'lab_id' => $ext->external_lab_id,
+                'price' => (float) $price,
+                'available' => true,
+                'parameters' => $params,
+            ];
         }
 
         $vetCanSelectLab = $clinic->organisation->vet_can_select_lab ?? false;
 
         return response()->json([
-            'tests' => $unified,
+            'tests' => array_values($unified),
             'vet_can_select_lab' => $vetCanSelectLab,
         ]);
     }

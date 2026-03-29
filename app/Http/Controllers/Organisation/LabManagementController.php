@@ -157,7 +157,6 @@ class LabManagementController extends Controller
         // Available labs in same cities (not yet connected)
         $search = $request->get('q', '');
         $availableLabs = ExternalLab::where('is_active', true)
-            ->where('type', 'external')
             ->whereDoesntHave('organisations', fn($q) => $q->where('organisation_id', $orgId))
             ->when($search, fn($q) => $q->where(fn($q2) => $q2->where('name', 'like', "%{$search}%")->orWhere('city', 'like', "%{$search}%")))
             ->when(!$search && $orgCities->isNotEmpty(), fn($q) => $q->whereIn('city', $orgCities))

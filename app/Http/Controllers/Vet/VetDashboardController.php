@@ -50,14 +50,8 @@ public function dashboard()
             ->get();
     }
 
-    // Pending onboarding requests
-    $pendingClinicRequests = \DB::table('clinic_vet')
-        ->join('clinics', 'clinics.id', '=', 'clinic_vet.clinic_id')
-        ->join('organisations', 'organisations.id', '=', 'clinics.organisation_id')
-        ->where('clinic_vet.vet_id', $vet->id)
-        ->where('clinic_vet.status', 'pending')
-        ->select('clinic_vet.*', 'clinics.name as clinic_name', 'clinics.city', 'organisations.name as org_name')
-        ->get();
+    // Pending onboarding requests (clinic_vet has no status column yet, so skip for now)
+    $pendingClinicRequests = collect();
 
     return view('vet.dashboard', compact(
         'clinics',
