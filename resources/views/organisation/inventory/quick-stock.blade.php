@@ -92,7 +92,7 @@
                             <th style="width:16%;">Batch #</th>
                             <th style="width:14%;">Expiry</th>
                             <th style="width:12%;">Qty</th>
-                            <th style="width:12%;">Price (Rs)</th>
+                            <th style="width:12%;">Price/Unit</th>
                         </tr>
                     </thead>
                     <tbody id="qsBody">
@@ -190,36 +190,42 @@ function showFilter(filter, btn) {
     filterItems();
 }
 
-// Before submit, remove disabled entries so only filled rows are sent
+// Before submit, collect only filled rows into hidden inputs
 document.getElementById('quickStockForm').addEventListener('submit', function(e) {
     const entries = [];
     document.querySelectorAll('tr.has-entry').forEach(row => {
+        const inputs = row.querySelectorAll('.qs-input');
+        // inputs order: [0]=batch_number, [1]=expiry_date, [2]=quantity, [3]=purchase_price
         const itemId = row.querySelector('.qs-qty').dataset.item;
         entries.push({
             inventory_item_id: itemId,
-            batch_number: row.querySelector('[name*="batch_number"]').value,
-            expiry_date: row.querySelector('[name*="expiry_date"]').value,
-            quantity: row.querySelector('[name*="quantity"]').value,
-            purchase_price: row.querySelector('[name*="purchase_price"]').value,
+            batch_number: inputs[0] ? inputs[0].value : '',
+            expiry_date: inputs[1] ? inputs[1].value : '',
+            quantity: inputs[2] ? inputs[2].value : '0',
+            purchase_price: inputs[3] ? inputs[3].value : '',
         });
     });
 
     if (entries.length === 0) {
         e.preventDefault();
+        alert('Please enter quantity for at least one item.');
         return;
     }
 
-    // Clear all named inputs first
-    document.querySelectorAll('.qs-table input[name]').forEach(i => i.removeAttribute('name'));
+    // Remove existing table inputs from form submission
+    document.querySelectorAll('.qs-table input').forEach(i => {
+        i.removeAttribute('name');
+    });
 
-    // Add hidden inputs for the entries array
+    // Append hidden inputs for entries array
+    const form = this;
     entries.forEach((entry, idx) => {
         Object.keys(entry).forEach(key => {
             const hidden = document.createElement('input');
             hidden.type = 'hidden';
             hidden.name = `entries[${idx}][${key}]`;
             hidden.value = entry[key];
-            this.appendChild(hidden);
+            form.appendChild(hidden);
         });
     });
 });
