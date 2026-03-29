@@ -96,10 +96,13 @@
         <h2>Stock Management</h2>
         <p>Central warehouse stock overview. Use <strong>Clinic Inventory</strong> to view per-clinic stock.</p>
     </div>
-    <form method="GET" class="stock-search">
-        <input type="text" name="q" placeholder="Search items..." value="{{ $search ?? '' }}">
-        <button type="submit">Search</button>
-    </form>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <a href="{{ route('organisation.inventory.quick-stock') }}" style="background:#8b5cf6;color:#fff;padding:9px 18px;border-radius:8px;font-weight:600;font-size:14px;text-decoration:none;display:inline-block;">Quick Stock Entry</a>
+        <form method="GET" class="stock-search">
+            <input type="text" name="q" placeholder="Search items..." value="{{ $search ?? '' }}">
+            <button type="submit">Search</button>
+        </form>
+    </div>
 </div>
 
 @if(session('success'))

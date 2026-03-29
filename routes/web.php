@@ -512,6 +512,12 @@ Route::middleware(['auth'])
             Route::get('/brands-by-generic', [InventoryController::class, 'brandsByGeneric']);
             Route::get('/inventory-search', [InventoryController::class, 'searchInventoryItems']);
 
+            // Quick Stock Entry
+            Route::get('/inventory-quick-stock', [InventoryController::class, 'quickStock'])
+                ->name('inventory.quick-stock');
+            Route::post('/inventory-quick-stock', [InventoryController::class, 'quickStockStore'])
+                ->name('inventory.quick-stock.store');
+
             // Stock Transfer
             Route::get('/inventory-transfer', [InventoryController::class, 'transferForm'])
                 ->name('inventory.transfer');

@@ -163,6 +163,64 @@ public function stock(Request $request)
 }
 
 
+public function quickStock()
+{
+    $organisationId = auth()->user()->organisation_id;
+
+    $items = InventoryItem::where('organisation_id', $organisationId)
+        ->with(['allBatches' => fn($q) => $q->where('quantity', '>', 0)->whereNull('clinic_id')])
+        ->orderBy('name')
+        ->get();
+
+    $items->each(function ($item) {
+        $item->central_qty = $item->allBatches->sum('quantity');
+    });
+
+    return view('organisation.inventory.quick-stock', compact('items'));
+}
+
+public function quickStockStore(Request $request)
+{
+    $request->validate([
+        'entries'                    => 'required|array|min:1',
+        'entries.*.inventory_item_id'=> 'required|exists:inventory_items,id',
+        'entries.*.quantity'         => 'required|numeric|min:0.001',
+        'entries.*.batch_number'     => 'nullable|string|max:100',
+        'entries.*.expiry_date'      => 'nullable|date',
+        'entries.*.purchase_price'   => 'nullable|numeric|min:0',
+    ]);
+
+    $count = 0;
+
+    foreach ($request->entries as $entry) {
+        $batch = InventoryBatch::create([
+            'inventory_item_id' => $entry['inventory_item_id'],
+            'clinic_id'         => null,
+            'batch_number'      => $entry['batch_number'] ?? null,
+            'expiry_date'       => $entry['expiry_date'] ?? null,
+            'quantity'          => $entry['quantity'],
+            'purchase_price'    => $entry['purchase_price'] ?? null,
+            'created_by'        => auth()->id(),
+        ]);
+
+        InventoryMovement::create([
+            'clinic_id'          => 0,
+            'inventory_item_id'  => $entry['inventory_item_id'],
+            'inventory_batch_id' => $batch->id,
+            'quantity'           => $entry['quantity'],
+            'movement_type'      => 'purchase',
+            'notes'              => 'Quick stock entry' . (!empty($entry['batch_number']) ? " — Batch: {$entry['batch_number']}" : ''),
+            'created_by'         => auth()->id(),
+        ]);
+
+        $count++;
+    }
+
+    return redirect()->route('organisation.inventory.quick-stock')
+        ->with('success', "Added stock for {$count} item(s).");
+}
+
+
 public function update(Request $request,$id)
 {
 
