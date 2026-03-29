@@ -653,7 +653,12 @@ Add Item
                     <span style="background:{{ $typeBg }};color:{{ $typeColor }};padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">{{ ucfirst($item->item_type) }}</span>
                 </td>
                 <td>
-                    <span style="font-size:13px;color:#6b7280;">{{ $item->package_type ? ucfirst(str_replace('_', ' ', $item->package_type)) : '—' }}</span>
+                    <select class="edit-field" name="package_type" data-id="{{ $item->id }}" disabled style="border:none;background:transparent;appearance:none;font-size:13px;color:#6b7280;">
+                        <option value="">—</option>
+                        @foreach(['tablet','capsule','injection','oral_suspension','syrup','drops','ointment','cream','gel','spray','powder','shampoo','vial','fluid','bottle','strip','dose','packet','tube','piece','sachet','roll','box','canister','kit','bag'] as $pt)
+                            <option value="{{ $pt }}" {{ $item->package_type === $pt ? 'selected' : '' }}>{{ ucfirst(str_replace('_', ' ', $pt)) }}</option>
+                        @endforeach
+                    </select>
                 </td>
                 <td>
                     @if($item->strength_value)
